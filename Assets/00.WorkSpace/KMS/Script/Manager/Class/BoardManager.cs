@@ -42,7 +42,7 @@ public class BoardManager : MonoBehaviour, IManager
         var cleared = ClearLines();
         if (cleared > 0)
         {
-            EventBus.OnBoardCleared?.Invoke();
+            EventBus.PublishBoardCleared();
         }
     }
 

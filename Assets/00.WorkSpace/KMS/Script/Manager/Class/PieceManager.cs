@@ -24,7 +24,7 @@ public class PieceManager : MonoBehaviour, IManager
     {
         _hand.RemoveAt(index);
         if (_hand.Count == 0) RefillHand();
-        EventBus.OnHandRefilled?.Invoke();
+        EventBus.PublishHandRefilled();
     }
 
     private void RefillHand()
