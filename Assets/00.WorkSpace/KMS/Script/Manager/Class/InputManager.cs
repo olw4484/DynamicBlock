@@ -110,7 +110,7 @@ public class InputManager : MonoBehaviour, IManager
         {
             _board.Place(_selectedShape, origin);
             _pieceManager.Consume(_selectedIndex);
-            EventBus.OnPiecePlaced?.Invoke();
+            EventBus.PublishBoardCleared();
         }
 
         _selectedShape = null;

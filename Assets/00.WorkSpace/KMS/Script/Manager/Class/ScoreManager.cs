@@ -14,14 +14,14 @@ public class ScoreManager : MonoBehaviour, IManager
 
     public void PreInit() { }
     public void Init() { _score = 0; _combo = 0; }
-    public void PostInit() { EventBus.OnScoreChanged?.Invoke(_score); }
+    public void PostInit() { EventBus.PublishScoreChanged(_score); }
 
-    public void OnPlaced(int cells) { _score += cells; EventBus.OnScoreChanged?.Invoke(_score); }
+    public void OnPlaced(int cells) { _score += cells; EventBus.PublishScoreChanged(_score); }
     public void OnCleared(int lines)
     {
         if (lines > 0) { _combo++; _score += lines * 10 + _combo * 5; }
         else _combo = 0;
-        EventBus.OnScoreChanged?.Invoke(_score);
-        EventBus.OnComboChanged?.Invoke(_combo);
+        EventBus.PublishScoreChanged(_score);
+        EventBus.PublishComboChanged(_combo);
     }
 }
