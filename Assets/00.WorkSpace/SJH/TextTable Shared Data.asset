@@ -15,18 +15,18 @@ MonoBehaviour:
   m_TableCollectionName: TextTable
   m_TableCollectionNameGuidString: 84e2a0ed060bf04449dc1210851b96b5
   m_Entries:
-  - m_Id: 11240988672
+  - m_Id: 5729673216
     m_Key: Test_Key
     m_Metadata:
       m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
-    rid: 5213306255223029784
+    rid: 5213306270290280450
   references:
     version: 2
     RefIds:
-    - rid: 5213306255223029784
+    - rid: 5213306270290280450
       type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
       data:
-        m_CustomEpoch: 1755673113123
+        m_CustomEpoch: 1755730339133
