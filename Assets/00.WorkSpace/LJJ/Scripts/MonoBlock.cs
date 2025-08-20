@@ -6,26 +6,18 @@ namespace LJJ
 {
     public class MonoBlock : MonoBehaviour
     {
-        [SerializeField] MeshRenderer meshRenderer;
-        [SerializeField] Material material;
+        [SerializeField] Sprite sprite;
 
         [SerializeField] public Vector2 pos;
 
         public void Awake()
         {
-            meshRenderer = GetComponent<MeshRenderer>();
-            material = meshRenderer.material;
+            sprite = GetComponent<SpriteRenderer>().sprite;
         }
 
-        public void SetColor(Color color)
+        public void SetSprite()
         {
-            if (meshRenderer == null || material == null)
-            {
-                Debug.LogError("MeshRenderer or Material is not assigned.");
-                return;
-            }
-            material.color = color;
-            meshRenderer.material = material;
+            // ToDo : 스프라이트 설정
         }
 
         public void SetPosition(Vector2 newPos)
