@@ -8,6 +8,7 @@ public class Block : MonoBehaviour,
 {
     [Header("Prefab & Data")]
     public GameObject shapePrefab;
+
     [HideInInspector]
     public ShapeData shapeData;
 
@@ -109,6 +110,8 @@ public class Block : MonoBehaviour,
         }
         else
         {
+            BlockStorage storage = FindObjectOfType<BlockStorage>();
+            storage.OnBlockPlaced(this);
             Destroy(gameObject); 
         }
     }
