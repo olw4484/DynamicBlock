@@ -8,11 +8,10 @@ public class Block : MonoBehaviour,
     [Header("Prefab & Data")]
     public GameObject shapePrefab; // 생성할 블록 모양 Prefab
     [HideInInspector]
-    public ShapeTemplate shapeTemplate; // Shape 데이터
+    public ShapeData shapeData; // Shape 데이터
 
     [Header("Pointer")] 
     public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
-
     public Vector2 selectedOffset = new Vector2(0f, 1000f);
         
     private Vector3 _shapeStartScale;
@@ -28,9 +27,9 @@ public class Block : MonoBehaviour,
     }
     
     // 생성 메서드
-    public void GenerateBlock(ShapeTemplate shapeTemplate)
+    public void GenerateBlock(ShapeData shapeData)
     {
-        if (shapePrefab == null || shapeTemplate == null)
+        if (shapePrefab == null || shapeData == null)
         {
             Debug.LogWarning("Prefab 또는 ShapeTemplate이 할당되지 않았습니다.");
             return;
@@ -57,8 +56,8 @@ public class Block : MonoBehaviour,
                 rt.anchoredPosition = new Vector2(x * width, -y * height) - offset;
 
                 // 활성화 여부 설정
-                bool isActive = shapeTemplate.rows[y].columns[x];
-                block.GetComponent<Image>().enabled = isActive;
+                bool isActive = shapeData.rows[y].columns[x];
+                block.SetActive(isActive);
                 
                 ShapeBlock sb = block.AddComponent<ShapeBlock>();
                 sb.x = x;
@@ -95,6 +94,8 @@ public class Block : MonoBehaviour,
     public void OnEndDrag(PointerEventData eventData)
     {
         _shapeTransform.localScale = _shapeStartScale;
+
+        GameEvents.CheckIfShapeCanBePlaced();
     }
 
     public void OnPointerClick(PointerEventData eventData)

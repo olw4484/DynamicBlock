@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -14,7 +15,28 @@ public class Grid : MonoBehaviour
     
     [HideInInspector]
     public List<GameObject> gridSquares = new();
+
+    private void OnEnable()
+    {
+        GameEvents.CheckIfShapeCanBePlaced += CheckIfShapeCanBePlaced;
+    }
+    private void OnDisable()
+    {
+        GameEvents.CheckIfShapeCanBePlaced -= CheckIfShapeCanBePlaced;
+    }
     
+    private void CheckIfShapeCanBePlaced()
+    {
+        foreach (var square in gridSquares)
+        {
+            var gridSquare = square.GetComponent<GridSquare>();
+
+            if (gridSquare.CanWeUseThisSquare() == true)
+            {
+                gridSquare.ActivateSquare();
+            }
+        }
+    }
     public void CreateGrid()
     {
         // 기존 Grid 제거

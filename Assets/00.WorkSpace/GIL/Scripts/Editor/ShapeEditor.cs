@@ -5,18 +5,18 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 
-[CustomEditor(typeof(ShapeTemplate))]
+[CustomEditor(typeof(ShapeData))]
 public class ShapeEditor : Editor
 {
     private const int GridSize = 5;
     private VisualElement gridContainer;
-    private ShapeTemplate[] shapes;
+    private ShapeData[] shapes;
     private int currentIndex;
-    private ShapeTemplate _target;
+    private ShapeData _target;
 
     public override VisualElement CreateInspectorGUI()
     {
-        _target = (ShapeTemplate)target;
+        _target = (ShapeData)target;
 
         var root = new VisualElement { style = { flexDirection = FlexDirection.Column, paddingTop = 5, paddingBottom = 5, paddingLeft = 5, paddingRight = 5 } };
 
@@ -101,7 +101,7 @@ public class ShapeEditor : Editor
 
     private void LoadShapes()
     {
-        shapes = Resources.LoadAll<ShapeTemplate>("Shapes");
+        shapes = Resources.LoadAll<ShapeData>("Shapes");
         currentIndex = shapes.ToList().IndexOf(_target);
         if (currentIndex == -1 && shapes.Length > 0)
         {
@@ -132,10 +132,10 @@ public class ShapeEditor : Editor
             path = Path.GetDirectoryName(path);
         }
 
-        var newShapeTemplate = CreateInstance<ShapeTemplate>();
+        var newShapeTemplate = CreateInstance<ShapeData>();
         for (var i = 0; i < GridSize; i++)
         {
-            newShapeTemplate.rows[i] = new ShapeData();
+            newShapeTemplate.rows[i] = new ShapeRow();
         }
 
         var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{path}/000_Shape.asset");
@@ -175,7 +175,7 @@ public class ShapeEditor : Editor
         for (int i = 0; i < GridSize; i++)
         {
             if (_target.rows[i] == null)
-                _target.rows[i] = new ShapeData();
+                _target.rows[i] = new ShapeRow();
 
             var row = new VisualElement { style = { flexDirection = FlexDirection.Row, marginBottom = 5 } };
             gridContainer.Add(row);

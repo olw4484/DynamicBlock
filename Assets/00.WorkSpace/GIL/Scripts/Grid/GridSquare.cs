@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,14 +7,56 @@ public enum GridState {Normal, Hover, Active}
 
 public class GridSquare : MonoBehaviour
 {
-    [Header("Image Objects")]
-    [SerializeField] private Image normalImage;
+    [Header("Image Objects")] [SerializeField]
+    private Image normalImage;
+
     [SerializeField] private Image hoverImage;
     [SerializeField] private Image activeImage;
-    
-    private void Awake()
+
+    public bool Selected { get; set; }
+    public bool SquareOccupied { get; set; }
+
+    private void Start()
     {
+        Selected = false;
+        SquareOccupied = false;
         SetState(GridState.Normal); // 초기 상태
+    }
+    // temp func
+    public bool CanWeUseThisSquare()
+    {
+        return hoverImage.gameObject.activeSelf;
+    }
+
+    public void ActivateSquare()
+    {
+        SetState(GridState.Active);
+        Selected = true;
+        SquareOccupied = true;
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Block") && !SquareOccupied)
+        {
+            SetState(GridState.Hover);
+        }
+    }
+
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        if (other.CompareTag("Block") && !SquareOccupied)
+        {
+            SetState(GridState.Hover);
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (other.CompareTag("Block") && !SquareOccupied)
+        {
+            SetState(GridState.Normal);
+        }     
     }
 
     public void SetState(GridState newState)
@@ -21,5 +64,11 @@ public class GridSquare : MonoBehaviour
         normalImage.gameObject.SetActive(newState == GridState.Normal);
         hoverImage.gameObject.SetActive(newState == GridState.Hover);
         activeImage.gameObject.SetActive(newState == GridState.Active);
+    }
+    
+    public void SetOccupied(bool occupied)
+    {
+        SquareOccupied = occupied;
+        SetState(occupied ? GridState.Active : GridState.Normal);
     }
 }

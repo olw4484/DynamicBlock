@@ -5,7 +5,7 @@ using UnityEngine;
 public class BlockStorage : MonoBehaviour
 {
     [Header("Block Prefab & Data")]
-    public List<ShapeTemplate> shapeData;
+    public List<ShapeData> shapeData;
     public List<Block> blockList;
 
     void Start()
