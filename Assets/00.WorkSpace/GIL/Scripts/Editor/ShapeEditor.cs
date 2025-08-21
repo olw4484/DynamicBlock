@@ -1,12 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEditor;
 
 [CustomEditor(typeof(ShapeTemplate))]
-public class ShapeEditor : UnityEditor.Editor
+public class ShapeEditor : Editor
 {
     private const int GridSize = 5;
     private VisualElement gridContainer;
@@ -18,24 +18,25 @@ public class ShapeEditor : UnityEditor.Editor
     {
         _target = (ShapeTemplate)target;
 
-        var root = new VisualElement();
-        root.style.flexDirection = FlexDirection.Column;
-        root.style.paddingTop = 5;
-        root.style.paddingBottom = 5;
-        root.style.paddingLeft = 5;
-        root.style.paddingRight = 5;
+        var root = new VisualElement { style = { flexDirection = FlexDirection.Column, paddingTop = 5, paddingBottom = 5, paddingLeft = 5, paddingRight = 5 } };
 
-        root.Add(new Label(_target.name) { name = "title" });
+        var nameField = new TextField("Name") { value = _target.name };
+        nameField.RegisterValueChangedCallback(evt => { ChangeName(evt); });
+        root.Add(nameField);
 
-        // Navigation + Add/Remove
+        var idField = new TextField("ID") { value = _target.Id };
+        idField.RegisterValueChangedCallback(evt => { ChangeName(evt); });
+        root.Add(nameField);
+        
+        // Navigation buttons
         var navContainer = new VisualElement { style = { flexDirection = FlexDirection.Row, justifyContent = Justify.SpaceBetween, marginBottom = 5 } };
-        navContainer.Add(CreateButton("<<", () => NavigateShapes(-1)));
-        navContainer.Add(CreateButton(">>", () => NavigateShapes(1)));
-        navContainer.Add(CreateButton("+", AddShape));
-        navContainer.Add(CreateButton("-", RemoveShape));
+        navContainer.Add(CreateButton("<", () => NavigateShapes(-1), 0.5f));
+        navContainer.Add(CreateButton(">", () => NavigateShapes(1), 0.5f));
+        navContainer.Add(CreateButton("Add Shape", AddShape));
+        navContainer.Add(CreateButton("Remove Shape", RemoveShape));
         root.Add(navContainer);
 
-        // ClearAll / Save
+        // Action buttons
         var actionContainer = new VisualElement { style = { flexDirection = FlexDirection.Row, justifyContent = Justify.SpaceBetween, marginBottom = 5 } };
         actionContainer.Add(CreateButton("Clear All", ClearAll));
         actionContainer.Add(CreateButton("Save", Save));
@@ -43,81 +44,41 @@ public class ShapeEditor : UnityEditor.Editor
 
         root.Add(new Label("Click on a square to add/remove a block") { style = { marginBottom = 5 } });
 
-        // Grid Container
+        // Grid container
         gridContainer = new VisualElement { style = { flexDirection = FlexDirection.Column, alignItems = Align.Center, marginBottom = 5 } };
         root.Add(gridContainer);
-
-        // Classic Mode
+        
         var classicContainer = new VisualElement { style = { flexDirection = FlexDirection.Column, marginBottom = 5 } };
-        classicContainer.Add(new Label("Classic Mode Parameters"));
+        classicContainer.Add(new Label("\nClassic Mode Parameters"));
 
-        // Score For Spawn
         var scoreField = new IntegerField("Score For Spawn") { value = _target.scoreForSpawn };
-        scoreField.style.marginBottom = 2;
-        scoreField.RegisterValueChangedCallback(evt =>
-        {
-            _target.scoreForSpawn = evt.newValue;
-            EditorUtility.SetDirty(_target);
-        });
+        scoreField.style.width = 200;
+        scoreField.RegisterValueChangedCallback(evt => { _target.scoreForSpawn = evt.newValue; });
         classicContainer.Add(scoreField);
-
-        // Chance For Spawn (Label + Slider + Value)
-        var chanceContainer = new VisualElement
-        {
-            style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginBottom = 2 }
-        };
-
-        // Label
-        var chanceLabel = new Label("Chance For Spawn");
-        chanceLabel.style.width = 120;
-        chanceLabel.style.marginRight = 5;
-
-        // Slider Container (Slider만 담음)
-        var sliderWrapper = new VisualElement { style = { flexGrow = 1, flexShrink = 1, flexDirection = FlexDirection.Row } };
-        var chanceSlider = new Slider(0, 1) { value = _target.chanceForSpawn };
-        chanceSlider.style.flexGrow = 1;
-        sliderWrapper.Add(chanceSlider);
-
-        // FloatField
+        
+        var sliderContainer = new VisualElement { name = "slider-container" };
+        sliderContainer.style.flexDirection = FlexDirection.Row;
+        var chanceField = new Slider("Chance for Spawn", 0, 1) { value = _target.chanceForSpawn };
         var chanceValue = new FloatField { value = _target.chanceForSpawn };
-        chanceValue.style.width = 50;
-        chanceValue.style.flexShrink = 0;
-        chanceValue.style.marginLeft = 5;
-
-        // 동기화
-        chanceSlider.RegisterValueChangedCallback(evt =>
+        chanceValue.style.marginLeft = 10;
+        chanceValue.RegisterValueChangedCallback(evt => { chanceField.value = evt.newValue; });
+        chanceField.RegisterValueChangedCallback(evt =>
         {
-            chanceValue.SetValueWithoutNotify(evt.newValue);
+            chanceValue.value = evt.newValue;
+            _target.chanceForSpawn = evt.newValue;
+        });
+        
+        chanceField.style.width = 200;
+        chanceField.RegisterValueChangedCallback(evt =>
+        {
             _target.chanceForSpawn = evt.newValue;
             EditorUtility.SetDirty(_target);
         });
-        chanceValue.RegisterValueChangedCallback(evt =>
-        {
-            chanceSlider.SetValueWithoutNotify(evt.newValue);
-            _target.chanceForSpawn = evt.newValue;
-            EditorUtility.SetDirty(_target);
-        });
-
-        // 추가
-        chanceContainer.Add(chanceLabel);
-        chanceContainer.Add(sliderWrapper);
-        chanceContainer.Add(chanceValue);
-        classicContainer.Add(chanceContainer);
-
+        sliderContainer.Add(chanceField);
+        sliderContainer.Add(chanceValue);
+        root.Add(sliderContainer);
+        
         root.Add(classicContainer);
-
-        // Adventure Mode
-        var adventureContainer = new VisualElement { style = { flexDirection = FlexDirection.Column, marginBottom = 5 } };
-        adventureContainer.Add(new Label("Adventure Mode Parameters"));
-        var spawnLevelField = new IntegerField("Spawn From Level") { value = _target.spawnFromLevel };
-        spawnLevelField.style.marginBottom = 2;
-        spawnLevelField.RegisterValueChangedCallback(evt =>
-        {
-            _target.spawnFromLevel = evt.newValue;
-            EditorUtility.SetDirty(_target);
-        });
-        adventureContainer.Add(spawnLevelField);
-        root.Add(adventureContainer);
 
         LoadShapes();
         CreateGrid();
@@ -125,50 +86,66 @@ public class ShapeEditor : UnityEditor.Editor
         return root;
     }
 
+    private void ChangeName(ChangeEvent<string> evt)
+    {
+        if (evt.newValue == _target.name) return;
+        string path = AssetDatabase.GetAssetPath(_target);
+        if (!string.IsNullOrEmpty(path))
+        {
+            AssetDatabase.RenameAsset(path, evt.newValue);
+            AssetDatabase.SaveAssets();
+        }
+        _target.name = evt.newValue;
+        EditorUtility.SetDirty(_target);
+    }
+
     private void LoadShapes()
     {
         shapes = Resources.LoadAll<ShapeTemplate>("Shapes");
-        currentIndex = Array.IndexOf(shapes, _target);
+        currentIndex = shapes.ToList().IndexOf(_target);
         if (currentIndex == -1 && shapes.Length > 0)
         {
             currentIndex = 0;
-            _target = shapes[currentIndex];
-            Selection.activeObject = _target;
+            Selection.activeObject = shapes[currentIndex];
         }
     }
 
     private void NavigateShapes(int direction)
     {
         Save();
-        if (shapes.Length == 0) return;
-
         currentIndex = (currentIndex + direction + shapes.Length) % shapes.Length;
+        Selection.activeObject = shapes[currentIndex];
         _target = shapes[currentIndex];
-        Selection.activeObject = _target;
         CreateGrid();
     }
 
     private void AddShape()
     {
         Save();
-        string path = AssetDatabase.GetAssetPath(_target);
+        var path = AssetDatabase.GetAssetPath(_target);
         if (string.IsNullOrEmpty(path))
-            path = "Assets/BlockPuzzleGameToolkit/ScriptableObjects/Shapes";
+        {
+            path = "Assets/00.WorkSpace/GIL/Resources/Shapes";
+        }
         else
+        {
             path = Path.GetDirectoryName(path);
+        }
 
-        var newShape = CreateInstance<ShapeTemplate>();
-        for (int i = 0; i < GridSize; i++)
-            newShape.rows[i] = new ShapeRow();
+        var newShapeTemplate = CreateInstance<ShapeTemplate>();
+        for (var i = 0; i < GridSize; i++)
+        {
+            newShapeTemplate.rows[i] = new ShapeData();
+        }
 
-        string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{path}/NewShape.asset");
-        AssetDatabase.CreateAsset(newShape, assetPath);
+        var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{path}/000_Shape.asset");
+        AssetDatabase.CreateAsset(newShapeTemplate, assetPath);
         AssetDatabase.SaveAssets();
 
         LoadShapes();
         currentIndex = shapes.Length - 1;
-        _target = shapes[currentIndex];
-        Selection.activeObject = _target;
+        Selection.activeObject = newShapeTemplate;
+        _target = newShapeTemplate;
         CreateGrid();
     }
 
@@ -176,14 +153,17 @@ public class ShapeEditor : UnityEditor.Editor
     {
         if (shapes.Length <= 1) return;
 
-        string path = AssetDatabase.GetAssetPath(_target);
+        if (!EditorUtility.DisplayDialog("Delete Shape", "Are you sure you want to delete this shape?", "Yes", "No")) 
+            return;
+        
+        var path = AssetDatabase.GetAssetPath(_target);
         AssetDatabase.DeleteAsset(path);
         AssetDatabase.SaveAssets();
 
         LoadShapes();
         currentIndex = Mathf.Clamp(currentIndex, 0, shapes.Length - 1);
+        Selection.activeObject = shapes[currentIndex];
         _target = shapes[currentIndex];
-        Selection.activeObject = _target;
         CreateGrid();
     }
 
@@ -195,43 +175,30 @@ public class ShapeEditor : UnityEditor.Editor
         for (int i = 0; i < GridSize; i++)
         {
             if (_target.rows[i] == null)
-                _target.rows[i] = new ShapeRow();
+                _target.rows[i] = new ShapeData();
 
             var row = new VisualElement { style = { flexDirection = FlexDirection.Row, marginBottom = 5 } };
             gridContainer.Add(row);
 
             for (int j = 0; j < GridSize; j++)
             {
-                var toggle = new Toggle();
-                toggle.value = _target.rows[i].cells[j];
+                var toggle = new Toggle {style = { width = 50, height = 50 , flexGrow = 0, flexShrink = 0, marginRight = 2}};
+                toggle.value = _target.rows[i].columns[j];
 
-                // --- 크기/스타일 설정 ---
-                toggle.style.width = 60;
-                toggle.style.height = 60;
-                toggle.style.flexGrow = 0;
-                toggle.style.flexShrink = 0;
-                toggle.style.marginRight = 2;
-                
                 int x = i, y = j;
                 toggle.RegisterValueChangedCallback(evt =>
                 {
-                    _target.rows[x].cells[y] = evt.newValue;
+                    _target.rows[x].columns[y] = evt.newValue;
                     UpdateToggleColor(toggle, evt.newValue);
-                    EditorUtility.SetDirty(_target);
                 });
-                
+
                 row.Add(toggle);
-                
-                // --- 체크박스 숨기기 ---
+
                 var input = toggle.Q("unity-toggle__input");
-                if (input != null)
-                    input.style.display = DisplayStyle.None;
-                
+                if (input != null) input.style.display = DisplayStyle.None;
                 var checkmark = toggle.Q("unity-checkmark");
-                if (checkmark != null)
-                    checkmark.style.display = DisplayStyle.None;
-                
-                // 색상 업데이트
+                if (checkmark != null) checkmark.style.display = DisplayStyle.None;
+
                 UpdateToggleColor(toggle, toggle.value);
             }
         }
@@ -239,17 +206,12 @@ public class ShapeEditor : UnityEditor.Editor
 
     private void UpdateToggleColor(Toggle toggle, bool active)
     {
-        if (active)
-            toggle.style.backgroundColor = new StyleColor(Color.white);
-        else
-            toggle.style.backgroundColor = new StyleColor(new Color(0.2f, 0.2f, 0.2f));
+        toggle.style.backgroundColor = active ? new StyleColor(Color.white) : new StyleColor(new Color(0.2f, 0.2f, 0.2f));
     }
 
-    private Button CreateButton(string text, Action clickEvent)
+    private Button CreateButton(string text, Action clickEvent, float flex = 1f)
     {
-        var button = new Button(clickEvent) { text = text };
-        button.style.flexGrow = 1;
-        button.style.marginRight = 5;
+        var button = new Button(clickEvent) { text = text , style = { flexGrow = flex, marginRight = 5 }};
         return button;
     }
 
@@ -259,8 +221,8 @@ public class ShapeEditor : UnityEditor.Editor
 
         for (int i = 0; i < GridSize; i++)
             for (int j = 0; j < GridSize; j++)
-                _target.rows[i].cells[j] = false;
-
+                _target.rows[i].columns[j] = false;
+        
         EditorUtility.SetDirty(_target);
         CreateGrid();
     }
@@ -268,7 +230,6 @@ public class ShapeEditor : UnityEditor.Editor
     private void Save()
     {
         if (_target == null) return;
-
         EditorUtility.SetDirty(_target);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
