@@ -12,8 +12,25 @@ public class SafeArea : MonoBehaviour
 
     private void Start()
     {
+        ApplySafeArea();
+    }
+
+    private void ApplySafeArea()
+    {
         Rect safeArea = Screen.safeArea;
-        rectTransform.anchoredPosition = safeArea.center;
-        rectTransform.sizeDelta = new Vector2(safeArea.width, safeArea.height);
+
+        // Canvas의 크기 기준으로 변환
+        Vector2 anchorMin = safeArea.position;
+        Vector2 anchorMax = safeArea.position + safeArea.size;
+
+        anchorMin.x /= Screen.width;
+        anchorMin.y /= Screen.height;
+        anchorMax.x /= Screen.width;
+        anchorMax.y /= Screen.height;
+
+        rectTransform.anchorMin = anchorMin;
+        rectTransform.anchorMax = anchorMax;
+        rectTransform.offsetMin = Vector2.zero;
+        rectTransform.offsetMax = Vector2.zero;
     }
 }
