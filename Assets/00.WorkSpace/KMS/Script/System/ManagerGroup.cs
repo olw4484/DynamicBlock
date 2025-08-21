@@ -8,7 +8,6 @@ using System.Linq;
 // Script  : ManagerGroup.cs
 // Desc    : 매니저 등록/초기화/조회 + Tick/Teardown
 // ================================
-
 [DisallowMultipleComponent]
 [AddComponentMenu("System/ManagerGroup")]
 public class ManagerGroup : MonoBehaviour
@@ -24,8 +23,19 @@ public class ManagerGroup : MonoBehaviour
 
     private void Awake()
     {
-        DontDestroyOnLoad(gameObject);
+        // 1) 싱글턴 가드 (중복 생성 방지)
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
+
+        // 2) 루트 승격 후 DontDestroyOnLoad
+        if (transform.parent != null)
+            transform.SetParent(null, worldPositionStays: true);
+
+        DontDestroyOnLoad(gameObject);
     }
 
     public void Register(IManager mgr)
@@ -57,12 +67,15 @@ public class ManagerGroup : MonoBehaviour
 
     private void OnDestroy()
     {
+        // 중복 파괴로 내려온 경우 Teardown 방지
+        if (Instance != this) return;
+
         if (_initialized)
         {
             foreach (var td in _managers.AsEnumerable().Reverse().OfType<ITeardown>())
                 td.Teardown();
         }
-        if (Instance == this) Instance = null;
+        Instance = null;
     }
 
     // 조회 (제네릭/리플렉션)
