@@ -1908,8 +1908,8 @@ MonoBehaviour:
   blockPrefab: {fileID: 8336460805302248489, guid: 4719e3c61ce2fac45946d1020924685f, type: 3}
   shapeData:
   - {fileID: 11400000, guid: 819584f6af859c544a2525cf8db58bc6, type: 2}
-  - {fileID: 11400000, guid: aae08636d453f6442a69c8c3ea3dd4c1, type: 2}
-  - {fileID: 11400000, guid: 34d4087816470ef4195819aee64caa3f, type: 2}
+  - {fileID: 11400000, guid: 9476bb4efdd75a542a2eda1b3623fb32, type: 2}
+  - {fileID: 11400000, guid: a167b0c41437f06438ccc7c3700305b1, type: 2}
   blockSpawnPosList:
   - {fileID: 356967168}
   - {fileID: 105695044}

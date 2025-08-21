@@ -138,7 +138,7 @@ public class ShapeEditor : Editor
             newShapeTemplate.rows[i] = new ShapeRow();
         }
 
-        var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{path}/000_Shape.asset");
+        var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{path}/00.0_block_N_R.asset");
         AssetDatabase.CreateAsset(newShapeTemplate, assetPath);
         AssetDatabase.SaveAssets();
 

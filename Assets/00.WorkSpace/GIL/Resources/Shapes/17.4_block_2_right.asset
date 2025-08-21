@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8d62d8aba34ddfc40babc3026a06656f, type: 3}
-  m_Name: 003_Shape L
+  m_Name: 17.4_block_2_right
   m_EditorClassIdentifier: 
   Id: 
   rows:
   - columns: 0000000000
-  - columns: 0000000000
-  - columns: 0001010100
-  - columns: 0001010100
+  - columns: 0001010000
+  - columns: 0001000000
+  - columns: 0001000000
   - columns: 0000000000
   scoreForSpawn: 1
   chanceForSpawn: 1
