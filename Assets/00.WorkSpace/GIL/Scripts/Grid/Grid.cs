@@ -13,39 +13,20 @@ public class Grid : MonoBehaviour
     [SerializeField] private Vector2 startPosition = Vector2.zero;
     [SerializeField] private Vector2 spacing = new Vector2(5f, 5f);
     
-    [HideInInspector]
-    public List<GameObject> gridSquares = new();
+    [HideInInspector] public List<GameObject> gridSquares = new();
 
     private void OnEnable()
     {
-        GameEvents.CheckIfShapeCanBePlaced += CheckIfShapeCanBePlaced;
+        GameEvents.CheckIfShapeCanBePlaced = CheckIfShapeCanBePlaced;
     }
     private void OnDisable()
     {
-        GameEvents.CheckIfShapeCanBePlaced -= CheckIfShapeCanBePlaced;
+        GameEvents.CheckIfShapeCanBePlaced = null;
     }
     
-    private void CheckIfShapeCanBePlaced()
-    {
-        foreach (var square in gridSquares)
-        {
-            var gridSquare = square.GetComponent<GridSquare>();
-
-            if (gridSquare.CanWeUseThisSquare() == true)
-            {
-                gridSquare.ActivateSquare();
-            }
-        }
-    }
     public void CreateGrid()
     {
-        // 기존 Grid 제거
-        for (int i = gridSquares.Count - 1; i >= 0; i--)
-        {
-            if (gridSquares[i] != null)
-                DestroyImmediate(gridSquares[i]);
-        }
-        gridSquares.Clear();
+        ClearGrid();
 
         if (gridPrefab == null) return;
 
@@ -75,6 +56,31 @@ public class Grid : MonoBehaviour
                 DestroyImmediate(gridSquares[i]);
         }
         gridSquares.Clear();
+    }
+    
+    public bool CheckIfShapeCanBePlaced(List<Transform> shapeBlocks)
+    {
+        List<GridSquare> targetSquares = new();
+
+        foreach (var block in shapeBlocks)
+        {
+            if (!block.gameObject.activeSelf) continue;
+
+            Collider2D hit = Physics2D.OverlapPoint(block.position, LayerMask.GetMask("Grid"));
+            
+            if (hit == null) 
+                return false;
+            
+            GridSquare square = hit.GetComponent<GridSquare>();
+            if (square.SquareOccupied)
+                return false;
+
+            targetSquares.Add(square);
+        }
+        foreach (var square in targetSquares)
+            square.ActivateSquare();
+
+        return true;
     }
 }
 

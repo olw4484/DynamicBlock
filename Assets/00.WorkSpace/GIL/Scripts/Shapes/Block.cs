@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -6,9 +7,9 @@ public class Block : MonoBehaviour,
     IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [Header("Prefab & Data")]
-    public GameObject shapePrefab; // 생성할 블록 모양 Prefab
+    public GameObject shapePrefab;
     [HideInInspector]
-    public ShapeData shapeData; // Shape 데이터
+    public ShapeData shapeData;
 
     [Header("Pointer")] 
     public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
@@ -17,17 +18,23 @@ public class Block : MonoBehaviour,
     private Vector3 _shapeStartScale;
     private RectTransform _shapeTransform;
     private Canvas _canvas;
-    private RectTransform[,] _blocks = new RectTransform[5, 5];
-
+    private Vector3 _startPosition;
     private void Awake()
     {
         _shapeStartScale = GetComponent<RectTransform>().localScale;
         _shapeTransform = GetComponent<RectTransform>();
         _canvas = GetComponentInParent<Canvas>();
+        _startPosition = _shapeTransform.localPosition;
+    }
+
+    
+    public void GenerateBlock(ShapeData shapeData)
+    {
+        _shapeTransform.localPosition = _startPosition;
+        CreateBlock(shapeData);
     }
     
-    // 생성 메서드
-    public void GenerateBlock(ShapeData shapeData)
+    public void CreateBlock(ShapeData shapeData)
     {
         if (shapePrefab == null || shapeData == null)
         {
@@ -55,29 +62,17 @@ public class Block : MonoBehaviour,
                 RectTransform rt = block.GetComponent<RectTransform>();
                 rt.anchoredPosition = new Vector2(x * width, -y * height) - offset;
 
-                // 활성화 여부 설정
                 bool isActive = shapeData.rows[y].columns[x];
                 block.SetActive(isActive);
-                
-                ShapeBlock sb = block.AddComponent<ShapeBlock>();
-                sb.x = x;
-                sb.y = y;
-                sb.parentBlock = this;
-                
-                _blocks[x, y] = rt; // 나중에 터치 처리나 색상 변경 등용
             }
         }
-    }
-    
-    public RectTransform GetBlock(int x, int y)
-    {
-        return _blocks[x, y];
     }
 
     
     public void OnBeginDrag(PointerEventData eventData)
     {
         _shapeTransform.localScale = shapeSelectedScale;
+        _startPosition = transform.position;
     }
     
     public void OnDrag(PointerEventData eventData)
@@ -93,9 +88,29 @@ public class Block : MonoBehaviour,
     
     public void OnEndDrag(PointerEventData eventData)
     {
-        _shapeTransform.localScale = _shapeStartScale;
+        List<Transform> shapeBlocks = new();
 
-        GameEvents.CheckIfShapeCanBePlaced();
+        foreach (Transform child in transform)
+        {
+            if (child.gameObject.activeSelf) 
+                shapeBlocks.Add(child);
+        }
+
+        bool placed = false;
+        if (GameEvents.CheckIfShapeCanBePlaced != null)
+        {
+            placed = GameEvents.CheckIfShapeCanBePlaced.Invoke(shapeBlocks);
+        }
+        
+        if (!placed)
+        {
+            transform.position = _startPosition;
+            transform.localScale = _shapeStartScale;
+        }
+        else
+        {
+            Destroy(gameObject); 
+        }
     }
 
     public void OnPointerClick(PointerEventData eventData)

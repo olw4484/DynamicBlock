@@ -7,9 +7,8 @@ public enum GridState {Normal, Hover, Active}
 
 public class GridSquare : MonoBehaviour
 {
-    [Header("Image Objects")] [SerializeField]
-    private Image normalImage;
-
+    [Header("Image Objects")] 
+    [SerializeField] private Image normalImage;
     [SerializeField] private Image hoverImage;
     [SerializeField] private Image activeImage;
 
@@ -20,12 +19,7 @@ public class GridSquare : MonoBehaviour
     {
         Selected = false;
         SquareOccupied = false;
-        SetState(GridState.Normal); // 초기 상태
-    }
-    // temp func
-    public bool CanWeUseThisSquare()
-    {
-        return hoverImage.gameObject.activeSelf;
+        SetState(GridState.Normal);
     }
 
     public void ActivateSquare()

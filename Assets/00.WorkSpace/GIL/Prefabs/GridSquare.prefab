@@ -11,9 +11,9 @@ GameObject:
   - component: {fileID: 6742239735120567937}
   - component: {fileID: 8481342082784523727}
   - component: {fileID: 8849200496238306233}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: NormalImage
-  m_TagString: Untagged
+  m_TagString: GridSquare
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -86,9 +86,9 @@ GameObject:
   - component: {fileID: 8390635502154858214}
   - component: {fileID: 971853367066041223}
   - component: {fileID: 396465746230335142}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: ActiveImage
-  m_TagString: Untagged
+  m_TagString: GridSquare
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -161,9 +161,9 @@ GameObject:
   - component: {fileID: 3550620031333312452}
   - component: {fileID: 4056496381054863285}
   - component: {fileID: 9095807433715496601}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: GridSquare
-  m_TagString: Untagged
+  m_TagString: GridSquare
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -248,7 +248,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 50, y: 50}
+  m_Size: {x: 100, y: 100}
   m_EdgeRadius: 0
 --- !u!1 &8167114659163722746
 GameObject:
@@ -261,9 +261,9 @@ GameObject:
   - component: {fileID: 8357212027743819412}
   - component: {fileID: 6344362569168807388}
   - component: {fileID: 2884694999259341618}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: HoverImage
-  m_TagString: Untagged
+  m_TagString: GridSquare
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

@@ -6,15 +6,12 @@ public class GridEditor : Editor
 {
     public override void OnInspectorGUI()
     {
-        // 원래 Inspector 먼저 그리기
         DrawDefaultInspector();
 
         Grid grid = (Grid)target;
 
-        // 버튼 UI
         GUILayout.Space(10);
         
-        // 버튼 2개 나란히 표시
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Create Grid"))
         {

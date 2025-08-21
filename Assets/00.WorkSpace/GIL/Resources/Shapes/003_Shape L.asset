@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Id: 
   rows:
-  - columns: 0101010101
-  - columns: 0101010101
-  - columns: 0101010101
-  - columns: 0101010101
-  - columns: 0101010101
+  - columns: 0000000000
+  - columns: 0000000000
+  - columns: 0001010100
+  - columns: 0001010100
+  - columns: 0000000000
   scoreForSpawn: 1
   chanceForSpawn: 1
