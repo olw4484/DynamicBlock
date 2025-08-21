@@ -1,8 +1,9 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using UnityEngine;
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using Unity.Profiling;
+using UnityEngine;
 
 // ================================
 // Project : DynamicBlock
@@ -12,6 +13,16 @@ using System;
 
 public sealed class EventQueue : IManager, ITickable, ITeardown
 {
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+
+    static readonly ProfilerMarker MK_Tick = new("EventQueue.Tick");
+    static readonly ProfilerMarker MK_MergeThread = new("EventQueue.MergeThread");
+    static readonly ProfilerMarker MK_Timers = new("EventQueue.Timers");
+    static readonly ProfilerMarker MK_Dispatch = new("EventQueue.Dispatch");
+    static readonly ProfilerMarker MK_Handlers = new("EventQueue.Handlers");
+    static readonly ProfilerMarker MK_Taps = new("EventQueue.Taps");
+#endif
     public int Order => 0;
 
     // 타입별 핸들러
@@ -45,25 +56,37 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
 
     public void Tick(float dt)
     {
-        // 1) 워커 스레드 입력 병합
-        while (_threadQueue.TryDequeue(out var fromWorker))
-            _queue.Enqueue(fromWorker);
-
-        // 2) 타이머 만기 이벤트 이동
-        float now = Time.time;
-        for (int i = _scheduled.Count - 1; i >= 0; i--)
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        using (MK_Tick.Auto())
+#endif
         {
-            if (_scheduled[i].due <= now)
+            // 1) 워커 병합
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            using (MK_MergeThread.Auto())
+#endif
+                while (_threadQueue.TryDequeue(out var fromWorker))
+                    _queue.Enqueue(fromWorker);
+
+            // 2) 타이머 처리
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            using (MK_Timers.Auto())
+#endif
             {
-                _queue.Enqueue(_scheduled[i].evt);
-                _scheduled.RemoveAt(i);
+                float now = Time.time;
+                for (int i = _scheduled.Count - 1; i >= 0; i--)
+                    if (_scheduled[i].due <= now) { _queue.Enqueue(_scheduled[i].evt); _scheduled.RemoveAt(i); }
+            }
+
+            // 3) 큐 디스패치
+            int count = _queue.Count;
+            for (int i = 0; i < count; i++)
+            {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                using (MK_Dispatch.Auto())
+#endif
+                    Dispatch(_queue.Dequeue());
             }
         }
-
-        // 3) 일반 큐 처리
-        int count = _queue.Count;
-        for (int i = 0; i < count; i++)
-            Dispatch(_queue.Dequeue());
     }
 
     public void Teardown()
@@ -91,6 +114,23 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
     {
         _scheduled.Add(new Scheduled { due = Time.time + Mathf.Max(0f, delaySec), evt = evt! });
     }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+
+    private readonly List<System.Action<object>> _taps = new();
+
+    [Conditional("UNITY_EDITOR"), Conditional("DEVELOPMENT_BUILD")]
+    public void AddTap(System.Action<object> tap)
+    {
+        if (tap != null) _taps.Add(tap);
+    }
+
+    [Conditional("UNITY_EDITOR"), Conditional("DEVELOPMENT_BUILD")]
+    public void RemoveTap(System.Action<object> tap)
+    {
+        _taps.Remove(tap);
+    }
+#endif
 
     // 워커 스레드에서 안전
     public void EnqueueFromAnyThread<T>(T evt) => _threadQueue.Enqueue(evt!);
@@ -124,14 +164,26 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
     private void Dispatch(object evt)
     {
         var t = evt.GetType();
-        if (!_handlers.TryGetValue(t, out var list)) return;
-
-        // 단순 루프 (필요 시 복사본 사용)
-        for (int i = 0; i < list.Count; i++)
+        if (_handlers.TryGetValue(t, out var list))
         {
-            if (list[i] is Action<object> obj) obj(evt);
-            else list[i].DynamicInvoke(evt);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            using (MK_Handlers.Auto())
+#endif
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i] is Action<object> obj) obj(evt);
+                    else list[i].DynamicInvoke(evt);
+                }
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        using (MK_Taps.Auto())
+            for (int i = 0; i < _taps.Count; i++)
+            {
+                try { _taps[i]?.Invoke(evt); }
+                catch (Exception ex) { UnityEngine.Debug.LogException(ex); }
+            }
+#endif
     }
 
     // Sticky 초기화
