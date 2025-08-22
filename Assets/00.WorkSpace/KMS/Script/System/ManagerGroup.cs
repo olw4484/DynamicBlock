@@ -79,8 +79,7 @@ public class ManagerGroup : MonoBehaviour
     }
 
     // 조회 (제네릭/리플렉션)
-    public T Resolve<T>() where T : class, IManager
-        => _managers.FirstOrDefault(m => m is T) as T;
+    public T Resolve<T>() where T : class { return _managers.OfType<T>().FirstOrDefault(); }
 
     public IManager Resolve(System.Type t)
         => _managers.FirstOrDefault(m => t.IsInstanceOfType(m));
