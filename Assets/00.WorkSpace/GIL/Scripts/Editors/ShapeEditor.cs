@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System;
 using System.IO;
 using System.Linq;
@@ -9,7 +10,7 @@ using UnityEngine.UIElements;
 namespace _00.WorkSpace.GIL.Scripts.Editors
 {
     [CustomEditor(typeof(ShapeData))]
-    public class ShapeEditor : UnityEditor.Editor
+    public class ShapeEditor : Editor
     {
         private const int GridSize = 5;
         private VisualElement gridContainer;
@@ -239,3 +240,4 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         }
     }
 }
+#endif

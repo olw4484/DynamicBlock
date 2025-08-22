@@ -1,12 +1,12 @@
+#if UNITY_EDITOR
 using _00.WorkSpace.GIL.Scripts.Grids;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace _00.WorkSpace.GIL.Scripts.Editors
 {
     [CustomEditor(typeof(GridGenerator))]
-    public class GridEditor : UnityEditor.Editor
+    public class GridEditor : Editor
     {
         public override void OnInspectorGUI()
         {
@@ -31,4 +31,4 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         }
     }
 }
-
+#endif
