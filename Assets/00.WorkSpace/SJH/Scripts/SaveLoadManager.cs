@@ -17,7 +17,7 @@ public class SaveLoadManager : MonoBehaviour
 #if UNITY_EDITOR
 	public string DataPath => Path.Combine(Application.dataPath, $"00.WorkSpace/SJH/SaveFile/{_saveFileName}");
 #else
-	public string DataPath => Path.Combine(Application.persistentDataPath, $"00.WorkSpace/SJH/SaveFile/{_saveFileName}");
+	public string DataPath => Path.Combine(Application.persistentDataPath, $"SaveFile/{_saveFileName}");
 #endif
 	public GameData GameData;
 
