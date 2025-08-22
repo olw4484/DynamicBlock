@@ -1,26 +1,27 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class ShapeSquare : MonoBehaviour
+namespace _00.WorkSpace.GIL.Scripts.Shapes
 {
-    public Image occupiedImage;
-
-    void Start()
+    public class ShapeSquare : MonoBehaviour
     {
-        occupiedImage.gameObject.SetActive(false);
-    }
+        public Image occupiedImage;
 
-    public void DeactivateSquare()
-    {
-        gameObject.GetComponent<BoxCollider2D>().enabled = false;
-        gameObject.SetActive(false);
-    }
+        void Start()
+        {
+            occupiedImage.gameObject.SetActive(false);
+        }
 
-    public void ActivateSquare()
-    {
-        gameObject.GetComponent<BoxCollider2D>().enabled = true;
-        gameObject.SetActive(true);
+        public void DeactivateSquare()
+        {
+            gameObject.GetComponent<BoxCollider2D>().enabled = false;
+            gameObject.SetActive(false);
+        }
+
+        public void ActivateSquare()
+        {
+            gameObject.GetComponent<BoxCollider2D>().enabled = true;
+            gameObject.SetActive(true);
+        }
     }
 }

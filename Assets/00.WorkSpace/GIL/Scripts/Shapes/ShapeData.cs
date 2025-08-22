@@ -1,40 +1,43 @@
 using System;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "Shape", menuName = "New Shape", order = 1)]
-public class ShapeData : ScriptableObject
+namespace _00.WorkSpace.GIL.Scripts.Shapes
 {
-    [Header("ID & Grid")]
-    public string Id;
-    public ShapeRow[] rows = new ShapeRow[5];
-
-    [Header("Classic Mode")]
-    public int scoreForSpawn = 1;
-    public float chanceForSpawn = 1f;
-
-    private void OnEnable()
+    [CreateAssetMenu(fileName = "Shape", menuName = "New Shape", order = 1)]
+    public class ShapeData : ScriptableObject
     {
-        if (rows == null || rows.Length != 5)
-        {
-            rows = new ShapeRow[5];
-        }
+        [Header("ID & Grid")]
+        public string Id;
+        public ShapeRow[] rows = new ShapeRow[5];
 
-        for (int i = 0; i < rows.Length; i++)
+        [Header("Classic Mode")]
+        public int scoreForSpawn = 1;
+        public float chanceForSpawn = 1f;
+
+        private void OnEnable()
         {
-            if (rows[i] == null)
-                rows[i] = new ShapeRow();
+            if (rows == null || rows.Length != 5)
+            {
+                rows = new ShapeRow[5];
+            }
+
+            for (int i = 0; i < rows.Length; i++)
+            {
+                if (rows[i] == null)
+                    rows[i] = new ShapeRow();
+            }
         }
     }
-}
 
-[Serializable]
-public class ShapeRow
-{
-    public bool[] columns = new bool[5];
-
-    public ShapeRow()
+    [Serializable]
+    public class ShapeRow
     {
-        for (int i = 0; i < columns.Length; i++)
-            columns[i] = false;
+        public bool[] columns = new bool[5];
+
+        public ShapeRow()
+        {
+            for (int i = 0; i < columns.Length; i++)
+                columns[i] = false;
+        }
     }
 }

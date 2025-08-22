@@ -1,10 +1,12 @@
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
-
-[RequireComponent(typeof(Image))]
-public class ShapeBlock : MonoBehaviour
+using _00.WorkSpace.GIL.Scripts.Blocks;
+namespace _00.WorkSpace.GIL.Scripts.Shapes
 {
-    public int x, y;
-    public Block parentBlock;
+    [RequireComponent(typeof(Image))]
+    public class ShapeBlock : MonoBehaviour
+    {
+        public int x, y;
+        public Block parentBlock;
+    }
 }
