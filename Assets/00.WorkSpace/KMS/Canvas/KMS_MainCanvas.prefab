@@ -439,7 +439,7 @@ GameObject:
   - component: {fileID: 2957833255190083410}
   - component: {fileID: 2391107967276623383}
   m_Layer: 5
-  m_Name: BackGround
+  m_Name: MainCanvas_BackGround
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1426,7 +1426,7 @@ GameObject:
   - component: {fileID: 7345413967927979493}
   - component: {fileID: 8908828441011840385}
   m_Layer: 5
-  m_Name: Classic_Button
+  m_Name: MainCanvas_Classic Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2349,7 +2349,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2499485383622922242}
   m_Layer: 0
-  m_Name: Main_Shop-Featured-Info
+  m_Name: MainCanvas_Main_Shop-Featured-Info
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4075,7 +4075,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4572557352488167111}
   m_Layer: 5
-  m_Name: Main_Illustration
+  m_Name: MainCanvas_Main_Illustration
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4475,7 +4475,7 @@ GameObject:
   - component: {fileID: 2909043151271995121}
   - component: {fileID: 7066753685134940270}
   m_Layer: 5
-  m_Name: SafeArea
+  m_Name: MainCanvas_SafeArea
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5718,7 +5718,7 @@ GameObject:
   - component: {fileID: 3078843574493295484}
   - component: {fileID: 7167410643557723288}
   m_Layer: 5
-  m_Name: KMS_Canvas
+  m_Name: KMS_MainCanvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5937,7 +5937,7 @@ GameObject:
   - component: {fileID: 4835892755702492230}
   - component: {fileID: 4196906232740414791}
   m_Layer: 5
-  m_Name: Adventure_Button
+  m_Name: MainCanvas_Adventure Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
