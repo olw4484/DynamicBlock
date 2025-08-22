@@ -1,6 +1,7 @@
 using _00.WorkSpace.GIL.Scripts.Grids;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace _00.WorkSpace.GIL.Scripts.Editors
 {
@@ -16,7 +17,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             GUILayout.Space(10);
         
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Create Grid"))
+            if (GUILayout.Button("Create/Refresh Grid"))
             {
                 gridGenerator.CreateGrid();
             }

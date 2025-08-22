@@ -29,22 +29,23 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
             SquareOccupied = true;
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
-        {
-            if (other.CompareTag("Block") && !SquareOccupied)
-            {
-                SetState(GridState.Hover);
-            }
-        }
-
         private void OnTriggerStay2D(Collider2D other)
         {
             if (other.CompareTag("Block") && !SquareOccupied)
             {
-                SetState(GridState.Hover);
+                var myBounds = GetComponent<BoxCollider2D>().bounds;
+                var otherBounds = other.bounds;
+
+                if (myBounds.Contains(otherBounds.min) && myBounds.Contains(otherBounds.max))
+                {
+                    SetState(GridState.Hover);
+                }
+                else
+                {
+                    SetState(GridState.Normal);
+                }
             }
         }
-
         private void OnTriggerExit2D(Collider2D other)
         {
             if (other.CompareTag("Block") && !SquareOccupied)

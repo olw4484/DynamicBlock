@@ -18,7 +18,7 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
 
         [SerializeField] private Vector2 spacing = new Vector2(5f, 5f);
 
-        [HideInInspector] public List<GridSquare> gridSquares = new();
+        public List<GridSquare> gridSquares = new();
 
         private void OnEnable()
         {
@@ -65,7 +65,16 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
             for (int i = gridSquares.Count - 1; i >= 0; i--)
             {
                 if (gridSquares[i] != null)
-                    DestroyImmediate(gridSquares[i].gameObject);
+                {
+#if UNITY_EDITOR
+                    if (!Application.isPlaying)
+                         DestroyImmediate(gridSquares[i].gameObject);
+                    else
+                        Destroy(gridSquares[i].gameObject);
+#else
+            Destroy(gridSquares[i].gameObject);
+#endif
+                }
             }
 
             gridSquares.Clear();
