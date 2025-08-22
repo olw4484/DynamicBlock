@@ -13,7 +13,7 @@ public class GridSquare : MonoBehaviour
     [SerializeField] private Image activeImage;
 
     public bool Selected { get; set; }
-    public bool SquareOccupied { get; set; }
+    public bool SquareOccupied { get; private set; }
 
     private void Start()
     {

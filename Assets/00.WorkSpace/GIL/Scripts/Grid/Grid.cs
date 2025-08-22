@@ -5,15 +5,15 @@ using UnityEngine;
 public class Grid : MonoBehaviour
 {
     [Header("Grid Settings")]
-    [SerializeField] private GameObject gridPrefab;
-    [SerializeField] private int column = 8;
-    [SerializeField] private int row = 8;
+    [SerializeField] private GameObject gridSquare;
+    [SerializeField] private int columns = 8;
+    [SerializeField] private int rows = 8;
     
     [Header("Grid Layout")]
     [SerializeField] private Vector2 startPosition = Vector2.zero;
     [SerializeField] private Vector2 spacing = new Vector2(5f, 5f);
     
-    [HideInInspector] public List<GameObject> gridSquares = new();
+    public List<GridSquare> _gridSquares = new();
 
     private void OnEnable()
     {
@@ -24,38 +24,44 @@ public class Grid : MonoBehaviour
         GameEvents.CheckIfShapeCanBePlaced = null;
     }
     
+    private void Awake()
+    {
+        if(gridSquare == null)
+            CreateGrid();
+    }
+    
     public void CreateGrid()
     {
         ClearGrid();
-
-        if (gridPrefab == null) return;
-
-        RectTransform squareRect = gridPrefab.GetComponent<RectTransform>();
+        if (gridSquare == null) return;
+        
+        RectTransform squareRect = gridSquare.GetComponent<RectTransform>();
         Vector2 squareSize = squareRect.sizeDelta;
 
-        for (int r = 0; r < row; r++)
+        for (int row = 0; row < rows; row++)
         {
-            for (int c = 0; c < column; c++)
+            for (int column = 0; column < columns; column++)
             {
-                float posX = startPosition.x + c * (squareSize.x + spacing.x);
-                float posY = startPosition.y - r * (squareSize.y + spacing.y);
+                float posX = startPosition.x + column * (squareSize.x + spacing.x);
+                float posY = startPosition.y - row * (squareSize.y + spacing.y);
 
-                GameObject newSquare = Instantiate(gridPrefab, transform);
+                GameObject newSquare = Instantiate(gridSquare, transform);
+                newSquare.name = $"Square_{row}_{column}";
                 newSquare.GetComponent<RectTransform>().anchoredPosition = new Vector2(posX, posY);
-
-                gridSquares.Add(newSquare);
+                
+                _gridSquares.Add(newSquare.GetComponent<GridSquare>());
             }
         }
     }
     
     public void ClearGrid()
     {
-        for (int i = gridSquares.Count - 1; i >= 0; i--)
+        for (int i = _gridSquares.Count - 1; i >= 0; i--)
         {
-            if (gridSquares[i] != null)
-                DestroyImmediate(gridSquares[i]);
+            if (_gridSquares[i] != null)
+                DestroyImmediate(_gridSquares[i].gameObject);
         }
-        gridSquares.Clear();
+        _gridSquares.Clear();
     }
     
     public bool CheckIfShapeCanBePlaced(List<Transform> shapeBlocks)
@@ -79,8 +85,73 @@ public class Grid : MonoBehaviour
         }
         foreach (var square in targetSquares)
             square.ActivateSquare();
-
+        
+        CheckForCompletedLines();
         return true;
+    }
+    
+    public void CheckForCompletedLines()
+    {
+        if (_gridSquares == null || _gridSquares.Count == 0) return;
+        
+        // 가로줄 검사
+        for (int row = 0; row < rows; row++)
+        {
+            bool rowComplete = true;
+            for (int column = 0; column < columns; column++)
+            {
+                GridSquare square = _gridSquares[row * columns + column];
+                if (!square.SquareOccupied)
+                {
+                    rowComplete = false;
+                    break;
+                }
+            }
+
+            if (rowComplete)
+            {
+                ActiveClearEffectLine(row, true); // 가로줄 이펙트 실행
+
+                for (int column = 0; column < columns; column++)
+                {
+                    GridSquare square = _gridSquares[row * columns + column];
+                    square.SetOccupied(false);
+                    square.SetState(GridState.Normal);
+                }
+            }
+        }
+
+        // 세로줄 검사
+        for (int column = 0; column < columns; column++)
+        {
+            bool colComplete = true;
+            for (int row = 0; row < rows; row++)
+            {
+                GridSquare square = _gridSquares[row * columns + column];
+                if (!square.SquareOccupied)
+                {
+                    colComplete = false;
+                    break;
+                }
+            }
+
+            if (colComplete)
+            {
+                ActiveClearEffectLine(column, false); // 세로줄 이펙트 실행
+
+                for (int row = 0; row < rows; row++)
+                {
+                    GridSquare square = _gridSquares[row * columns + column];
+                    square.SetOccupied(false);
+                    square.SetState(GridState.Normal);
+                }
+            }
+        }
+    }
+
+    private void ActiveClearEffectLine(int index, bool isRow)
+    {
+        // TODO: 나중에 이펙트 / 사운드 추가
     }
 }
 
