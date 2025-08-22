@@ -74,7 +74,7 @@ public class BusSnifferTap : MonoBehaviour
         string payload = FormatPayload(e);
         string msg = $"{e.GetType().Name} {payload}";
 
-        // (선택) 대소문자 무시 필터
+        // 대소문자 무시 필터
         if (!string.IsNullOrEmpty(containsFilter) &&
             msg.IndexOf(containsFilter, System.StringComparison.OrdinalIgnoreCase) < 0)
             return;
