@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.GameEvents;
+using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using UnityEngine;
@@ -41,18 +42,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
     
         public void CreateBlock(ShapeData shapeData)
         {
-            if (shapePrefab == null || shapeData == null)
-            {
-                Debug.LogWarning("Prefab 또는 ShapeTemplate이 할당되지 않았습니다.");
-                return;
-            }
-
+            if (shapePrefab == null || shapeData == null) return;
             RectTransform rectTransform = shapePrefab.GetComponent<RectTransform>();
-            if (rectTransform == null)
-            {
-                Debug.LogWarning("ShapePrefab에 RectTransform이 없습니다.");
-                return;
-            }
+
+            if (rectTransform == null) return;
 
             float width = rectTransform.sizeDelta.x;
             float height = rectTransform.sizeDelta.y;
@@ -66,9 +59,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                     GameObject block = Instantiate(shapePrefab, transform);
                     RectTransform rt = block.GetComponent<RectTransform>();
                     rt.anchoredPosition = new Vector2(x * width, -y * height) - offset;
-
-                    bool isActive = shapeData.rows[y].columns[x];
-                    block.SetActive(isActive);
+                    block.SetActive(shapeData.rows[y].columns[x]);
                 }
             }
         }
@@ -82,31 +73,25 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
     
         public void OnDrag(PointerEventData eventData)
         {
-            Vector2 pos;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 _canvas.transform as RectTransform,
                 eventData.position,
                 eventData.pressEventCamera,
-                out pos);
+                out Vector2 pos);
             _shapeTransform.localPosition = pos + selectedOffset;
         }
     
         public void OnEndDrag(PointerEventData eventData)
         {
             List<Transform> shapeBlocks = new();
-
             foreach (Transform child in transform)
             {
                 if (child.gameObject.activeSelf) 
                     shapeBlocks.Add(child);
             }
 
-            bool placed = false;
-            if (GameEvent.CheckIfShapeCanBePlaced != null)
-            {
-                placed = GameEvent.CheckIfShapeCanBePlaced.Invoke(shapeBlocks);
-            }
-        
+            bool placed = GridManager.Instance.CanPlaceShape(shapeBlocks);
+
             if (!placed)
             {
                 transform.position = _startPosition;
@@ -116,7 +101,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             {
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
-                
+
                 int placedCount = 0;
                 foreach (Transform child in shapeBlocks)
                 {
@@ -125,8 +110,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 }
                 ScoreManager.Instance.AddScore(placedCount);
 
-                
-                Destroy(gameObject); 
+                Destroy(gameObject);
             }
         }
 

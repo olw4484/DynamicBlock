@@ -7,31 +7,27 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
 
     public class GridSquare : MonoBehaviour
     {
+        [HideInInspector] public int RowIndex;
+        [HideInInspector] public int ColIndex;
+        
         [Header("Image Objects")] 
         [SerializeField] private Image normalImage;
         [SerializeField] private Image hoverImage;
         [SerializeField] private Image activeImage;
-
+        
         public bool Selected { get; set; }
-        public bool SquareOccupied { get; private set; }
+        public bool IsOccupied { get; private set; }
 
         private void Start()
         {
             Selected = false;
-            SquareOccupied = false;
+            IsOccupied = false;
             SetState(GridState.Normal);
-        }
-
-        public void ActivateSquare()
-        {
-            SetState(GridState.Active);
-            Selected = true;
-            SquareOccupied = true;
         }
 
         private void OnTriggerStay2D(Collider2D other)
         {
-            if (other.CompareTag("Block") && !SquareOccupied)
+            if (other.CompareTag("Block") && !IsOccupied)
             {
                 var myBounds = GetComponent<BoxCollider2D>().bounds;
                 var otherBounds = other.bounds;
@@ -48,7 +44,7 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         }
         private void OnTriggerExit2D(Collider2D other)
         {
-            if (other.CompareTag("Block") && !SquareOccupied)
+            if (other.CompareTag("Block") && !IsOccupied)
             {
                 SetState(GridState.Normal);
             }     
@@ -63,7 +59,7 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
     
         public void SetOccupied(bool occupied)
         {
-            SquareOccupied = occupied;
+            IsOccupied = occupied;
             SetState(occupied ? GridState.Active : GridState.Normal);
         }
     }
