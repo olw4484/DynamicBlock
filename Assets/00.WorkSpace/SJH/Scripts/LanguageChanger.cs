@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
 using UnityEngine.Localization.Settings;
-using UnityEngine.SocialPlatforms;
 
 public enum GameLanguage
 {
