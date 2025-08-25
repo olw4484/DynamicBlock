@@ -15,9 +15,9 @@ MonoBehaviour:
   Id: 
   rows:
   - columns: 0000000000
-  - columns: 0001000000
-  - columns: 0001000000
-  - columns: 0001010000
+  - columns: 0000010000
+  - columns: 0000010000
+  - columns: 0000010100
   - columns: 0000000000
   scoreForSpawn: 1
   chanceForSpawn: 1

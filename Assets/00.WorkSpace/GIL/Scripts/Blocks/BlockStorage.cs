@@ -15,8 +15,28 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         public Transform shapesPanel;
     
-        private List<Block> currentBlocks = new();
-    
+        private List<Block> _currentBlocks = new();
+            
+        private float[] _cumulativeWeights;
+        private float _totalWeight;
+        
+        void Awake()
+        {
+            BuildCumulativeTable();
+        }
+
+        private void BuildCumulativeTable()
+        {
+            _cumulativeWeights = new float[shapeData.Count];
+            _totalWeight = 0;
+            
+            for (int i = 0; i < shapeData.Count; i++)
+            {
+                _totalWeight += shapeData[i].chanceForSpawn;
+                _cumulativeWeights[i] = _totalWeight;
+            }
+        }
+
         void Start()
         {
             GenerateAllBlocks();
@@ -24,12 +44,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void GenerateAllBlocks()
         {
-            foreach (var blk in currentBlocks)
+            foreach (var blk in _currentBlocks)
             {
                 if (blk != null)
                     Destroy(blk.gameObject);
             }
-            currentBlocks.Clear();
+            _currentBlocks.Clear();
 
             foreach (var spawnPos in blockSpawnPosList)
             {
@@ -41,19 +61,31 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
                 Block newBlock = newBlockObj.GetComponent<Block>();
 
-                int blockIndex = Random.Range(0, shapeData.Count);
-                newBlock.GenerateBlock(shapeData[blockIndex]);
+                ShapeData selectedShape = GetRandomShapeByWeight();
+                newBlock.GenerateBlock(selectedShape);
 
-                currentBlocks.Add(newBlock);
+                _currentBlocks.Add(newBlock);
             }
-        
         }
-    
+        
+        private ShapeData GetRandomShapeByWeight()
+        {
+            float randomValue = Random.Range(0f, _totalWeight);
+
+            for (int i = 0; i < _cumulativeWeights.Length; i++)
+            {
+                if (randomValue <= _cumulativeWeights[i])
+                    return shapeData[i];
+            }
+
+            return shapeData[shapeData.Count - 1];
+        }
+        
         public void OnBlockPlaced(Block placedBlock)
         {
-            currentBlocks.Remove(placedBlock);
+            _currentBlocks.Remove(placedBlock);
 
-            if (currentBlocks.Count == 0)
+            if (_currentBlocks.Count == 0)
             {
                 GenerateAllBlocks();
             }
