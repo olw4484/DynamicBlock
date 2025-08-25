@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -14,6 +16,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public int rows = 8;
         public int cols = 8;
         
+        [Header("Combo Debugger")]
+        [SerializeField] private TMPro.TMP_Text comboText;
+
+        private int _comboCount;
+        
+            
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -22,6 +30,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
             Instance = this;
+        }
+
+        private void OnGUI()
+        {
+            comboText.text = $"Combo : {_comboCount.ToString()}";
         }
 
         private void Update()
@@ -94,16 +107,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return true;
         }
         
-        public void CheckForCompletedLines()
+        private void CheckForCompletedLines()
         {
             if (gridSquares == null || gridStates == null) return;
-
-            for (int r = 0; r < rows; r++)
+            
+            List<int> completedCols = new();
+            List<int> completedRows = new();
+            
+            for (int row = 0; row < rows; row++)
             {
                 bool complete = true;
-                for (int c = 0; c < cols; c++)
+                for (int col = 0; col < cols; col++)
                 {
-                    if (!gridStates[r, c])
+                    if (!gridStates[row, col])
                     {
                         complete = false;
                         break;
@@ -111,21 +127,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
 
                 if (complete)
-                {
-                    AddScore();
-                    ActiveClearEffectLine(r, true);
-
-                    for (int c = 0; c < cols; c++)
-                        SetCellOccupied(r, c, false);
-                }
+                    completedRows.Add(row);
             }
-            // TODO : 가로 -> 세로가 아니라 가로 , 세로 지우게 하기
-            for (int c = 0; c < cols; c++)
+            for (int col = 0; col < cols; col++)
             {
                 bool complete = true;
-                for (int r = 0; r < rows; r++)
+                for (int row = 0; row < rows; row++)
                 {
-                    if (!gridStates[r, c])
+                    if (!gridStates[row, col])
                     {
                         complete = false;
                         break;
@@ -133,21 +142,69 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
 
                 if (complete)
-                {
-                    AddScore();
-                    
+                    completedCols.Add(col);
+            }
+            
+            int lineCount = completedRows.Count + completedCols.Count;
 
-                    for (int r = 0; r < rows; r++)
-                    {
-                        SetCellOccupied(r, c, false);
-                    }
-                }
+            if (lineCount == 0)
+            {
+                _comboCount = 0;
+                return;
+            }
+            
+            _comboCount+= lineCount;
+            
+            int gainedScore = CalculateLineClearScore(_comboCount - lineCount, lineCount);
+            AddScore(gainedScore);
+            
+            foreach (int row in completedRows)
+            {
+                ActiveClearEffectLine(row, true);
+                for (int col = 0; col < cols; col++)
+                    SetCellOccupied(row, col, false);
+            }
+
+            foreach (int col in completedCols)
+            {
+                ActiveClearEffectLine(col, false);
+                for (int row = 0; row < rows; row++)
+                    SetCellOccupied(row, col, false);
             }
         }
 
-        private void AddScore()
+        private int CalculateLineClearScore(int combo, int lineCount)
         {
-            ScoreManager.Instance.AddScore(100); // 점수 처리
+            if (lineCount <= 0) return 0;
+
+            int baseScore = (combo + 1) * 10;
+
+            int factor = combo < 5 ? 2 :
+                         combo < 10 ? 3 : 4;
+
+            float multiplier;
+
+            if (lineCount == 1)
+            {
+                multiplier = combo < 5f ? 1f :
+                             combo < 10f ? 1.5f : 2;
+            }
+            else if (lineCount == 2)
+            {
+                multiplier = combo < 5 ? 2 :
+                             combo < 10 ? 3 : 4;
+            }
+            else
+            {
+                multiplier = factor * ((lineCount - 2) * 3);
+            }
+
+            return (int)(baseScore * multiplier);
+        }
+
+        private void AddScore(int score)
+        {
+            ScoreManager.Instance.AddScore(score); // 점수 처리
         }
 
         private void ActiveClearEffectLine(int index, bool isRow)
