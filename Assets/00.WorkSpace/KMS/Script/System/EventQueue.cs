@@ -202,3 +202,12 @@ public readonly struct GameOver
 
 public readonly struct RewardedContinueRequest { }      // 명령(Non-Sticky)
 public readonly struct ContinueGranted { }              // 명령 결과
+public readonly struct SaveRequested { }
+public readonly struct LoadRequested { }
+public readonly struct ResetRequested { }
+
+public readonly struct GameDataChanged
+{
+    public readonly GameData data;
+    public GameDataChanged(GameData d) { data = d; }
+}
