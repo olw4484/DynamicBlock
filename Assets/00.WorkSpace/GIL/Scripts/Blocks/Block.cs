@@ -8,7 +8,7 @@ using UnityEngine.EventSystems;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class Block : MonoBehaviour, IDragHandler, IEndDragHandler, IPointerDownHandler, IBeginDragHandler
+    public class Block : MonoBehaviour, IDragHandler, IEndDragHandler, IPointerDownHandler
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
@@ -63,22 +63,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void OnPointerDown(PointerEventData eventData)
         {
-            //_shapeTransform.localScale = shapeSelectedScale;
-            //_startPosition = _shapeTransform.position;
-            
-            //MoveBlock(eventData);
+            _shapeTransform.localPosition = _startPosition + (Vector3)selectedOffset;
             _shapeTransform.localScale = shapeSelectedScale;
-            _startPosition = _shapeTransform.position;
             
             MoveBlock(eventData);
-        }
-        
-        public void OnBeginDrag(PointerEventData eventData)
-        {
-            // _shapeTransform.localScale = shapeSelectedScale;
-            // _startPosition = _shapeTransform.position;
-            //
-            // MoveBlock(eventData);
         }
         
         public void OnDrag(PointerEventData eventData)
@@ -93,6 +81,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 eventData.position,
                 eventData.pressEventCamera,
                 out Vector2 localPos);
+            
             _shapeTransform.localPosition = localPos + selectedOffset;
         }
         
@@ -109,8 +98,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             if (!placed)
             {
-                transform.position = _startPosition;
-                transform.localScale = _shapeStartScale;
+                _shapeTransform.localPosition = _startPosition;
+                _shapeTransform.localScale = _shapeStartScale;
             }
             else
             {
