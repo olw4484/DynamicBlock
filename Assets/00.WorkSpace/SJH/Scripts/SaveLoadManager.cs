@@ -1,12 +1,15 @@
 ﻿using System;
 using System.IO;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+using SJH;
 
-[Serializable]
-public class GameData
+namespace SJH
 {
-	public int LanguageIndex;
+	[Serializable]
+	public class GameData
+	{
+		public int LanguageIndex;
+	}
 }
 
 public class SaveLoadManager : MonoBehaviour
@@ -19,7 +22,7 @@ public class SaveLoadManager : MonoBehaviour
 #else
 	public string DataPath => Path.Combine(Application.persistentDataPath, $"SaveFile/{_saveFileName}");
 #endif
-	public GameData GameData;
+	public SJH.GameData GameData;
 
 	void Awake()
 	{
@@ -39,13 +42,13 @@ public class SaveLoadManager : MonoBehaviour
 		Debug.Log("데이터 로드");
 		if (!ExistData())
 		{
-			GameData = new GameData();
+			GameData = new SJH.GameData();
 			GameData.LanguageIndex = 0;
 			return false;
 		}
 
 		string json = File.ReadAllText($"{DataPath}");
-		GameData = JsonUtility.FromJson<GameData>(json);
+		GameData = JsonUtility.FromJson<SJH.GameData>(json);
 		return true;
 	}
 	public void SaveData()
