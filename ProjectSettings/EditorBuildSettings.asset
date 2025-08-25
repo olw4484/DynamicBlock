@@ -4,7 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
-  m_configObjects:
-    com.unity.addressableassets: {fileID: 11400000, guid: b7e57973263d1a847b0ae0f85be3e4fd, type: 2}
-    com.unity.localization.settings: {fileID: 11400000, guid: 53887de5d41ced24297c411e996d556a, type: 2}
+  m_Scenes:
+  - enabled: 1
+    path: Assets/00.WorkSpace/KMS/KMS_SampleScene 1.unity
+    guid: 7c63392f67002ac45893a289526842d3
+  m_configObjects: {}
