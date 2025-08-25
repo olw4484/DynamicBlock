@@ -9,7 +9,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     {
         public static GridManager Instance { get; private set; }
         
-        private GridSquare[,] gridSquares; // 시각적 표현용
+        public GridSquare[,] gridSquares; // 시각적 표현용
         private bool[,] gridStates;     
         public int rows = 8;
         public int cols = 8;
