@@ -8,18 +8,14 @@ using UnityEngine.EventSystems;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class Block : MonoBehaviour, 
-        IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public class Block : MonoBehaviour, IDragHandler, IEndDragHandler, IPointerDownHandler, IBeginDragHandler
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
 
-        [HideInInspector]
-        public ShapeData shapeData;
-
         [Header("Pointer")] 
         public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
-        public Vector2 selectedOffset = new Vector2(0f, 1000f);
+        public Vector2 selectedOffset = new Vector2(0f, 700f);
         
         private Vector3 _shapeStartScale;
         private RectTransform _shapeTransform;
@@ -31,6 +27,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _shapeTransform = GetComponent<RectTransform>();
             _canvas = GetComponentInParent<Canvas>();
             _startPosition = _shapeTransform.localPosition;
+            _shapeStartScale = _shapeTransform.localScale;
         }
 
     
@@ -63,24 +60,42 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 }
             }
         }
-
-    
+        
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            //_shapeTransform.localScale = shapeSelectedScale;
+            //_startPosition = _shapeTransform.position;
+            
+            //MoveBlock(eventData);
+            _shapeTransform.localScale = shapeSelectedScale;
+            _startPosition = _shapeTransform.position;
+            
+            MoveBlock(eventData);
+        }
+        
         public void OnBeginDrag(PointerEventData eventData)
         {
-            _shapeTransform.localScale = shapeSelectedScale;
-            _startPosition = transform.position;
+            // _shapeTransform.localScale = shapeSelectedScale;
+            // _startPosition = _shapeTransform.position;
+            //
+            // MoveBlock(eventData);
         }
-    
+        
         public void OnDrag(PointerEventData eventData)
+        {
+            MoveBlock(eventData);
+        }
+        
+        private void MoveBlock(PointerEventData eventData)
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 _canvas.transform as RectTransform,
                 eventData.position,
                 eventData.pressEventCamera,
-                out Vector2 pos);
-            _shapeTransform.localPosition = pos + selectedOffset;
+                out Vector2 localPos);
+            _shapeTransform.localPosition = localPos + selectedOffset;
         }
-    
+        
         public void OnEndDrag(PointerEventData eventData)
         {
             List<Transform> shapeBlocks = new();
@@ -112,11 +127,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
                 Destroy(gameObject);
             }
-        }
-
-        public void OnPointerClick(PointerEventData eventData)
-        {
-            Debug.Log("Block 전체 클릭");
         }
     }
 }

@@ -59,9 +59,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shapePrefab: {fileID: 4139110875559665879, guid: 05e290eec2872b24bbb5924a43f8e196, type: 3}
-  shapeData: {fileID: 0}
   shapeSelectedScale: {x: 1.5, y: 1.5, z: 1}
-  selectedOffset: {x: 0, y: 700}
+  selectedOffset: {x: 0, y: 1000}
 --- !u!114 &876028515964935966
 MonoBehaviour:
   m_ObjectHideFlags: 0

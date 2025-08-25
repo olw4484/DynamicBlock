@@ -20,4 +20,4 @@ MonoBehaviour:
   - columns: 0000010100
   - columns: 0000000000
   scoreForSpawn: 1
-  chanceForSpawn: 1
+  chanceForSpawn: 3

@@ -12,7 +12,7 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
 
         [Header("Classic Mode")]
         public int scoreForSpawn = 1;
-        public float chanceForSpawn = 1f;
+        public int chanceForSpawn = 1;
 
         private void OnEnable()
         {

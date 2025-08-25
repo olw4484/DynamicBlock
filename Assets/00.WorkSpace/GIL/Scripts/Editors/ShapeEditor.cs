@@ -62,8 +62,8 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             
             var sliderContainer = new VisualElement { name = "slider-container" };
             sliderContainer.style.flexDirection = FlexDirection.Row;
-            var chanceField = new Slider("Chance for Spawn", 0, 1) { value = _target.chanceForSpawn };
-            var chanceValue = new FloatField { value = _target.chanceForSpawn };
+            var chanceField = new SliderInt("Spawn Weight", 1, 4) { value = _target.chanceForSpawn };
+            var chanceValue = new IntegerField { value = _target.chanceForSpawn };
             chanceValue.style.marginLeft = 10;
             chanceValue.RegisterValueChangedCallback(evt => { chanceField.value = evt.newValue; });
             chanceField.RegisterValueChangedCallback(evt =>
@@ -72,7 +72,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 _target.chanceForSpawn = evt.newValue;
             });
             
-            chanceField.style.width = 200;
+            chanceField.style.width = 250;
             chanceField.RegisterValueChangedCallback(evt =>
             {
                 _target.chanceForSpawn = evt.newValue;

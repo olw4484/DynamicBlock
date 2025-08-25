@@ -20,17 +20,20 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
     
         private List<Block> _currentBlocks = new();
             
-        private float[] _cumulativeWeights;
-        private float _totalWeight;
+        private int[] _cumulativeWeights;
+        private int[] _inverseCumulativeWeights;
+        private int _totalWeight;
+        private int _inverseTotalWeight;
         
         void Awake()
         {
             BuildCumulativeTable();
+            BuildInverseCumulativeTable();
         }
 
         private void BuildCumulativeTable()
         {
-            _cumulativeWeights = new float[shapeData.Count];
+            _cumulativeWeights = new int[shapeData.Count];
             _totalWeight = 0;
             
             for (int i = 0; i < shapeData.Count; i++)
@@ -38,12 +41,27 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _totalWeight += shapeData[i].chanceForSpawn;
                 _cumulativeWeights[i] = _totalWeight;
             }
+            
+            Debug.Log($"가중치 계산 완료: {_totalWeight}");
         }
-
+        
+        private void BuildInverseCumulativeTable()
+        {
+            _inverseCumulativeWeights = new int[shapeData.Count];
+            _inverseTotalWeight = 0;
+            
+            for (int i = 0; i < shapeData.Count; i++)
+            {
+                _inverseTotalWeight += (_totalWeight - shapeData[i].chanceForSpawn);
+                _inverseCumulativeWeights[i] = _inverseTotalWeight;
+            }
+            
+            Debug.Log($"역가중치 계산 완료: {_inverseTotalWeight}");
+        }
+        
         void Start()
         {
             StartCoroutine(GenerateBlocksNextFrame());
-            GenerateAllBlocks();
         }
 
         private IEnumerator GenerateBlocksNextFrame()
@@ -97,7 +115,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         private ShapeData GetRandomShapeByWeight()
         {
-            float randomValue = Random.Range(0f, _totalWeight);
+            float randomValue = Random.Range(0, _totalWeight);
 
             for (int i = 0; i < _cumulativeWeights.Length; i++)
             {

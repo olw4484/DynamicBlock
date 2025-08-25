@@ -119,7 +119,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         SetCellOccupied(r, c, false);
                 }
             }
-
+            // TODO : 가로 -> 세로가 아니라 가로 , 세로 지우게 하기
             for (int c = 0; c < cols; c++)
             {
                 bool complete = true;
