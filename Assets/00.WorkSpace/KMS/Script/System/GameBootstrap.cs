@@ -22,10 +22,13 @@ public class GameBootstrap : MonoBehaviour
         var audio = new NullSoundManager();    // 50  (IAudioService + IManager)
 
         var ui = FindFirstObjectByType<UIManager>()
-              ?? new GameObject("UIManager").AddComponent<UIManager>();
+            ?? new GameObject("UIManager").AddComponent<UIManager>();
 
+        var input = FindFirstObjectByType<InputManager>() 
+            ?? new GameObject("InputManager").AddComponent<InputManager>();
+     
         var legacySave = FindFirstObjectByType<SaveManager>()
-              ?? new GameObject("SaveManager").AddComponent<SaveManager>();
+            ?? new GameObject("SaveManager").AddComponent<SaveManager>();
 
         var saveAdapter = new SaveServiceAdapter();
                 saveAdapter.SetDependencies(bus, legacySave);
@@ -33,13 +36,15 @@ public class GameBootstrap : MonoBehaviour
         // 주입
         scene.SetDependencies(bus);
         ui.SetDependencies(bus, game);
+        input.SetDependencies(bus);
 
         // 등록
         group.Register(bus);
         group.Register(game);
         group.Register(scene);
-        group.Register(audio);  
+        group.Register(audio);
         group.Register(ui);
+        group.Register(input);
         group.Register(saveAdapter);
 
         // 초기화 & 바인딩
