@@ -346,7 +346,7 @@ MonoBehaviour:
   maxLines: 120
   toggleKey: 290
   containsFilter: 
-  showOverlay: 0
+  showOverlay: 1
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
