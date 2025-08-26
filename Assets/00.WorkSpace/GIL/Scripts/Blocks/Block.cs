@@ -23,6 +23,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private Vector3 _startPosition;
         
         private ShapeData _currentShapeData;
+
+        private bool _isDragging;
         
         private void Awake()
         {
@@ -67,6 +69,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void OnPointerDown(PointerEventData eventData)
         {
+            _isDragging = false;
+            
             _shapeTransform.localPosition = _startPosition + (Vector3)selectedOffset;
             _shapeTransform.localScale = shapeSelectedScale;
             
@@ -75,19 +79,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void OnDrag(PointerEventData eventData)
         {
+            _isDragging = true;
             MoveBlock(eventData);
         }
         
-        private void MoveBlock(PointerEventData eventData)
-        {
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                _canvas.transform as RectTransform,
-                eventData.position,
-                eventData.pressEventCamera,
-                out Vector2 localPos);
-            
-            _shapeTransform.localPosition = localPos + selectedOffset;
-        }
+        
         
         public void OnEndDrag(PointerEventData eventData)
         {
@@ -97,10 +93,15 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (child.gameObject.activeSelf) 
                     shapeBlocks.Add(child);
             }
-
+            
             bool placed = GridManager.Instance.CanPlaceShape(shapeBlocks);
             
-            if(placed)
+            if (!placed)
+            {
+                _shapeTransform.localPosition = _startPosition;
+                _shapeTransform.localScale = _shapeStartScale;
+            }
+            else
             {
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
@@ -112,19 +113,27 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                         placedCount++;
                 }
                 ScoreManager.Instance.AddScore(placedCount);
-                
                 Destroy(gameObject);
-            }
-            else
-            {
-                _shapeTransform.localPosition = _startPosition;
-                _shapeTransform.localScale = _shapeStartScale;
             }
         }
         public void OnPointerUp(PointerEventData eventData)
         {
-            _shapeTransform.localPosition = _startPosition;
-            _shapeTransform.localScale = _shapeStartScale;
+            if (!_isDragging)
+            {
+                _shapeTransform.localPosition = _startPosition; 
+                _shapeTransform.localScale = _shapeStartScale; 
+            }
+        }
+        
+        private void MoveBlock(PointerEventData eventData)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                _canvas.transform as RectTransform,
+                eventData.position,
+                eventData.pressEventCamera,
+                out Vector2 localPos);
+            
+            _shapeTransform.localPosition = localPos + selectedOffset;
         }
         
         public ShapeData GetShapeData() => _currentShapeData;
