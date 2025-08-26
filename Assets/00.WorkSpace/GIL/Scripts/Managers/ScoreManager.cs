@@ -14,22 +14,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private TMP_Text comboText;
         [SerializeField] private TMP_Text scoreText;
         private int score = 0;
-        private int _comboCount = 0;
-        public int ComboCount { get; set; }
+        public int comboCount = 0;
         private void Awake()
         {
             if (Instance == null)
                 Instance = this;
             else
                 Destroy(gameObject);
-
+            Debug.Log("ScoreManager: Awake");
             UpdateScoreUI();
         }
         
-        public void CalculateLineClearScore()
+        public void CalculateLineClearScore(int lineCount)
         {
-            int combo = _comboCount;
-            int lineCount = GridManager.Instance.LineCount;
+            int combo = comboCount;
             
             if (lineCount <= 0) return;
             int clearScore = 0;
@@ -62,7 +60,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (scoreText != null && comboText != null)
             {
                 scoreText.text = score.ToString();
-                comboText.text = _comboCount.ToString();
+                comboText.text = comboCount.ToString();
             }
         }
     }

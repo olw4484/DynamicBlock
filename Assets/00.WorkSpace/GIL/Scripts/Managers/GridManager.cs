@@ -28,6 +28,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
             Instance = this;
+            Debug.Log("GridManager: Awake");
         }
 
         private void Update()
@@ -142,14 +143,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (_lineCount == 0)
             {
-                ScoreManager.Instance.ComboCount = 0;
-                _lineCount = 0;
+                ScoreManager.Instance.comboCount = 0;
                 return;
             }
             
-            ScoreManager.Instance.ComboCount += _lineCount;
-            
-            ScoreManager.Instance.CalculateLineClearScore();
+            ScoreManager.Instance.comboCount += _lineCount;
+            ScoreManager.Instance.CalculateLineClearScore(_lineCount);
             
             foreach (int row in completedRows)
             {
