@@ -62,7 +62,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             
             var sliderContainer = new VisualElement { name = "slider-container" };
             sliderContainer.style.flexDirection = FlexDirection.Row;
-            var chanceField = new SliderInt("Spawn Weight", 1, 4) { value = _target.chanceForSpawn };
+            var chanceField = new SliderInt("Spawn Weight", 0, 4) { value = _target.chanceForSpawn };
             var chanceValue = new IntegerField { value = _target.chanceForSpawn };
             chanceValue.style.marginLeft = 10;
             chanceValue.RegisterValueChangedCallback(evt => { chanceField.value = evt.newValue; });

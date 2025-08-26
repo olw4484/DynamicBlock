@@ -72,7 +72,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             for (int r = 0; r < rows; r++)
             {
-                sb.Append($"Line_{r} :\t");
+                sb.Append($"Line_{r+1} :\t");
                 for (int c = 0; c < cols; c++)
                 {
                     sb.Append(gridStates[r, c] ? "0 " : "X ");

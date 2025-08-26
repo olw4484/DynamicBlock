@@ -8,7 +8,7 @@ using UnityEngine.EventSystems;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class Block : MonoBehaviour, IDragHandler, IEndDragHandler, IPointerDownHandler
+    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragHandler
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
@@ -21,6 +21,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private RectTransform _shapeTransform;
         private Canvas _canvas;
         private Vector3 _startPosition;
+        
+        private ShapeData _currentShapeData;
+        
         private void Awake()
         {
             _shapeStartScale = GetComponent<RectTransform>().localScale;
@@ -29,11 +32,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _startPosition = _shapeTransform.localPosition;
             _shapeStartScale = _shapeTransform.localScale;
         }
-
-    
+        
         public void GenerateBlock(ShapeData shapeData)
         {
             _shapeTransform.localPosition = _startPosition;
+            _currentShapeData = shapeData;
             CreateBlock(shapeData);
         }
     
@@ -56,6 +59,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                     GameObject block = Instantiate(shapePrefab, transform);
                     RectTransform rt = block.GetComponent<RectTransform>();
                     rt.anchoredPosition = new Vector2(x * width, -y * height) - offset;
+                    
                     block.SetActive(shapeData.rows[y].columns[x]);
                 }
             }
@@ -117,5 +121,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 Destroy(gameObject);
             }
         }
+        
+        public ShapeData GetShapeData() => _currentShapeData;
     }
 }
