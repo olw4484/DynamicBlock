@@ -194,3 +194,20 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
 // 샘플 이벤트
 public readonly struct ScoreChanged { public readonly int value; public ScoreChanged(int v) => value = v; }
 public readonly struct ComboChanged { public readonly int value; public ComboChanged(int v) => value = v; }
+public readonly struct GameOver
+{
+    public readonly int score; public readonly string reason;
+    public GameOver(int score, string reason = null) { this.score = score; this.reason = reason; }
+}
+
+public readonly struct RewardedContinueRequest { }      // 명령(Non-Sticky)
+public readonly struct ContinueGranted { }              // 명령 결과
+public readonly struct SaveRequested { }
+public readonly struct LoadRequested { }
+public readonly struct ResetRequested { }
+
+public readonly struct GameDataChanged
+{
+    public readonly GameData data;
+    public GameDataChanged(GameData d) { data = d; }
+}

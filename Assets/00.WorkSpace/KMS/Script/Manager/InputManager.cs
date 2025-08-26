@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 // ================================
 // Script  : InputManager.cs
@@ -22,10 +23,11 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
 
     public void SetDependencies(EventQueue bus) => _bus = bus;
 
-    // ── Lifecycle
+    // Lifecycle
     public void PreInit()
     {
         if (_bus == null) Debug.LogError("[InputManager] EventQueue 주입 필요");
+
     }
 
     public void Init()
@@ -44,9 +46,15 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
     public void Tick(float dt)
     {
         if (_cool > 0f) _cool -= dt;
+
+        if (Input.GetKeyDown(KeyCode.Escape) && Ready())
+        {
+            if (Game.UI.TryCloseTopByEscape())
+                Consume();
+        }
     }
 
-    // ── 내부 유틸
+    // === 내부 유틸 ===
     private bool Ready()
     {
         return _inputEnabled && _cool <= 0f;
@@ -56,6 +64,7 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         _cool = clickCooldown;
     }
 
+    // === 외부 API ===
     // ──────────────────────────────────────────────────────────────
     // # UI Button → Direct API (즉시 실행)
     // 버튼 인스펙터에서 파라미터 입력 가능
@@ -80,6 +89,17 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         Consume();
         Game.UI.SetPanel(key, false);
     }
+    public void OnClick_WatchAdToContinue()
+    {
+        if (!Ready()) return; Consume();
+        _bus.Publish(new RewardedContinueRequest());   // 명령 이벤트
+    }
+
+    public void OnClick_Restart()
+    {
+        if (!Ready()) return; Consume();
+        Game.Scene.LoadScene("Gameplay");              // 또는 Reset 이벤트 발행
+    }
 
     // ──────────────────────────────────────────────────────────────
     // # UI Button → Event 경로 (디커플링/여러 시스템 동시 반응)
@@ -98,7 +118,7 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         _bus.Publish(new PanelToggle(key, on));
     }
 
-    // ── 매개변수 없는 프리셋(인스펙터에서 편리)
+    // 매개변수 없는 프리셋(인스펙터에서 편리)
     [Header("Presets (Optional)")]
     [SerializeField] private string gameplayScene = "Gameplay";
     public void OnClick_StartGame() => OnClick_RequestScene(gameplayScene);
