@@ -16,7 +16,8 @@ public static class Game
     public static GameManager GM { get; private set; }
     public static IAudioService Audio { get; private set; }
     public static UIManager UI { get; private set; } // (옵션)
-    public static SceneFlowManager Scene { get; private set; } // ★ 추가
+    public static SceneFlowManager Scene { get; private set; }
+    public static ISaveService Save { get; private set; }
 
     public static bool IsBound { get; private set; }
 
@@ -54,6 +55,7 @@ public static class Game
         var audio = group.Resolve<IAudioService>();                 // ★ 인터페이스 Resolve
         var ui = options.IncludeUI ? group.Resolve<UIManager>() : null;
         var scene = options.IncludeScene ? group.Resolve<SceneFlowManager>() : null;
+        var save = group.Resolve<ISaveService>();
 
         // 2) 필수 타입 집합 구성
         var requiredTypes = new System.Collections.Generic.List<Type>

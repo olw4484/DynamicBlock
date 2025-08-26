@@ -13,4 +13,6 @@ public interface ISaveService
     bool LoadOrCreate();
     void Save();
     void ResetData();
+
+    void SetLanguageIndex(int index);
 }

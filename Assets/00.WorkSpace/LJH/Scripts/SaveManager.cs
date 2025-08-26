@@ -2,9 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+using System;
 
 public class SaveManager : MonoBehaviour
 {
+    public event Action<GameData> AfterLoad;
+    public event Action<GameData> AfterSave;
+
     private string filePath;
     public GameData gameData;
 
@@ -12,6 +16,7 @@ public class SaveManager : MonoBehaviour
     {
         filePath = Path.Combine(Application.persistentDataPath, "save.json");
         LoadGame();
+        AfterLoad?.Invoke(gameData);
     }
 
     // 게임 데이터 저장
@@ -20,6 +25,7 @@ public class SaveManager : MonoBehaviour
         string json = JsonUtility.ToJson(gameData, true);
         File.WriteAllText(filePath, json);
         Debug.Log("저장 완료: " + filePath);
+        AfterSave?.Invoke(gameData);
     }
 
     // 게임 데이터 불러오기
@@ -37,6 +43,7 @@ public class SaveManager : MonoBehaviour
             gameData.stageCleared = new int[200];
             gameData.stageScores = new int[200];
         }
+        AfterLoad?.Invoke(gameData);
     }
 
     // ============= 클래식 모드 =============
