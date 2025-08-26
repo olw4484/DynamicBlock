@@ -7,6 +7,8 @@ public class GameData
 {
     public int Version = 1;
 
+    public int LanguageIndex; // 0 = 기본
+
     // 클래식 모드
     public int highScore;        // 최고 점수
     public int lastScore;        // 마지막 플레이 점수
