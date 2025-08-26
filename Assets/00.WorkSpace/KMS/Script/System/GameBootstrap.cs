@@ -21,8 +21,7 @@ public class GameBootstrap : MonoBehaviour
         var scene = new SceneFlowManager();    // 20
         var audio = new NullSoundManager();    // 50  (IAudioService + IManager)
 
-        var ui = FindFirstObjectByType<UIManager>()
-            ?? new GameObject("UIManager").AddComponent<UIManager>();
+        var ui = FindFirstObjectByType<UIManager>();
 
         var input = FindFirstObjectByType<InputManager>() 
             ?? new GameObject("InputManager").AddComponent<InputManager>();

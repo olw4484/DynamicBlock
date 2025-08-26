@@ -14,8 +14,8 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
 {
     public int Order => 30;
 
-    [Header("Click Cooldown")]
-    [SerializeField] private float clickCooldown = 0.12f;
+    //[Header("Click Cooldown")]
+    //[SerializeField] private float clickCooldown = 0.12f;
 
     private EventQueue _bus;
     private bool _inputEnabled;
@@ -61,7 +61,7 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
     }
     private void Consume()
     {
-        _cool = clickCooldown;
+        //_cool = clickCooldown;
     }
 
     // === 외부 API ===
@@ -116,6 +116,20 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         if (!Ready()) return;
         Consume();
         _bus.Publish(new PanelToggle(key, on));
+    }
+
+    public void OnClick_SwitchPanels(string offKey, string onKey)
+    {
+        if (!Ready()) return;
+        Consume();
+
+        // 이벤트 경로(디커플링)
+        _bus.Publish(new PanelToggle(offKey, false));
+        _bus.Publish(new PanelToggle(onKey, true));
+
+        // 또는 직접 경로(2줄로 대체가능 )
+        // Game.UI.SetPanel(offKey, false);
+        // Game.UI.SetPanel(onKey,  true);
     }
 
     // 매개변수 없는 프리셋(인스펙터에서 편리)

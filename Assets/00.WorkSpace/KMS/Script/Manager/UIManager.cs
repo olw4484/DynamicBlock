@@ -32,6 +32,7 @@ public class UIManager : MonoBehaviour, IManager
     [Header("Panels")]
     [SerializeField] private List<PanelEntry> _panels = new();
 
+
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
     private EventQueue _bus;
