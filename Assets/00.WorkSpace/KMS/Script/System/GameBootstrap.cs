@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 // ================================
@@ -14,15 +12,23 @@ public class GameBootstrap : MonoBehaviour
     private void Awake()
     {
         var group = ManagerGroup.Instance
-                 ?? new GameObject("ManagerGroup").AddComponent<ManagerGroup>();
+              ?? new GameObject("ManagerGroup").AddComponent<ManagerGroup>();
 
-        var bus = new EventQueue();          // 0
-        var game = new GameManager(bus);      // 10
+
+
+        var bus = new EventQueue();            // 0
+        var game = new GameManager(bus);       // 10
         var scene = new SceneFlowManager();    // 20
         var audio = new NullSoundManager();    // 50  (IAudioService + IManager)
 
         var ui = FindFirstObjectByType<UIManager>()
               ?? new GameObject("UIManager").AddComponent<UIManager>();
+
+        var legacySave = FindFirstObjectByType<SaveManager>()
+              ?? new GameObject("SaveManager").AddComponent<SaveManager>();
+
+        var saveAdapter = new SaveServiceAdapter();
+                saveAdapter.SetDependencies(bus, legacySave);
 
         // 주입
         scene.SetDependencies(bus);
@@ -32,8 +38,9 @@ public class GameBootstrap : MonoBehaviour
         group.Register(bus);
         group.Register(game);
         group.Register(scene);
-        group.Register(audio);   // ← 오디오는 인터페이스 구현체 하나만
+        group.Register(audio);  
         group.Register(ui);
+        group.Register(saveAdapter);
 
         // 초기화 & 바인딩
         group.Initialize();
