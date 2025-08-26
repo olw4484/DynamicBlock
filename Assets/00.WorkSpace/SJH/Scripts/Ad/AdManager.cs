@@ -21,9 +21,11 @@ public class AdManager : MonoBehaviour
 
 			Debug.Log("모바일 광고 초기화 성공");
 
+			// 전면 광고 초기화
 			_interstitial = new Interstitial();
 			_interstitial.Init();
 
+			// 배너 광고 초기화
 			_banner = new Banner();
 			_banner.Init();
 

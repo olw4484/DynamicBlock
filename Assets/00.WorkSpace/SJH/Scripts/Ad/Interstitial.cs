@@ -10,6 +10,8 @@ public class Interstitial
 	/*
 	 * 전면 테스트 광고 : "ca-app-pub-3940256099942544/1033173712"
 	 * 전면 광고 : "ca-app-pub-4554669209191050/7419140576"
+	 * 
+	 * 캐싱된 전면 광고의 유효시간은 1시간
 	 */
 	private const string _interstitialAdId = "ca-app-pub-3940256099942544/1033173712"; // 전면 광고 테스트 아이디
 	private InterstitialAd _loadedInterstitial;
@@ -60,30 +62,32 @@ public class Interstitial
 	void InterstitialEventConnect(InterstitialAd ad)
 	{
 		Debug.Log("광고 이벤트 추가");
-		//_loadedAd.OnAdFullScreenContentClosed -= LoadAd;
-		//_loadedAd.OnAdFullScreenContentClosed += LoadAd;
 
 		// 광고 수익 발생했을 때
 		ad.OnAdPaid += (AdValue adValue) =>
 		{
 			Debug.Log($"전면 광고 수익 {adValue.CurrencyCode} / {adValue.Value}");
 		};
+
 		// 유저가 광고를 봤을 때
 		ad.OnAdImpressionRecorded += () =>
 		{
 			Debug.Log("전면 광고 봄");
 		};
+
 		// 유저가 광고를 클릭했을 때
 		ad.OnAdClicked += () =>
 		{
 			Debug.Log("전면 광고 클릭");
 		};
+
 		// 전면 광고가 활성화됐을 때
 		ad.OnAdFullScreenContentOpened += () =>
 		{
 			// TODO : 게임 사이클 정지
 			Debug.Log("전면 광고 활성화");
 		};
+
 		// 전면 광고 닫았을 때
 		ad.OnAdFullScreenContentClosed += () =>
 		{
@@ -91,6 +95,7 @@ public class Interstitial
 			Debug.Log("전면 광고 닫음");
 			Init();
 		};
+
 		// 전면 광고 에러
 		ad.OnAdFullScreenContentFailed += (AdError error) =>
 		{
