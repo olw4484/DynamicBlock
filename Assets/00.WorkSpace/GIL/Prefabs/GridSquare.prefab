@@ -203,6 +203,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b7c748b6df2b2e42a6e66523af999c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  RowIndex: 0
+  ColIndex: 0
   normalImage: {fileID: 8849200496238306233}
   hoverImage: {fileID: 2884694999259341618}
   activeImage: {fileID: 396465746230335142}

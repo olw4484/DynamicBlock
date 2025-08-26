@@ -8,7 +8,7 @@ using UnityEngine.EventSystems;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragHandler
+    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragHandler, IPointerUpHandler
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
@@ -99,13 +99,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             bool placed = GridManager.Instance.CanPlaceShape(shapeBlocks);
-
-            if (!placed)
-            {
-                _shapeTransform.localPosition = _startPosition;
-                _shapeTransform.localScale = _shapeStartScale;
-            }
-            else
+            
+            if(placed)
             {
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
@@ -117,9 +112,19 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                         placedCount++;
                 }
                 ScoreManager.Instance.AddScore(placedCount);
-
+                
                 Destroy(gameObject);
             }
+            else
+            {
+                _shapeTransform.localPosition = _startPosition;
+                _shapeTransform.localScale = _shapeStartScale;
+            }
+        }
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            _shapeTransform.localPosition = _startPosition;
+            _shapeTransform.localScale = _shapeStartScale;
         }
         
         public ShapeData GetShapeData() => _currentShapeData;

@@ -202,6 +202,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 }
             }
             return true;
+            // TODO : 조건을 반대로 해보자
         }
         
         private (int minX, int maxX, int minY, int maxY) GetShapeBounds(ShapeData shape)
