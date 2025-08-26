@@ -16,10 +16,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public int rows = 8;
         public int cols = 8;
         
-        [Header("Combo Debugger")]
-        [SerializeField] private TMPro.TMP_Text comboText;
-
-        private int _comboCount;
+        private int _lineCount;
+        public int LineCount { get; private set; }
         
             
         private void Awake()
@@ -30,11 +28,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
             Instance = this;
-        }
-
-        private void OnGUI()
-        {
-            comboText.text = $"Combo : {_comboCount.ToString()}";
         }
 
         private void Update()
@@ -145,18 +138,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     completedCols.Add(col);
             }
             
-            int lineCount = completedRows.Count + completedCols.Count;
+            _lineCount = completedRows.Count + completedCols.Count;
 
-            if (lineCount == 0)
+            if (_lineCount == 0)
             {
-                _comboCount = 0;
+                ScoreManager.Instance.ComboCount = 0;
+                _lineCount = 0;
                 return;
             }
             
-            _comboCount+= lineCount;
+            ScoreManager.Instance.ComboCount += _lineCount;
             
-            int gainedScore = CalculateLineClearScore(_comboCount - lineCount, lineCount);
-            AddScore(gainedScore);
+            ScoreManager.Instance.CalculateLineClearScore();
             
             foreach (int row in completedRows)
             {
@@ -171,40 +164,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 for (int row = 0; row < rows; row++)
                     SetCellOccupied(row, col, false);
             }
-        }
 
-        private int CalculateLineClearScore(int combo, int lineCount)
-        {
-            if (lineCount <= 0) return 0;
-
-            int baseScore = (combo + 1) * 10;
-
-            int factor = combo < 5 ? 2 :
-                         combo < 10 ? 3 : 4;
-
-            float multiplier;
-
-            if (lineCount == 1)
-            {
-                multiplier = combo < 5f ? 1f :
-                             combo < 10f ? 1.5f : 2;
-            }
-            else if (lineCount == 2)
-            {
-                multiplier = combo < 5 ? 2 :
-                             combo < 10 ? 3 : 4;
-            }
-            else
-            {
-                multiplier = factor * ((lineCount - 2) * 3);
-            }
-
-            return (int)(baseScore * multiplier);
-        }
-
-        private void AddScore(int score)
-        {
-            ScoreManager.Instance.AddScore(score); // 점수 처리
+            _lineCount = 0;
         }
 
         private void ActiveClearEffectLine(int index, bool isRow)
