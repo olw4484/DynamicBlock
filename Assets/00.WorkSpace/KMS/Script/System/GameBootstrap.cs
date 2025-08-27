@@ -1,3 +1,4 @@
+using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
 
 // ================================
@@ -32,10 +33,13 @@ public class GameBootstrap : MonoBehaviour
         var saveAdapter = new SaveServiceAdapter();
                 saveAdapter.SetDependencies(bus, legacySave);
 
+        var grid = FindFirstObjectByType<GridManager>();
+
         // 주입
         scene.SetDependencies(bus);
         ui.SetDependencies(bus, game);
         input.SetDependencies(bus);
+        grid.SetDependencies(bus);
 
         // 등록
         group.Register(bus);

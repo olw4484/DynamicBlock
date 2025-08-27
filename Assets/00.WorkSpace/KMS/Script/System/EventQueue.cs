@@ -211,3 +211,10 @@ public readonly struct GameDataChanged
     public readonly GameData data;
     public GameDataChanged(GameData d) { data = d; }
 }
+
+public readonly struct LinesCleared
+{
+    public readonly int rows, cols, total;
+    public LinesCleared(int rows, int cols) { this.rows = rows; this.cols = cols; this.total = rows + cols; }
+}
+public readonly struct GridReady { public readonly int rows, cols; public GridReady(int r, int c) { rows = r; cols = c; } }
