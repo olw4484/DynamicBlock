@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 
 // ================================
 // Project : DynamicBlock
@@ -49,22 +49,29 @@ public class UIManager : MonoBehaviour, IManager
 
         foreach (var p in _panels)
         {
-            if (p.isModal && p.root)
+            if (!p.root) continue;
+
+            if (p.isModal)
             {
                 var cv = p.root.GetComponent<Canvas>() ?? p.root.AddComponent<Canvas>();
                 cv.overrideSorting = true;
 
-                var cg = p.root.GetComponent<CanvasGroup>() ?? p.root.AddComponent<CanvasGroup>();
-                cg.blocksRaycasts = false;
-                cg.interactable = false;
-
-                // 레이캐스터 없으면 추가 (클릭/차단을 위해 필요)
                 if (!p.root.GetComponent<UnityEngine.UI.GraphicRaycaster>())
                     p.root.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+
+                // 모달은 무조건 CanvasGroup 보장 (페이드 안 써도 레이캐스트 제어용)
+                var cg = EnsureCanvasGroup(p.root);
+                cg.blocksRaycasts = false;
+                cg.interactable = false;
             }
+
+            // 페이드용 CanvasGroup 필요 시(일반 패널)
+            if (p.useCanvasGroup && !p.isModal)
+                _ = EnsureCanvasGroup(p.root);
         }
     }
 
+    // Init: 맵 구축 + 초기 활성화
     public void Init()
     {
         _panelMap.Clear();
@@ -72,8 +79,14 @@ public class UIManager : MonoBehaviour, IManager
 
         foreach (var p in _panels)
         {
-            if (p.root) p.root.SetActive(p.defaultActive);
-            if (!_panelMap.ContainsKey(p.key)) _panelMap.Add(p.key, p);
+            if (!p.root) continue;
+
+            if (_panelMap.ContainsKey(p.key))
+                Debug.LogWarning($"[UIManager] Duplicate panel key: {p.key}");
+            else
+                _panelMap.Add(p.key, p);
+
+            p.root.SetActive(p.defaultActive);
         }
     }
 
@@ -115,7 +128,7 @@ public class UIManager : MonoBehaviour, IManager
             return;
         }
 
-        var cg = p.root.GetComponent<CanvasGroup>() ?? p.root.AddComponent<CanvasGroup>();
+        var cg = EnsureCanvasGroup(p.root);
         if (!p.root.activeSelf) { p.root.SetActive(true); cg.alpha = 0f; }
         StopAllCoroutines();
         StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on));
@@ -160,7 +173,7 @@ public class UIManager : MonoBehaviour, IManager
         // 켜기 (모달도 페이드 쓰고 싶으면 CanvasGroup 활용)
         if (p.useCanvasGroup)
         {
-            var cg = p.root.GetComponent<CanvasGroup>() ?? p.root.AddComponent<CanvasGroup>();
+            var cg = EnsureCanvasGroup(p.root);
             if (!p.root.activeSelf) { p.root.SetActive(true); cg.alpha = 0f; }
             StopAllCoroutines();
             StartCoroutine(FadeRoutine(cg, 1f, 0.12f, true));
@@ -180,7 +193,7 @@ public class UIManager : MonoBehaviour, IManager
         {
             if (p.useCanvasGroup)
             {
-                var cg = p.root.GetComponent<CanvasGroup>() ?? p.root.AddComponent<CanvasGroup>();
+                var cg = EnsureCanvasGroup(p.root);
                 StopAllCoroutines();
                 StartCoroutine(FadeRoutine(cg, 0f, 0.12f, false));
             }
@@ -199,13 +212,19 @@ public class UIManager : MonoBehaviour, IManager
             var p = _panelMap[k];
             var cv = p.root.GetComponent<Canvas>() ?? p.root.AddComponent<Canvas>();
             cv.overrideSorting = true;
-            cv.sortingOrder = p.baseSorting + (i + 1) * 10;
+            cv.sortingOrder = p.baseSorting + ((i + 1) * 10);
 
-            var cg = p.root.GetComponent<CanvasGroup>() ?? p.root.AddComponent<CanvasGroup>();
+            var cg = EnsureCanvasGroup(p.root);
             bool top = (i == _modalOrder.Count - 1);
             cg.blocksRaycasts = top;
             cg.interactable = top;
         }
+    }
+
+    private static CanvasGroup EnsureCanvasGroup(GameObject go)
+    {
+        var cg = go.GetComponent<CanvasGroup>();
+        return cg != null ? cg : go.AddComponent<CanvasGroup>();
     }
 }
 

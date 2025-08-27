@@ -140,7 +140,7 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         _bus.Publish(new PanelToggle(offKey, false));
         _bus.Publish(new PanelToggle(onKey, true));
 
-        // 또는 직접 경로(2줄로 대체가능 )
+        // 또는 직접 경로(2줄로 대체가능)
         // Game.UI.SetPanel(offKey, false);
         // Game.UI.SetPanel(onKey,  true);
     }

@@ -433,10 +433,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2703124517070944772}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 80}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 85.235, y: -64.5}
+  m_SizeDelta: {x: 80, y: 80}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &7320596279254685645
 CanvasRenderer:
@@ -604,10 +604,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2866093122355008081}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 80}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 101.505005, y: -64.5}
+  m_SizeDelta: {x: 80, y: 80}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &7917215026080699520
 CanvasRenderer:
@@ -1252,6 +1252,7 @@ GameObject:
   - component: {fileID: 3327455119405139119}
   - component: {fileID: 6275577403253433939}
   - component: {fileID: 6700626878011721768}
+  - component: {fileID: 348534689223152098}
   m_Layer: 5
   m_Name: GameOverCanvas_Restart Button
   m_TagString: Untagged
@@ -1331,7 +1332,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 348534689223152098}
+        m_TargetAssemblyTypeName: RestartOnClick, Assembly-CSharp
+        m_MethodName: Invoke
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!95 &6275577403253433939
 Animator:
   serializedVersion: 5
@@ -1365,6 +1378,24 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &348534689223152098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3860985090698356100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 121a85491e4ed154db23a6942a8dc0e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  closePanels:
+  - Options
+  - GameOver
+  gameplayScene: Gameplay
+  cooldown: 0.12
+  useSceneEvent: 1
 --- !u!1 &4186797009255308068
 GameObject:
   m_ObjectHideFlags: 0
@@ -1397,10 +1428,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2866093122355008081}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 50}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 260, y: -64.5}
+  m_SizeDelta: {x: 116.99, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4011737722338590302
 CanvasRenderer:
@@ -1612,7 +1643,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 600}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: 239.99, y: 86}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &5167284805116888634
 MonoBehaviour:
@@ -1801,6 +1832,7 @@ GameObject:
   - component: {fileID: 7869730415414562886}
   - component: {fileID: 8603724732903575012}
   - component: {fileID: 4263169223256112017}
+  - component: {fileID: 2615846437208021283}
   m_Layer: 5
   m_Name: GameOverCanvas_Home Button
   m_TagString: Untagged
@@ -1880,7 +1912,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 2615846437208021283}
+        m_TargetAssemblyTypeName: PanelSwitchOnClick, Assembly-CSharp
+        m_MethodName: Invoke
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!95 &8603724732903575012
 Animator:
   serializedVersion: 5
@@ -1914,6 +1958,22 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &2615846437208021283
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5271523145371363689}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68ef6b8dfc9409c4293251e938943853, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  offKey: GameOver
+  onKey: Main
+  cooldown: 0.12
+  viaEvent: 1
 --- !u!1 &5798556073091604930
 GameObject:
   m_ObjectHideFlags: 0
@@ -2455,10 +2515,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2218252061180294831}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 36}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 119.995, y: -38}
+  m_SizeDelta: {x: 179.99, y: 36}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2461608763944747451
 CanvasRenderer:
@@ -2589,10 +2649,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2703124517070944772}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 50}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 260, y: -64.5}
+  m_SizeDelta: {x: 149.53, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7154480965485630080
 CanvasRenderer:
@@ -2711,7 +2771,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &6911127692447333676
 RectTransform:
   m_ObjectHideFlags: 0
