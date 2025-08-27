@@ -4,10 +4,11 @@ using UnityEngine;
 
 public sealed class PanelSwitchOnClick : MonoBehaviour
 {
-    [SerializeField] string offKey = "Main";
+    [SerializeField] string offKey = "GameOver";
     [SerializeField] string onKey = "Game";
     [SerializeField] float cooldown = 0.12f;
-    [SerializeField] bool viaEvent = true; // true: PanelToggle 이벤트, false: 직접 SetPanel
+    [SerializeField] bool viaEvent = true;
+    [SerializeField] bool softResetWhenTurnOn = true; // Classic 진입 시 리셋
 
     float _cool;
 
@@ -18,22 +19,56 @@ public sealed class PanelSwitchOnClick : MonoBehaviour
 
     public void Invoke() // Button OnClick에 연결
     {
-        Debug.Log($"[PanelSwitch] click, IsBound={Game.IsBound}, cool={_cool}");
         if (_cool > 0f || !Game.IsBound) return;
-        if (string.IsNullOrEmpty(offKey) || string.IsNullOrEmpty(onKey)) return;
-        if (offKey == onKey) return;
+        if (string.IsNullOrEmpty(offKey) && string.IsNullOrEmpty(onKey)) return;
 
         _cool = cooldown;
 
         if (viaEvent)
         {
-            Game.Bus.Publish(new PanelToggle(offKey, false));
-            Game.Bus.Publish(new PanelToggle(onKey, true));
+            var bus = Game.Bus;
+
+            // 1) 먼저 끄기 (상태 이벤트는 Sticky+Immediate)
+            if (!string.IsNullOrEmpty(offKey))
+            {
+                var off = new PanelToggle(offKey, false);
+                bus.PublishSticky(off, alsoEnqueue: false);
+                bus.PublishImmediate(off);
+
+                if (offKey == "GameOver")
+                    bus.ClearSticky<GameOver>(); // 재등장 방지
+            }
+
+            // 2) 켜기
+            if (!string.IsNullOrEmpty(onKey))
+            {
+                var on = new PanelToggle(onKey, true);
+                bus.PublishSticky(on, alsoEnqueue: false);
+                bus.PublishImmediate(on);
+            }
+
+            // 3) Game을 켰다면 소프트 리셋 파이프라인 실행
+            if (softResetWhenTurnOn && onKey == "Game")
+            {
+                Time.timeScale = 1f;                  // 안전보정
+                bus.PublishImmediate(new GameResetting());
+                bus.PublishImmediate(new GameResetRequest());
+                bus.PublishImmediate(new GameResetDone());
+            }
         }
         else
         {
-            Game.UI.SetPanel(offKey, false);
-            Game.UI.SetPanel(onKey, true);
+            // 상태를 남기지 않으므로 가급적 viaEvent 사용 권장
+            if (!string.IsNullOrEmpty(offKey)) Game.UI.SetPanel(offKey, false);
+            if (!string.IsNullOrEmpty(onKey)) Game.UI.SetPanel(onKey, true);
+
+            if (softResetWhenTurnOn && onKey == "Game")
+            {
+                Time.timeScale = 1f;
+                Game.Bus.PublishImmediate(new GameResetting());
+                Game.Bus.PublishImmediate(new GameResetRequest());
+                Game.Bus.PublishImmediate(new GameResetDone());
+            }
         }
     }
 }
