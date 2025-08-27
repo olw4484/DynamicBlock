@@ -56,6 +56,7 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
 
     public void Tick(float dt)
     {
+        UnityEngine.Debug.Log($"[EQ] Tick, q={_queue.Count}");
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         using (MK_Tick.Auto())
 #endif
@@ -163,6 +164,7 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
     // ===============================
     private void Dispatch(object evt)
     {
+        if (evt is GameResetRequest) UnityEngine.Debug.Log("[EQ] Dispatch(GameResetRequest)");
         var t = evt.GetType();
         if (_handlers.TryGetValue(t, out var list))
         {
