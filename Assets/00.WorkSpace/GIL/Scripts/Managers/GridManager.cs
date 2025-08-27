@@ -1,25 +1,25 @@
-using System;
+using _00.WorkSpace.GIL.Scripts.Grids;
 using System.Collections.Generic;
 using System.Text;
-using _00.WorkSpace.GIL.Scripts.Grids;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
-    public class GridManager : MonoBehaviour
+    public class GridManager : MonoBehaviour, IRuntimeReset
     {
         public static GridManager Instance { get; private set; }
-        
+
         public GridSquare[,] gridSquares; // 시각적 표현용
-        private bool[,] gridStates;     
+        private bool[,] gridStates;
         public int rows = 8;
         public int cols = 8;
-        
+
         private int _lineCount;
         public int LineCount { get; private set; }
-        
-            
+
+        private EventQueue _bus;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -33,10 +33,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private void Update()
         {
-            if(Input.GetKeyDown(KeyCode.Q))
+            if (Input.GetKeyDown(KeyCode.Q))
                 PrintGridStates();
         }
-        
+
         public void InitializeGridSquares(List<GridSquare> squareList, int rowCount, int colCount)
         {
             rows = rowCount;
@@ -46,8 +46,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             foreach (var sq in squareList)
                 gridSquares[sq.RowIndex, sq.ColIndex] = sq;
+
+            _bus?.PublishSticky(new GridReady(rows, cols), alsoEnqueue: false);
         }
-        
+
         public void SetCellOccupied(int row, int col, bool occupied)
         {
             if (row < 0 || row >= rows || col < 0 || col >= cols) return;
@@ -55,7 +57,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             gridStates[row, col] = occupied;
             gridSquares[row, col].SetOccupied(occupied);
         }
-        
+
         /// <summary>
         /// gridStates 출력 (X = 비어있음, 0 = 블럭 있음)
         /// </summary>
@@ -66,7 +68,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             for (int r = 0; r < rows; r++)
             {
-                sb.Append($"Line_{r+1} :\t");
+                sb.Append($"Line_{r + 1} :\t");
                 for (int c = 0; c < cols; c++)
                 {
                     sb.Append(gridStates[r, c] ? "0 " : "X ");
@@ -76,7 +78,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             Debug.Log(sb.ToString());
         }
-        
+
         public bool CanPlaceShape(List<Transform> shapeBlocks)
         {
             var targetSquares = new List<GridSquare>();
@@ -97,17 +99,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             foreach (var square in targetSquares)
                 SetCellOccupied(square.RowIndex, square.ColIndex, true);
 
-            CheckForCompletedLines(); 
+            CheckForCompletedLines();
             return true;
         }
-        
+
         private void CheckForCompletedLines()
         {
             if (gridSquares == null || gridStates == null) return;
-            
+
             List<int> completedCols = new();
             List<int> completedRows = new();
-            
+
             for (int row = 0; row < rows; row++)
             {
                 bool complete = true;
@@ -138,18 +140,21 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 if (complete)
                     completedCols.Add(col);
             }
-            
+
             _lineCount = completedRows.Count + completedCols.Count;
+
+            if (_bus != null && _lineCount > 0)
+                _bus.Publish(new LinesCleared(completedRows.Count, completedCols.Count));
 
             if (_lineCount == 0)
             {
                 ScoreManager.Instance.comboCount = 0;
                 return;
             }
-            
+
             ScoreManager.Instance.comboCount += _lineCount;
             ScoreManager.Instance.CalculateLineClearScore(_lineCount);
-            
+
             foreach (int row in completedRows)
             {
                 ActiveClearEffectLine(row, true);
@@ -171,6 +176,27 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             // TODO: 나중에 이펙트 / 사운드 추가
         }
+
+        public void SetDependencies(EventQueue bus)
+        {
+            _bus = bus;
+            // 소프트 리셋 구독
+            _bus.Subscribe<GameResetRequest>(_ => ResetRuntime(), replaySticky: false);
+        }
+
+        public void ResetRuntime()
+        {
+            if (gridStates == null || gridSquares == null) return;
+
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                {
+                    gridStates[r, c] = false;
+                    if (gridSquares[r, c] != null)
+                        gridSquares[r, c].SetOccupied(false);
+                }
+            // ScoreManager.Instance.comboCount = 0;
+            _bus.PublishSticky(new LinesCleared(0, 0), alsoEnqueue: false);
+        }
     }
 }
-

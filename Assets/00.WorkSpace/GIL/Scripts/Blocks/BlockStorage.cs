@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class BlockStorage : MonoBehaviour
+    public class BlockStorage : MonoBehaviour, IRuntimeReset
     {
         #region Variables & Properties
 
@@ -20,7 +20,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public List<Transform> blockSpawnPosList;
 
         public Transform shapesPanel;
-    
+        private EventQueue _bus;
         private List<Block> _currentBlocks = new();
         private GridSquare[,] Grid => GridManager.Instance.gridSquares;
             
@@ -28,6 +28,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private int[] _inverseCumulativeWeights;
         private int _totalWeight;
         private int _inverseTotalWeight;
+
+        // 게임 오버 1회만 발동 가드
+        bool _gameOverFired;
+        System.Action<ContinueGranted> _onContinue;
 
         #endregion
 
@@ -43,13 +47,35 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             StartCoroutine(GenerateBlocksNextFrame());
         }
-        
+
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.W))
             {
                 DebugCurrentBlocks();
             }
+        }
+
+        void OnEnable()
+        {
+            // Game.Bind 이후에만 구독 시도
+            if (Game.IsBound)
+            {
+                _onContinue = _ =>
+                {
+                    _gameOverFired = false;
+                    Time.timeScale = 1f;
+                    // 이어하기 정책에 맞게 블록 재생성/리셋
+                    GenerateAllBlocks();
+                };
+                Game.Bus.Subscribe(_onContinue, replaySticky: false);
+            }
+        }
+
+        void OnDisable()
+        {
+            if (Game.IsBound && _onContinue != null)
+                Game.Bus.Unsubscribe(_onContinue);
         }
 
         #endregion
@@ -242,10 +268,20 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             Debug.Log("===== GAME OVER! 더 이상 배치할 수 있는 블록이 없습니다. =====");
-            
-            // TODO : 여기 밑에다가 게임 오버 붙이기!
+            FireGameOver("NoPlace");
         }
-        
+
+        // GameOver 트리거
+        void FireGameOver(string reason = "NoPlace")
+        {
+            if (_gameOverFired) return;
+            _gameOverFired = true;
+
+            int score = Game.GM != null ? Game.GM.Score : 0;
+            Game.Bus.PublishSticky(new GameOver(score, reason)); // UI가 모달 오픈
+            Time.timeScale = 0f; // 일시정지
+        }
+
         public void OnBlockPlaced(Block placedBlock)
         {
             _currentBlocks.Remove(placedBlock);
@@ -259,7 +295,28 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         }
 
         #endregion
-        
+        #region Game Reset
+        public void SetDependencies(EventQueue bus)
+        {
+            _bus = bus;
+            _bus.Subscribe<GameResetRequest>(_ => ResetRuntime(), replaySticky: false);
+        }
+
+        public void ResetRuntime()
+        {
+            // 현재 블록들 제거
+            for (int i = 0; i < _currentBlocks.Count; i++)
+                if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
+            _currentBlocks.Clear();
+
+            BuildCumulativeTable();
+            BuildInverseCumulativeTable();
+
+            // 바로 다시 생성
+            GenerateAllBlocks();
+        }
+
+        #endregion
         #region Debug
 
         private void DebugCurrentBlocks()
