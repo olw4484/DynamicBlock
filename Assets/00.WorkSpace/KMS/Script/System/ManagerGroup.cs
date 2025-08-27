@@ -83,4 +83,11 @@ public class ManagerGroup : MonoBehaviour
 
     public IManager Resolve(System.Type t)
         => _managers.FirstOrDefault(m => t.IsInstanceOfType(m));
+
+    public void SoftReset()
+    {
+        // 초기화 순서대로
+        for (int i = 0; i < _managers.Count; i++)
+            if (_managers[i] is IRuntimeReset r) r.ResetRuntime();
+    }
 }

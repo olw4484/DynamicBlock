@@ -5,22 +5,26 @@ using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class BlockStorage : MonoBehaviour
+    public class BlockStorage : MonoBehaviour, IRuntimeReset
     {
         #region Variables & Properties
 
         [Header("Block Prefab & Data")]
-        public GameObject blockPrefab;
-        public List<ShapeData> shapeData;
-    
+        [SerializeField] private GameObject blockPrefab;
+        [SerializeField] private List<ShapeData> shapeData;
+        [SerializeField] private List<Sprite> shapeImageSprites;
+        
         [Header("Spawn Positions")]
-        public List<Transform> blockSpawnPosList;
 
-        public Transform shapesPanel;
+        [SerializeField] private List<Transform> blockSpawnPosList;
+        [SerializeField] private Transform shapesPanel;
     
+        private EventQueue _bus;
+
         private List<Block> _currentBlocks = new();
         private GridSquare[,] Grid => GridManager.Instance.gridSquares;
             
@@ -28,6 +32,13 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private int[] _inverseCumulativeWeights;
         private int _totalWeight;
         private int _inverseTotalWeight;
+
+        // 게임 오버 1회만 발동 가드
+        bool _gameOverFired;
+        System.Action<ContinueGranted> _onContinue;
+
+        bool _paused;
+        private bool _initialized;
 
         #endregion
 
@@ -38,18 +49,37 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             BuildCumulativeTable();
             BuildInverseCumulativeTable();
         }
-        
-        void Start()
-        {
-            StartCoroutine(GenerateBlocksNextFrame());
-        }
-        
+
+        void Start() { TryBindBus(); }
+
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.W))
             {
                 DebugCurrentBlocks();
             }
+        }
+
+        void OnEnable()
+        {
+            // Game.Bind 이후에만 구독 시도
+            if (Game.IsBound)
+            {
+                _onContinue = _ =>
+                {
+                    _gameOverFired = false;
+                    Time.timeScale = 1f;
+                    // 이어하기 정책에 맞게 블록 재생성/리셋
+                    GenerateAllBlocks();
+                };
+                Game.Bus.Subscribe(_onContinue, replaySticky: false);
+            }
+        }
+
+        void OnDisable()
+        {
+            if (Game.IsBound && _onContinue != null)
+                Game.Bus.Unsubscribe(_onContinue);
         }
 
         #endregion
@@ -102,39 +132,42 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void GenerateAllBlocks()
         {
-            foreach (var blk in _currentBlocks)
-            {
-                if (blk != null)
-                    Destroy(blk.gameObject);
-            }
+            if (_paused) return;
+
+            // 안전 정리
+            for (int i = 0; i < _currentBlocks.Count; i++)
+                if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
-            
+
             bool guaranteedPlaced = false;
-            
+
             for (int i = 0; i < blockSpawnPosList.Count; i++)
             {
-                GameObject newBlockObj = Instantiate(blockPrefab,
-                    blockSpawnPosList[i].position,
-                    Quaternion.identity,
-                    shapesPanel);
+                var go = Instantiate(blockPrefab,
+                                     blockSpawnPosList[i].position,
+                                     Quaternion.identity,
+                                     shapesPanel);
 
-                Block newBlock = newBlockObj.GetComponent<Block>();
+                var block = go.GetComponent<Block>();
 
-                ShapeData selectedShape;
+                // 오프바이원 픽스: 마지막 인덱스 포함
+                block.shapePrefab.GetComponent<Image>().sprite =
+                    shapeImageSprites[Random.Range(0, shapeImageSprites.Count)];
 
-                if (!guaranteedPlaced)
-                {
-                    selectedShape = GetGuaranteedPlaceableShape();
-                    guaranteedPlaced = true;
-                }
-                else
-                {
-                    selectedShape = GetRandomShapeByWeight();
-                }
+                var shape = !guaranteedPlaced ? GetGuaranteedPlaceableShape()
+                                              : GetRandomShapeByWeight();
+                guaranteedPlaced = true;
 
-                newBlock.GenerateBlock(selectedShape);
-                _currentBlocks.Add(newBlock);
+                block.GenerateBlock(shape);
+                _currentBlocks.Add(block);
             }
+
+            // CheckGameOver();
+        }
+
+        private int GetRandomImageIndex()
+        {
+            return Random.Range(0, shapeImageSprites.Count);
         }
         
         private ShapeData GetRandomShapeByWeight()
@@ -242,10 +275,28 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             Debug.Log("===== GAME OVER! 더 이상 배치할 수 있는 블록이 없습니다. =====");
-            
+
             // TODO : 여기 밑에다가 게임 오버 붙이기!
+            ActivateGameOver();
         }
-        
+
+        private void ActivateGameOver()
+        {
+            
+            FireGameOver("NoPlace");
+        }
+
+        // GameOver 트리거
+        void FireGameOver(string reason = "NoPlace")
+        {
+            if (_gameOverFired) { Debug.Log("[GameOver] blocked by guard"); return; }
+            _gameOverFired = true;
+
+            int score = Game.GM != null ? Game.GM.Score : 0;
+            Game.Bus.PublishSticky(new GameOver(score, reason));
+            Time.timeScale = 0f;
+        }
+
         public void OnBlockPlaced(Block placedBlock)
         {
             _currentBlocks.Remove(placedBlock);
@@ -259,7 +310,81 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         }
 
         #endregion
-        
+        #region Game Reset
+        public void SetDependencies(EventQueue bus)
+        {
+            _bus = bus;
+            Debug.Log($"[Storage] Bind bus={_bus.GetHashCode()}");
+
+            // 1) 리셋 시작: 가드/타임스케일 초기화 (이중 안전망)
+            _bus.Subscribe<GameResetting>(_ =>
+            {
+                _gameOverFired = false;
+                Time.timeScale = 1f;
+            }, replaySticky: false);
+
+            // 2) 리셋 처리: 내부 상태 정리
+            _bus.Subscribe<GameResetRequest>(_ =>
+            {
+                Debug.Log("[Storage] ResetRuntime received");
+                ResetRuntime();
+            }, replaySticky: false);
+
+            // 3) 그리드 준비됨: 초기 블록 생성
+            _bus.Subscribe<GridReady>(OnGridReady, replaySticky: true);
+
+            // 4) 폴백: 이미 그리드가 있으면 바로 한 번 호출
+            if (GridManager.Instance != null && GridManager.Instance.gridSquares != null)
+            {
+                Debug.Log("[Storage] Fallback OnGridReady (grid already built)");
+                OnGridReady(new GridReady(GridManager.Instance.rows, GridManager.Instance.cols));
+            }
+        }
+
+        public void ResetRuntime()
+        {
+            _gameOverFired = false;
+            Time.timeScale = 1f;
+
+            // 생성/체크 잠깐 중지
+            _paused = true;
+
+            // 기존 블록 정리
+            for (int i = 0; i < _currentBlocks.Count; i++)
+                if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
+            _currentBlocks.Clear();
+
+            BuildCumulativeTable();
+            BuildInverseCumulativeTable();
+            // 생성은 GridReady에서 재개
+        }
+
+        private void OnGridReady(GridReady e)
+        {
+            // 디듀프 가드: 같은 프레임/두 번 이상 호출 방지
+            if (_paused == false && _initialized)
+            {
+                // 이미 정상 진행 중이면, 리셋·중복이 아닌 이상 굳이 재생성 안 함
+                return;
+            }
+
+            _paused = false;
+
+            // 초기 한 번은 생성하도록 플래그만 세팅
+            if (!_initialized) _initialized = true;
+
+            Debug.Log("[Storage] OnGridReady → GenerateAllBlocks()");
+            GenerateAllBlocks();
+        }
+
+
+        private void TryBindBus()
+        {
+            if (_bus != null || !Game.IsBound) return;
+            SetDependencies(Game.Bus);
+        }
+
+        #endregion
         #region Debug
 
         private void DebugCurrentBlocks()

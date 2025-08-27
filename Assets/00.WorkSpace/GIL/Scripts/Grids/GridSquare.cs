@@ -27,24 +27,24 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
 
         private void OnTriggerStay2D(Collider2D other)
         {
-            if (other.CompareTag("Block") && !IsOccupied)
-            {
-                var myBounds = GetComponent<BoxCollider2D>().bounds;
-                var otherBounds = other.bounds;
+            if (IsOccupied) return;
+            
+            var myBounds = GetComponent<BoxCollider2D>().bounds;
+            var otherBounds = other.bounds;
 
-                if (myBounds.Contains(otherBounds.min) && myBounds.Contains(otherBounds.max))
-                {
-                    SetState(GridState.Hover);
-                }
-                else
-                {
-                    SetState(GridState.Normal);
-                }
+            if (myBounds.Contains(otherBounds.min) && myBounds.Contains(otherBounds.max))
+            {
+                SetImage(other.GetComponent<Image>().sprite);
+                SetState(GridState.Hover);
+            }
+            else
+            {
+                SetState(GridState.Normal);
             }
         }
         private void OnTriggerExit2D(Collider2D other)
         {
-            if (other.CompareTag("Block") && !IsOccupied)
+            if (!IsOccupied)
             {
                 SetState(GridState.Normal);
             }     
@@ -56,7 +56,14 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
             hoverImage.gameObject.SetActive(newState == GridState.Hover);
             activeImage.gameObject.SetActive(newState == GridState.Active);
         }
-    
+
+        public void SetImage(Sprite sprite)
+        {
+            normalImage.sprite = sprite;
+            hoverImage.sprite = sprite;
+            activeImage.sprite = sprite;
+        }
+        
         public void SetOccupied(bool occupied)
         {
             IsOccupied = occupied;

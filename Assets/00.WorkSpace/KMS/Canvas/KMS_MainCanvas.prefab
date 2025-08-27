@@ -1425,6 +1425,7 @@ GameObject:
   - component: {fileID: 6860491885755881569}
   - component: {fileID: 7345413967927979493}
   - component: {fileID: 8908828441011840385}
+  - component: {fileID: 6007205568072948089}
   m_Layer: 5
   m_Name: MainCanvas_Classic Button
   m_TagString: Untagged
@@ -1504,7 +1505,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 6007205568072948089}
+        m_TargetAssemblyTypeName: PanelSwitchOnClick, Assembly-CSharp
+        m_MethodName: Invoke
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 1
 --- !u!95 &7345413967927979493
 Animator:
   serializedVersion: 5
@@ -1538,6 +1551,22 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &6007205568072948089
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1937152537109641892}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68ef6b8dfc9409c4293251e938943853, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  offKey: Main
+  onKey: Game
+  cooldown: 0.12
+  viaEvent: 1
 --- !u!1 &1973430676135467657
 GameObject:
   m_ObjectHideFlags: 0
@@ -5717,6 +5746,7 @@ GameObject:
   - component: {fileID: 6774173095396883045}
   - component: {fileID: 3078843574493295484}
   - component: {fileID: 7167410643557723288}
+  - component: {fileID: 7028381568637266109}
   m_Layer: 5
   m_Name: KMS_MainCanvas
   m_TagString: Untagged
@@ -5808,6 +5838,18 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!225 &7028381568637266109
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8519971829722108501}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &8685121578001961027
 GameObject:
   m_ObjectHideFlags: 0

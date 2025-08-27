@@ -9,11 +9,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     {
         public static ScoreManager Instance;
         
-        
-        [Header("Combo Debugger")]
-        [SerializeField] private TMP_Text comboText;
+        [Header("Score Text")]
         [SerializeField] private TMP_Text scoreText;
-        private int score = 0;
+        private int _score = 0;
         public int comboCount = 0;
         private void Awake()
         {
@@ -51,16 +49,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         public void AddScore(int amount)
         {
-            score += amount;
+            _score += amount;
             UpdateScoreUI();
         }
 
         private void UpdateScoreUI()
         {
-            if (scoreText != null && comboText != null)
+            if (scoreText != null )
             {
-                scoreText.text = score.ToString();
-                comboText.text = comboCount.ToString();
+                scoreText.text = _score.ToString();
             }
         }
     }
