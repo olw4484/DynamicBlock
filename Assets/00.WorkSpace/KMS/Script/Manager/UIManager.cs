@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 // ================================
 // Project : DynamicBlock
@@ -32,9 +33,12 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [Header("Panels")]
     [SerializeField] private List<PanelEntry> _panels = new();
 
-
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
+
+    // 패널별 페이드 코루틴 관리
+    private readonly Dictionary<string, Coroutine> _fadeJobs = new();
+
     private EventQueue _bus;
     private GameManager _game;
 
@@ -56,8 +60,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
                 var cv = p.root.GetComponent<Canvas>() ?? p.root.AddComponent<Canvas>();
                 cv.overrideSorting = true;
 
-                if (!p.root.GetComponent<UnityEngine.UI.GraphicRaycaster>())
-                    p.root.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+                if (!p.root.GetComponent<GraphicRaycaster>())
+                    p.root.AddComponent<GraphicRaycaster>();
 
                 // 모달은 무조건 CanvasGroup 보장 (페이드 안 써도 레이캐스트 제어용)
                 var cg = EnsureCanvasGroup(p.root);
@@ -92,7 +96,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     public void PostInit()
     {
-        // HUD 바인딩 (Sticky 즉시 재생 가정)
+        // HUD 바인딩 (Sticky 즉시 재생)
         _bus.Subscribe<ScoreChanged>(e => { if (_scoreText) _scoreText.text = e.value.ToString(); }, replaySticky: true);
         _bus.Subscribe<ComboChanged>(e => { if (_comboText) _comboText.text = $"x{e.value}"; }, replaySticky: true);
 
@@ -102,8 +106,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 광고 성공 시 모달 닫기
         _bus.Subscribe<ContinueGranted>(_ => SetPanel("GameOver", false), replaySticky: false);
 
-        // 패널 토글 이벤트 구독 (원하면 버튼에서 직접 API 호출해도 됨)
-        _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: false);
+        // 패널 토글 이벤트 구독 (Sticky 재생 켜둠)
+        _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
     }
 
     private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);
@@ -111,6 +115,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     // === 외부 API ===
     public void SetPanel(string key, bool on)
     {
+        Debug.Log($"SetPanel {key} -> {on}");
         if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
 
         // 모달이면 LIFO 경로로
@@ -121,36 +126,57 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             return;
         }
 
-        // 일반 패널: 기존처럼 페이드/온오프
+        // 일반 패널: 페이드/온오프
         if (!p.useCanvasGroup)
         {
             p.root.SetActive(on);
             return;
         }
 
+        // 이미 비활성 패널에 OFF 요청이면 무시(깜빡임 방지)
+        if (!on && !p.root.activeSelf) return;
+
         var cg = EnsureCanvasGroup(p.root);
-        if (!p.root.activeSelf) { p.root.SetActive(true); cg.alpha = 0f; }
-        StopAllCoroutines();
-        StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on));
+
+        // 켜기 시작이면 먼저 보이게
+        if (!p.root.activeSelf)
+        {
+            p.root.SetActive(true);
+            if (on) cg.alpha = 0f; // 켤 때만 0→1
+        }
+
+        // ★ 이 패널의 페이드만 중지 후 재시작
+        StopFade(key);
+        _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on, key));
     }
 
-    private IEnumerator FadeRoutine(CanvasGroup cg, float target, float dur, bool finalActive)
+    private IEnumerator FadeRoutine(CanvasGroup cg, float target, float dur, bool finalActive, string key)
     {
-        float t = 0f; float start = cg.alpha;
+        float t = 0f, start = cg.alpha;
         while (t < dur)
         {
             t += Time.unscaledDeltaTime;
             cg.alpha = Mathf.Lerp(start, target, t / dur);
             yield return null;
         }
+
         cg.alpha = target;
-        if (!finalActive) cg.gameObject.SetActive(false);
+        cg.blocksRaycasts = finalActive;
+        cg.interactable = finalActive;
+
+        if (!finalActive)
+            cg.gameObject.SetActive(false);
+
+        // 코루틴 핸들 정리
+        _fadeJobs.Remove(key);
     }
+
     public void CloseTopModal()
     {
         if (_modalOrder.Count == 0) return;
         PopModalInternal(_modalOrder[^1]);
     }
+
     public bool TryCloseTopByEscape()
     {
         if (_modalOrder.Count == 0) return false;
@@ -175,8 +201,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         {
             var cg = EnsureCanvasGroup(p.root);
             if (!p.root.activeSelf) { p.root.SetActive(true); cg.alpha = 0f; }
-            StopAllCoroutines();
-            StartCoroutine(FadeRoutine(cg, 1f, 0.12f, true));
+            StopFade(key);
+            _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 1f, 0.12f, true, key));
         }
         else p.root.SetActive(true);
 
@@ -189,13 +215,14 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (idx < 0) return;
 
         _modalOrder.RemoveAt(idx);
+
         if (_panelMap.TryGetValue(key, out var p) && p.root)
         {
             if (p.useCanvasGroup)
             {
                 var cg = EnsureCanvasGroup(p.root);
-                StopAllCoroutines();
-                StartCoroutine(FadeRoutine(cg, 0f, 0.12f, false));
+                StopFade(key);
+                _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 0f, 0.12f, false, key));
             }
             else p.root.SetActive(false);
         }
@@ -221,6 +248,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         }
     }
 
+    private void StopFade(string key)
+    {
+        if (_fadeJobs.TryGetValue(key, out var job) && job != null)
+        {
+            StopCoroutine(job);
+            _fadeJobs.Remove(key);
+        }
+    }
+
+    // CanvasGroup 보장
     private static CanvasGroup EnsureCanvasGroup(GameObject go)
     {
         var cg = go.GetComponent<CanvasGroup>();
