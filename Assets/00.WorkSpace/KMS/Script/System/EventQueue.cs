@@ -201,6 +201,8 @@ public readonly struct GameOver
 }
 
 public readonly struct RewardedContinueRequest { }      // 명령(Non-Sticky)
+public readonly struct AdPlaying { }                    // 광고 시작(입력 잠금)
+public readonly struct AdFinished { }                   // 광고 종료(입력 해제)
 public readonly struct ContinueGranted { }              // 명령 결과
 public readonly struct SaveRequested { }
 public readonly struct LoadRequested { }

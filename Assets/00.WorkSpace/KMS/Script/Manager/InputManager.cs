@@ -41,6 +41,10 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         // 씬 전환 동안 입력 잠금
         _bus.Subscribe<SceneWillChange>(_ => _inputEnabled = false, replaySticky: false);
         _bus.Subscribe<SceneChanged>(_ => { _inputEnabled = true; _cool = 0f; }, replaySticky: false);
+
+        // 광고 중 입력 잠금
+        _bus.Subscribe<AdPlaying>(_ => _inputEnabled = false, false);
+        _bus.Subscribe<AdFinished>(_ => { _inputEnabled = true; _cool = 0f; }, false);
     }
 
     public void Tick(float dt)
@@ -98,7 +102,16 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
     public void OnClick_Restart()
     {
         if (!Ready()) return; Consume();
-        Game.Scene.LoadScene("Gameplay");              // 또는 Reset 이벤트 발행
+
+        // 패널 닫기
+        _bus.Publish(new PanelToggle("Options", false));
+        _bus.Publish(new PanelToggle("GameOver", false));
+
+        Time.timeScale = 1f;
+
+        // 씬 리로드(이벤트 경로)
+        _bus.Publish(new SceneChangeRequest("Gameplay"));
+        // 또는 Game.Scene.LoadScene("Gameplay");
     }
 
     // ──────────────────────────────────────────────────────────────
