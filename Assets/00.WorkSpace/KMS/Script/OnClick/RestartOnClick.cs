@@ -21,19 +21,18 @@ public sealed class RestartOnClick : MonoBehaviour
 
         Time.timeScale = 1f;
 
-        // 현재 떠있는 패널 정리
-        foreach (var k in closePanels) Game.Bus.Publish(new PanelToggle(k, false));
+        foreach (var k in closePanels)
+            Game.Bus.Publish(new PanelToggle(k, false));
 
         switch (mode)
         {
             case RestartMode.SoftReset:
-                // Sticky GameOver 재생 방지
                 Game.Bus.ClearSticky<GameOver>();
-                // 게임 화면으로 스위치(원하면)
+                Game.Bus.PublishImmediate(new GameResetting());
                 if (!string.IsNullOrEmpty(openPanelAfter))
                     Game.Bus.Publish(new PanelToggle(openPanelAfter, true));
-                // 각 매니저 ResetRuntime() 호출 트리거
-                Game.Bus.Publish(new GameResetRequest());
+                Game.Bus.PublishImmediate(new GameResetRequest());
+                Game.Bus.PublishImmediate(new GameResetDone());
                 break;
 
             case RestartMode.ReloadSceneViaEvent:

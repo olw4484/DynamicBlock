@@ -38,6 +38,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 PrintGridStates();
         }
 
+        void OnEnable() { StartCoroutine(GameBindingUtil.WaitAndRun(() => TryBindBus())); }
+        void Start() { TryBindBus(); } // 중복 호출 안전
+
         public void InitializeGridSquares(List<GridSquare> squareList, int rowCount, int colCount)
         {
             rows = rowCount;
@@ -48,17 +51,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             foreach (var sq in squareList)
                 gridSquares[sq.RowIndex, sq.ColIndex] = sq;
 
+            // 스티키로 상태 저장
             _bus?.PublishSticky(new GridReady(rows, cols), alsoEnqueue: false);
+
+            // 즉시 한 번도 쏘기 — 단, BlockStorage에 디듀프 가드가 있어야 중복 생성되지 않음
+            _bus?.PublishImmediate(new GridReady(rows, cols));
         }
         public void SetCellOccupied(int row, int col, bool occupied, Sprite occupiedImage = null)
-
-        public void SetCellOccupied(int row, int col, bool occupied)
         {
             if (row < 0 || row >= rows || col < 0 || col >= cols) return;
 
             gridStates[row, col] = occupied;
-            
-            if(occupiedImage != null) gridSquares[row, col].SetImage(occupiedImage);
+
+            if (occupiedImage != null) gridSquares[row, col].SetImage(occupiedImage);
             gridSquares[row, col].SetOccupied(occupied);
         }
 
@@ -99,9 +104,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                 targetSquares.Add(square);
             }
-            
+
             Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>().sprite;
-            
+
             foreach (var square in targetSquares)
                 SetCellOccupied(square.RowIndex, square.ColIndex, true, targetImage);
 
@@ -186,8 +191,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void SetDependencies(EventQueue bus)
         {
             _bus = bus;
-            // 소프트 리셋 구독
-            _bus.Subscribe<GameResetRequest>(_ => ResetRuntime(), replaySticky: false);
+            Debug.Log($"[Grid] Bind bus={_bus.GetHashCode()}");
+            _bus.Subscribe<GameResetRequest>(_ => {
+                Debug.Log("[Grid] ResetRuntime received");
+                ResetRuntime();
+            }, replaySticky: false);
         }
 
         public void ResetRuntime()
@@ -198,11 +206,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 for (int c = 0; c < cols; c++)
                 {
                     gridStates[r, c] = false;
-                    if (gridSquares[r, c] != null)
-                        gridSquares[r, c].SetOccupied(false);
+                    gridSquares[r, c]?.SetOccupied(false);
                 }
-            // ScoreManager.Instance.comboCount = 0;
-            _bus.PublishSticky(new LinesCleared(0, 0), alsoEnqueue: false);
+
+            _bus.PublishImmediate(new ComboChanged(0));
+            _bus.PublishImmediate(new ScoreChanged(0));
+
+            Debug.Log("[Grid] PublishImmediate(GridReady)");
+            _bus.PublishImmediate(new GridReady(rows, cols));
+        }
+        private void TryBindBus()
+        {
+            if (_bus != null || !Game.IsBound) return;
+            SetDependencies(Game.Bus); // 실제 DI
         }
     }
 }
