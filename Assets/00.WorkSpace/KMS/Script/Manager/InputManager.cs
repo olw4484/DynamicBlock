@@ -14,8 +14,8 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
 {
     public int Order => 30;
 
-    [Header("Click Cooldown")]
-    [SerializeField] private float clickCooldown = 0.12f;
+    //[Header("Click Cooldown")]
+    //[SerializeField] private float clickCooldown = 0.12f;
 
     private EventQueue _bus;
     private bool _inputEnabled;
@@ -41,6 +41,14 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         // 씬 전환 동안 입력 잠금
         _bus.Subscribe<SceneWillChange>(_ => _inputEnabled = false, replaySticky: false);
         _bus.Subscribe<SceneChanged>(_ => { _inputEnabled = true; _cool = 0f; }, replaySticky: false);
+
+        // 광고 중 입력 잠금
+        _bus.Subscribe<AdPlaying>(_ => _inputEnabled = false, false);
+        _bus.Subscribe<AdFinished>(_ => { _inputEnabled = true; _cool = 0f; }, false);
+
+        // 게임 초기화 중 입력 잠금
+        _bus.Subscribe<GameResetting>(_ => _inputEnabled = false, false);
+        _bus.Subscribe<GameResetDone>(_ => { _inputEnabled = true; _cool = 0f; }, false);
     }
 
     public void Tick(float dt)
@@ -61,7 +69,7 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
     }
     private void Consume()
     {
-        _cool = clickCooldown;
+        //_cool = clickCooldown;
     }
 
     // === 외부 API ===
@@ -98,7 +106,16 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
     public void OnClick_Restart()
     {
         if (!Ready()) return; Consume();
-        Game.Scene.LoadScene("Gameplay");              // 또는 Reset 이벤트 발행
+
+        // 패널 닫기
+        _bus.Publish(new PanelToggle("Options", false));
+        _bus.Publish(new PanelToggle("GameOver", false));
+
+        Time.timeScale = 1f;
+
+        // 씬 리로드(이벤트 경로)
+        _bus.Publish(new SceneChangeRequest("Gameplay"));
+        // 또는 Game.Scene.LoadScene("Gameplay");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -116,6 +133,20 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         if (!Ready()) return;
         Consume();
         _bus.Publish(new PanelToggle(key, on));
+    }
+
+    public void OnClick_SwitchPanels(string offKey, string onKey)
+    {
+        if (!Ready()) return;
+        Consume();
+
+        // 이벤트 경로(디커플링)
+        _bus.Publish(new PanelToggle(offKey, false));
+        _bus.Publish(new PanelToggle(onKey, true));
+
+        // 또는 직접 경로(2줄로 대체가능)
+        // Game.UI.SetPanel(offKey, false);
+        // Game.UI.SetPanel(onKey,  true);
     }
 
     // 매개변수 없는 프리셋(인스펙터에서 편리)

@@ -34,6 +34,12 @@ public sealed class SceneFlowManager : IManager
     public void PostInit()
     {
         _bus.Subscribe<SceneChangeRequest>(OnSceneChangeRequest, replaySticky: false);
+
+        _bus.Subscribe<GameResetRequest>(_ => {
+            _bus.Publish(new GameResetting());        // 입력 잠금/모달 닫기 등
+            ManagerGroup.Instance.SoftReset();        // 각 매니저 ResetRuntime()
+            _bus.Publish(new GameResetDone());        // 입력 해제/연출 재개 등
+        }, replaySticky: false);
     }
 
     // === 외부 API ===
