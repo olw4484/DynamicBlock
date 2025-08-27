@@ -20,7 +20,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public List<Transform> blockSpawnPosList;
 
         public Transform shapesPanel;
-    
+        private EventQueue _bus;
         private List<Block> _currentBlocks = new();
         private GridSquare[,] Grid => GridManager.Instance.gridSquares;
             
@@ -296,11 +296,23 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         #endregion
         #region Game Reset
+        public void SetDependencies(EventQueue bus)
+        {
+            _bus = bus;
+            _bus.Subscribe<GameResetRequest>(_ => ResetRuntime(), replaySticky: false);
+        }
+
         public void ResetRuntime()
         {
-            // 기존 블록 제거 + 새 세트 생성
-            foreach (var b in _currentBlocks) if (b) Destroy(b.gameObject);
+            // 현재 블록들 제거
+            for (int i = 0; i < _currentBlocks.Count; i++)
+                if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
+
+            BuildCumulativeTable();
+            BuildInverseCumulativeTable();
+
+            // 바로 다시 생성
             GenerateAllBlocks();
         }
 

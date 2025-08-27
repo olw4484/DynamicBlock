@@ -1,7 +1,6 @@
-using System;
+using _00.WorkSpace.GIL.Scripts.Grids;
 using System.Collections.Generic;
 using System.Text;
-using _00.WorkSpace.GIL.Scripts.Grids;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -178,19 +177,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // TODO: 나중에 이펙트 / 사운드 추가
         }
 
-        public void SetDependencies(EventQueue bus) => _bus = bus;
+        public void SetDependencies(EventQueue bus)
+        {
+            _bus = bus;
+            // 소프트 리셋 구독
+            _bus.Subscribe<GameResetRequest>(_ => ResetRuntime(), replaySticky: false);
+        }
 
         public void ResetRuntime()
         {
-            if (gridSquares == null || gridStates == null) return;
+            if (gridStates == null || gridSquares == null) return;
+
             for (int r = 0; r < rows; r++)
                 for (int c = 0; c < cols; c++)
                 {
                     gridStates[r, c] = false;
-                    gridSquares[r, c].SetOccupied(false);
+                    if (gridSquares[r, c] != null)
+                        gridSquares[r, c].SetOccupied(false);
                 }
-            // 줄/콤보 같은 내부 카운터도 여기서 0으로
+            // ScoreManager.Instance.comboCount = 0;
+            _bus.PublishSticky(new LinesCleared(0, 0), alsoEnqueue: false);
         }
     }
 }
-

@@ -26,7 +26,10 @@ public sealed class GameManager : IManager, IRuntimeReset
         _bus.PublishSticky(new ScoreChanged(Score), alsoEnqueue: false);
         _bus.PublishSticky(new ComboChanged(Combo), alsoEnqueue: false);
     }
-    public void PostInit() { }
+    public void PostInit()
+    {
+        _bus.Subscribe<GameResetRequest>(_ => ResetRuntime(), replaySticky: false);
+    }
 
     // ¿ÜºÎ API
     public void AddScore(int add)
@@ -44,6 +47,5 @@ public sealed class GameManager : IManager, IRuntimeReset
         Score = 0; Combo = 0;
         _bus.PublishSticky(new ScoreChanged(Score), alsoEnqueue: false);
         _bus.PublishSticky(new ComboChanged(Combo), alsoEnqueue: false);
-        _bus.ClearSticky<GameOver>();
     }
 }
