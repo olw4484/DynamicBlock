@@ -9,7 +9,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     {
         public static ScoreManager Instance;
         
-        
         [Header("Score Text")]
         [SerializeField] private TMP_Text scoreText;
         private int _score = 0;
