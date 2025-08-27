@@ -5,6 +5,7 @@ using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
@@ -13,14 +14,21 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         #region Variables & Properties
 
         [Header("Block Prefab & Data")]
-        public GameObject blockPrefab;
-        public List<ShapeData> shapeData;
-    
+        [SerializeField] private GameObject blockPrefab;
+        [SerializeField] private List<ShapeData> shapeData;
+        [SerializeField] private List<Sprite> shapeImageSprites;
+        
         [Header("Spawn Positions")]
+
+        [SerializeField] private List<Transform> blockSpawnPosList;
+        [SerializeField] private Transform shapesPanel;
+    
+
         public List<Transform> blockSpawnPosList;
 
         public Transform shapesPanel;
         private EventQueue _bus;
+
         private List<Block> _currentBlocks = new();
         private GridSquare[,] Grid => GridManager.Instance.gridSquares;
             
@@ -145,7 +153,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                     shapesPanel);
 
                 Block newBlock = newBlockObj.GetComponent<Block>();
-
+                newBlock.shapePrefab.GetComponent<Image>().sprite = shapeImageSprites[GetRandomImageIndex()];
                 ShapeData selectedShape;
 
                 if (!guaranteedPlaced)
@@ -161,6 +169,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 newBlock.GenerateBlock(selectedShape);
                 _currentBlocks.Add(newBlock);
             }
+        }
+
+        private int GetRandomImageIndex()
+        {
+            return Random.Range(0, shapeImageSprites.Count - 1);
         }
         
         private ShapeData GetRandomShapeByWeight()
@@ -268,6 +281,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             Debug.Log("===== GAME OVER! 더 이상 배치할 수 있는 블록이 없습니다. =====");
+
+            // TODO : 여기 밑에다가 게임 오버 붙이기!
+            ActivateGameOver();
+        }
+
+        private void ActivateGameOver()
+        {
+            
             FireGameOver("NoPlace");
         }
 

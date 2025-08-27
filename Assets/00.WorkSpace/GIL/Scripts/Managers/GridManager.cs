@@ -2,6 +2,7 @@ using _00.WorkSpace.GIL.Scripts.Grids;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
@@ -49,12 +50,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             _bus?.PublishSticky(new GridReady(rows, cols), alsoEnqueue: false);
         }
+        public void SetCellOccupied(int row, int col, bool occupied, Sprite occupiedImage = null)
 
         public void SetCellOccupied(int row, int col, bool occupied)
         {
             if (row < 0 || row >= rows || col < 0 || col >= cols) return;
 
             gridStates[row, col] = occupied;
+            
+            if(occupiedImage != null) gridSquares[row, col].SetImage(occupiedImage);
             gridSquares[row, col].SetOccupied(occupied);
         }
 
@@ -95,9 +99,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                 targetSquares.Add(square);
             }
-
+            
+            Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>().sprite;
+            
             foreach (var square in targetSquares)
-                SetCellOccupied(square.RowIndex, square.ColIndex, true);
+                SetCellOccupied(square.RowIndex, square.ColIndex, true, targetImage);
 
             CheckForCompletedLines();
             return true;
