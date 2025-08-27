@@ -199,7 +199,6 @@ public readonly struct GameOver
     public readonly int score; public readonly string reason;
     public GameOver(int score, string reason = null) { this.score = score; this.reason = reason; }
 }
-
 public readonly struct RewardedContinueRequest { }      // 명령(Non-Sticky)
 public readonly struct AdPlaying { }                    // 광고 시작(입력 잠금)
 public readonly struct AdFinished { }                   // 광고 종료(입력 해제)
@@ -207,16 +206,17 @@ public readonly struct ContinueGranted { }              // 명령 결과
 public readonly struct SaveRequested { }
 public readonly struct LoadRequested { }
 public readonly struct ResetRequested { }
-
 public readonly struct GameDataChanged
 {
     public readonly GameData data;
     public GameDataChanged(GameData d) { data = d; }
 }
-
 public readonly struct LinesCleared
 {
     public readonly int rows, cols, total;
     public LinesCleared(int rows, int cols) { this.rows = rows; this.cols = cols; this.total = rows + cols; }
 }
 public readonly struct GridReady { public readonly int rows, cols; public GridReady(int r, int c) { rows = r; cols = c; } }
+public readonly struct GameResetRequest { }   // 버튼 → 요청
+public readonly struct GameResetting { }      // 리셋 시작(입력잠금/모달닫기 등)
+public readonly struct GameResetDone { }      // 리셋 완료(입력해제/패널 복구 등)

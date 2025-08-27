@@ -45,6 +45,10 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         // 광고 중 입력 잠금
         _bus.Subscribe<AdPlaying>(_ => _inputEnabled = false, false);
         _bus.Subscribe<AdFinished>(_ => { _inputEnabled = true; _cool = 0f; }, false);
+
+        // 게임 초기화 중 입력 잠금
+        _bus.Subscribe<GameResetting>(_ => _inputEnabled = false, false);
+        _bus.Subscribe<GameResetDone>(_ => { _inputEnabled = true; _cool = 0f; }, false);
     }
 
     public void Tick(float dt)

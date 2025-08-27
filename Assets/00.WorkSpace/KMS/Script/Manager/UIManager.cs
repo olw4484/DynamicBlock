@@ -11,7 +11,7 @@ using UnityEngine;
 
 [DisallowMultipleComponent]
 [AddComponentMenu("Game/UIManager")]
-public class UIManager : MonoBehaviour, IManager
+public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 {
     [System.Serializable]
     public class PanelEntry
@@ -225,6 +225,13 @@ public class UIManager : MonoBehaviour, IManager
     {
         var cg = go.GetComponent<CanvasGroup>();
         return cg != null ? cg : go.AddComponent<CanvasGroup>();
+    }
+
+    public void ResetRuntime()
+    {
+        // 게임오버 닫고, 게임 패널 열기
+        SetPanel("GameOver", false);
+        SetPanel("Game", true);
     }
 }
 

@@ -6,7 +6,7 @@ using UnityEngine;
 // Script : GameManager.cs
 // Desc  : 데이터 소스(점수/콤보)
 // ================================
-public sealed class GameManager : IManager
+public sealed class GameManager : IManager, IRuntimeReset
 {
     public int Order => 10;
     private readonly EventQueue _bus;
@@ -38,5 +38,12 @@ public sealed class GameManager : IManager
     {
         Combo = value;
         _bus.Publish(new ComboChanged(Combo));
+    }
+    public void ResetRuntime()
+    {
+        Score = 0; Combo = 0;
+        _bus.PublishSticky(new ScoreChanged(Score), alsoEnqueue: false);
+        _bus.PublishSticky(new ComboChanged(Combo), alsoEnqueue: false);
+        _bus.ClearSticky<GameOver>();
     }
 }

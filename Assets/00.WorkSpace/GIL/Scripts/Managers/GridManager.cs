@@ -7,7 +7,7 @@ using Debug = UnityEngine.Debug;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
-    public class GridManager : MonoBehaviour
+    public class GridManager : MonoBehaviour, IRuntimeReset
     {
         public static GridManager Instance { get; private set; }
 
@@ -179,6 +179,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
 
         public void SetDependencies(EventQueue bus) => _bus = bus;
+
+        public void ResetRuntime()
+        {
+            if (gridSquares == null || gridStates == null) return;
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                {
+                    gridStates[r, c] = false;
+                    gridSquares[r, c].SetOccupied(false);
+                }
+            // 줄/콤보 같은 내부 카운터도 여기서 0으로
+        }
     }
 }
 

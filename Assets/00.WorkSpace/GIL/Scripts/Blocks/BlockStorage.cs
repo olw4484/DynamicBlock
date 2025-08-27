@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class BlockStorage : MonoBehaviour
+    public class BlockStorage : MonoBehaviour, IRuntimeReset
     {
         #region Variables & Properties
 
@@ -295,7 +295,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         }
 
         #endregion
-        
+        #region Game Reset
+        public void ResetRuntime()
+        {
+            // 기존 블록 제거 + 새 세트 생성
+            foreach (var b in _currentBlocks) if (b) Destroy(b.gameObject);
+            _currentBlocks.Clear();
+            GenerateAllBlocks();
+        }
+
+        #endregion
         #region Debug
 
         private void DebugCurrentBlocks()

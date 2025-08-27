@@ -35,7 +35,7 @@ public class GameBootstrap : MonoBehaviour
         var saveAdapter = new SaveServiceAdapter();              // 40
         saveAdapter.SetDependencies(bus, legacySave);
 
-        // GridManager는 씬 상주(선택)
+        // GridManager는 씬 상주
         var grid = FindFirstObjectByType<GridManager>();
         if (grid != null) grid.SetDependencies(bus);
 
