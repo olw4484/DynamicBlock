@@ -19,6 +19,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private int _lineCount;
         public int LineCount { get; private set; }
 
+        private int _gridMask;
+        
         private List<GridSquare> _hoverSquares = new();
         
         private EventQueue _bus;
@@ -31,6 +33,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
             Instance = this;
+            _gridMask = LayerMask.GetMask("Grid");
             Debug.Log("GridManager: Awake");
         }
 
@@ -54,7 +57,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 if (!block.gameObject.activeSelf) continue;
                 activeCount++;
 
-                var hit = Physics2D.OverlapPoint(block.position, LayerMask.GetMask("Grid"));
+                Collider2D hit = Physics2D.OverlapPoint(block.position, _gridMask);
                 if (hit == null) { targetSquares.Clear(); return false; }
 
                 var square = hit.GetComponent<GridSquare>();
