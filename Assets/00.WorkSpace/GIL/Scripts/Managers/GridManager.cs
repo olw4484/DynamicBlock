@@ -19,6 +19,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private int _lineCount;
         public int LineCount { get; private set; }
 
+        private List<GridSquare> _hoverSquares = new();
+        
         private EventQueue _bus;
 
         private void Awake()
@@ -40,7 +42,67 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         void OnEnable() { StartCoroutine(GameBindingUtil.WaitAndRun(() => TryBindBus())); }
         void Start() { TryBindBus(); } // 중복 호출 안전
+        
+        public bool TryGetPlacement(List<Transform> shapeBlocks, out List<GridSquare> targetSquares)
+        {
+            targetSquares = new List<GridSquare>();
+            var seen = new HashSet<GridSquare>();
+            int activeCount = 0;
 
+            foreach (var block in shapeBlocks)
+            {
+                if (!block.gameObject.activeSelf) continue;
+                activeCount++;
+
+                var hit = Physics2D.OverlapPoint(block.position, LayerMask.GetMask("Grid"));
+                if (hit == null) { targetSquares.Clear(); return false; }
+
+                var square = hit.GetComponent<GridSquare>();
+                if (square == null || square.IsOccupied) { targetSquares.Clear(); return false; }
+
+                // 동일 칸에 두 블럭이 겹쳐 찍히는 비정상 상황 방지(좌표 오프셋 문제 등)
+                if (!seen.Add(square)) { targetSquares.Clear(); return false; }
+            }
+
+            // 활성 블럭이 하나도 없으면 미리보기 의미가 없으니 false 처리(원하면 true로 바꿔도 됨)
+            if (activeCount == 0) return false;
+
+            targetSquares.AddRange(seen);
+            return true;
+        }
+        
+        public void ClearHoverPreview()
+        {
+            if (_hoverSquares.Count == 0) return;
+            foreach (var sq in _hoverSquares)
+            {
+                // 이미 Active(배치 완료)인 칸은 건드리지 않음
+                if (!sq.IsOccupied) sq.SetState(GridState.Normal);
+            }
+            _hoverSquares.Clear();
+        }
+
+        public void UpdateHoverPreview(List<Transform> shapeBlocks)
+        {
+            if (TryGetPlacement(shapeBlocks, out var squares))
+            {
+                // 드래그 중 보여줄 스프라이트(모양) 맞춰주기
+                var sprite = shapeBlocks[0].GetComponent<UnityEngine.UI.Image>()?.sprite;
+                ClearHoverPreview();
+
+                foreach (var sq in squares)
+                {
+                    if (sprite != null) sq.SetImage(sprite);
+                    if (!sq.IsOccupied) sq.SetState(GridState.Hover);
+                }
+                _hoverSquares.AddRange(squares);
+            }
+            else
+            {
+                ClearHoverPreview();
+            }
+        }
+        
         public void InitializeGridSquares(List<GridSquare> squareList, int rowCount, int colCount)
         {
             rows = rowCount;
@@ -90,23 +152,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public bool CanPlaceShape(List<Transform> shapeBlocks)
         {
-            var targetSquares = new List<GridSquare>();
+            ClearHoverPreview();
 
-            foreach (var block in shapeBlocks)
-            {
-                if (!block.gameObject.activeSelf) continue;
+            if (!TryGetPlacement(shapeBlocks, out var targetSquares))
+                return false;
 
-                Collider2D hit = Physics2D.OverlapPoint(block.position, LayerMask.GetMask("Grid"));
-                if (hit == null) return false;
-
-                GridSquare square = hit.GetComponent<GridSquare>();
-                if (square.IsOccupied) return false;
-
-                targetSquares.Add(square);
-            }
-
-            Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>().sprite;
-
+            var targetImage = shapeBlocks[0].GetComponent<UnityEngine.UI.Image>()?.sprite;
             foreach (var square in targetSquares)
                 SetCellOccupied(square.RowIndex, square.ColIndex, true, targetImage);
 
