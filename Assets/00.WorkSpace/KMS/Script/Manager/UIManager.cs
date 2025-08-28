@@ -29,12 +29,22 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [Header("HUD")]
     [SerializeField] private TMP_Text _scoreText;
     [SerializeField] private TMP_Text _comboText;
+    [SerializeField] private TMP_Text _hudBestText;
+    [SerializeField] private TMP_Text _gameOverTotalText;
+    [SerializeField] private TMP_Text _gameOverBestText;
+
 
     [Header("Panels")]
     [SerializeField] private List<PanelEntry> _panels = new();
 
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
+
+    // 스코어 UI
+    private int _lastHighScore = 0;
+
+    // 점수 포맷 유틸(콤마)
+    private static string FormatScore(int v) => v.ToString("#,0");
 
     // 패널별 페이드 코루틴 관리
     private readonly Dictionary<string, Coroutine> _fadeJobs = new();
@@ -97,11 +107,21 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     public void PostInit()
     {
         // HUD 바인딩 (Sticky 즉시 재생)
-        _bus.Subscribe<ScoreChanged>(e => { if (_scoreText) _scoreText.text = e.value.ToString(); }, replaySticky: true);
-        _bus.Subscribe<ComboChanged>(e => { if (_comboText) _comboText.text = $"x{e.value}"; }, replaySticky: true);
+        _bus.Subscribe<ScoreChanged>(e =>{if (_scoreText) _scoreText.text = FormatScore(e.value);}, replaySticky: true);
+        _bus.Subscribe<ComboChanged>(e =>{if (_comboText) _comboText.text = $"x{e.value}";}, replaySticky: true);
 
-        // GameOver 들어오면 모달 오픈(Sticky → 초기에도 즉시 반응)
-        _bus.Subscribe<GameOver>(_ => SetPanel("GameOver", true), replaySticky: true);
+        _bus.Subscribe<GameDataChanged>(e => {
+            _lastHighScore = e.data.highScore;
+            if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+        }, replaySticky: true);
+
+        _bus.Subscribe<GameOver>(e =>
+        {
+            if (_gameOverTotalText) _gameOverTotalText.text = $"TotalScore : {FormatScore(e.score)}";
+            int best = Mathf.Max(e.score, _lastHighScore);
+            if (_gameOverBestText) _gameOverBestText.text = $"Best : {FormatScore(best)}";
+            SetPanel("GameOver", true);
+        }, replaySticky: true);
 
         // 광고 성공 시 모달 닫기
         _bus.Subscribe<ContinueGranted>(_ => SetPanel("GameOver", false), replaySticky: false);
@@ -145,7 +165,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             if (on) cg.alpha = 0f; // 켤 때만 0→1
         }
 
-        // ★ 이 패널의 페이드만 중지 후 재시작
+        // 이 패널의 페이드만 중지 후 재시작
         StopFade(key);
         _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on, key));
     }
@@ -242,7 +262,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             cv.sortingOrder = p.baseSorting + ((i + 1) * 10);
 
             var cg = EnsureCanvasGroup(p.root);
-            bool top = (i == _modalOrder.Count - 1);
+            bool top = i == _modalOrder.Count - 1;
             cg.blocksRaycasts = top;
             cg.interactable = top;
         }

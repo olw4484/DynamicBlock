@@ -42,13 +42,25 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
     public void PostInit()
     {
-        // 명령 이벤트 → 원본 API로 라우팅
         _bus.Subscribe<SaveRequested>(_ => _legacy.SaveGame(), replaySticky: false);
         _bus.Subscribe<LoadRequested>(_ => _legacy.LoadGame(), replaySticky: false);
         _bus.Subscribe<ResetRequested>(_ =>
         {
             _legacy.gameData = GameData.NewDefault(DefaultStages);
             _legacy.SaveGame();
+        }, replaySticky: false);
+
+        // 인게임 점수 변동 시: 최고점 경신되면 즉시 저장
+        _bus.Subscribe<ScoreChanged>(e =>
+        {
+            // 디바운싱이 필요하면 여기서 조건 추가 가능
+            _legacy.TryUpdateHighScore(e.value);
+        }, replaySticky: true);
+
+        // 안전망: 게임오버 최종 점수 기록(플레이횟수/라스트스코어/하이스코어 포함)
+        _bus.Subscribe<GameOver>(e =>
+        {
+            _legacy.UpdateClassicScore(e.score);
         }, replaySticky: false);
     }
 

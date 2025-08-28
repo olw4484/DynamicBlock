@@ -159,11 +159,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (_lineCount == 0)
             {
-                ScoreManager.Instance.comboCount = 0;
+                ScoreManager.Instance.SetCombo(0);
                 return;
             }
 
-            ScoreManager.Instance.comboCount += _lineCount;
+            ScoreManager.Instance.SetCombo(ScoreManager.Instance.Combo + _lineCount);
             ScoreManager.Instance.CalculateLineClearScore(_lineCount);
 
             foreach (int row in completedRows)

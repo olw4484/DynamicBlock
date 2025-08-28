@@ -8291,9 +8291,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11e0db7fa6f6b7149b9928a175e4630d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  comboText: {fileID: 1087583722552017629}
   scoreText: {fileID: 6024049218225068009}
-  comboCount: 0
 --- !u!1 &3383236626807828209
 GameObject:
   m_ObjectHideFlags: 0
@@ -9369,6 +9367,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b915ba6289a693f4e8ceebaa0413c250, type: 2}
   - {fileID: 11400000, guid: 4504496522e4acf489a5b104b268050e, type: 2}
   - {fileID: 11400000, guid: ed1bef6db9ea98b48b4e9b9265a3f41f, type: 2}
+  shapeImageSprites: []
   blockSpawnPosList:
   - {fileID: 4877987453295194961}
   - {fileID: 7247413591669373435}
@@ -14302,7 +14301,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &217565139757348886
 RectTransform:
   m_ObjectHideFlags: 0
