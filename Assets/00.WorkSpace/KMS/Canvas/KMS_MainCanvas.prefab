@@ -997,10 +997,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 4869561640484917159}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 50}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 260, y: -62}
+  m_SizeDelta: {x: 136.96, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4508724028755073343
 CanvasRenderer:
@@ -1134,10 +1134,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 4869561640484917159}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 80}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 91.51999, y: -62}
+  m_SizeDelta: {x: 80, y: 80}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &814349238786215389
 CanvasRenderer:
@@ -1567,6 +1567,7 @@ MonoBehaviour:
   onKey: Game
   cooldown: 0.12
   viaEvent: 1
+  softResetWhenTurnOn: 1
 --- !u!1 &1973430676135467657
 GameObject:
   m_ObjectHideFlags: 0
@@ -1599,10 +1600,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2929223360463598091}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 50}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 260, y: -62}
+  m_SizeDelta: {x: 213.35, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4960089700512653516
 CanvasRenderer:
@@ -3784,10 +3785,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2929223360463598091}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 80}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 53.324997, y: -62}
+  m_SizeDelta: {x: 80, y: 80}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &8231689301019169222
 CanvasRenderer:
@@ -5746,14 +5747,13 @@ GameObject:
   - component: {fileID: 6774173095396883045}
   - component: {fileID: 3078843574493295484}
   - component: {fileID: 7167410643557723288}
-  - component: {fileID: 7028381568637266109}
   m_Layer: 5
   m_Name: KMS_MainCanvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1997030300450308955
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5838,18 +5838,6 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!225 &7028381568637266109
-CanvasGroup:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8519971829722108501}
-  m_Enabled: 1
-  m_Alpha: 1
-  m_Interactable: 1
-  m_BlocksRaycasts: 1
-  m_IgnoreParentGroups: 0
 --- !u!1 &8685121578001961027
 GameObject:
   m_ObjectHideFlags: 0
