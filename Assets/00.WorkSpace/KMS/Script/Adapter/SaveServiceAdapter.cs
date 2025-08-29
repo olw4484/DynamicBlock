@@ -25,17 +25,15 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
     public void PreInit()
     {
-        // 원본 콜백과 연결 → 상태 바뀔 때마다 Sticky 통지
-        _legacy.AfterLoad += d => _bus.PublishSticky(new GameDataChanged(d), alsoEnqueue: false);
-        _legacy.AfterSave += d => _bus.PublishSticky(new GameDataChanged(d), alsoEnqueue: false);
+        _legacy.AfterLoad += PublishState;
+        _legacy.AfterSave += PublishState;
 
         if (_legacy.gameData == null)
             _legacy.LoadGame();
 
         TryMigrateLegacyLanguage();
 
-        // 원본 Awake에서 LoadGame 호출됨 → 초기 Sticky 보강
-        _bus.PublishSticky(new GameDataChanged(Data), alsoEnqueue: false);
+        PublishState(_legacy.gameData);
     }
 
     public void Init() { }
@@ -44,23 +42,22 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
     {
         _bus.Subscribe<SaveRequested>(_ => _legacy.SaveGame(), replaySticky: false);
         _bus.Subscribe<LoadRequested>(_ => _legacy.LoadGame(), replaySticky: false);
-        _bus.Subscribe<ResetRequested>(_ =>
-        {
+        _bus.Subscribe<ResetRequested>(_ => {
             _legacy.gameData = GameData.NewDefault(DefaultStages);
             _legacy.SaveGame();
         }, replaySticky: false);
 
-        // 인게임 점수 변동 시: 최고점 경신되면 즉시 저장
-        _bus.Subscribe<ScoreChanged>(e =>
-        {
-            // 디바운싱이 필요하면 여기서 조건 추가 가능
+        // 인게임 점수 변동 → 최고점 경신 시 SaveGame() (AfterSave -> PublishState)
+        _bus.Subscribe<ScoreChanged>(e => {
             _legacy.TryUpdateHighScore(e.value);
+            Debug.Log($"[SaveAdapter] ScoreChanged={e.value}, High={_legacy.gameData.highScore}");
+
         }, replaySticky: true);
 
-        // 안전망: 게임오버 최종 점수 기록(플레이횟수/라스트스코어/하이스코어 포함)
-        _bus.Subscribe<GameOver>(e =>
-        {
-            _legacy.UpdateClassicScore(e.score);
+        // 게임오버 → 라스트/플레이횟수/하이스코어 갱신 후 저장
+        _bus.Subscribe<GameOver>(e => {
+            _legacy.UpdateClassicScore(e.score); // AfterSave -> PublishState
+            Debug.Log($"[SaveAdapter] GameOver total={e.score}");
         }, replaySticky: false);
     }
 
@@ -105,11 +102,18 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
         _legacy.gameData.LanguageIndex = index;
 
-        // UI/로컬라이즈 즉시 반영
-        _bus.PublishSticky(new GameDataChanged(_legacy.gameData), alsoEnqueue: false);
+        // 즉시 UI 반영
+        PublishState(_legacy.gameData);
 
-        // 디스크 반영
-        _legacy.SaveGame();
+        _legacy.SaveGame(); // 디스크 반영(AfterSave에서 다시 PublishState 호출됨)
+    }
+
+    private void PublishState(GameData d)
+    {
+        var evt = new GameDataChanged(d);
+        _bus.PublishSticky(evt, alsoEnqueue: false); // 상태 캐시
+        _bus.PublishImmediate(evt);                  // 즉시 반영
+        Debug.Log($"[SaveAdapter] PublishState high={d?.highScore}");
     }
 
     // ISaveService 직접 호출 경로(옵션)
