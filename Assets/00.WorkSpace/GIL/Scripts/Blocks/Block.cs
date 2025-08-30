@@ -15,7 +15,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         [Header("Pointer")] 
         public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
-        public Vector2 selectedOffset = new Vector2(0f, 700f);
+        public Vector2 selectedOffset = new Vector2(0f, 500f);
         
         private Vector3 _shapeStartScale;
         private RectTransform _shapeTransform;
@@ -135,12 +135,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private void MoveBlock(PointerEventData eventData)
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                _canvas.transform as RectTransform,
+                _shapeTransform.parent as RectTransform, 
                 eventData.position,
-                null,
+                 _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera,
                 out Vector2 localPos);
             
-            _shapeTransform.localPosition = localPos + selectedOffset;
+            _shapeTransform.anchoredPosition = localPos + (selectedOffset / _canvas.scaleFactor);
         }
         
         public ShapeData GetShapeData() => _currentShapeData;
