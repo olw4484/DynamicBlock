@@ -8,7 +8,7 @@ using UnityEngine.EventSystems;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragHandler, IPointerUpHandler
+    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
@@ -69,9 +69,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void OnPointerDown(PointerEventData eventData)
         {
+            if(TouchGate.GetTouchID() == int.MinValue) TouchGate.SetTouchID(eventData.pointerId);
+            
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
             _isDragging = false;
             
-            _shapeTransform.localPosition = _startPosition + (Vector3)selectedOffset;
             _shapeTransform.localScale = shapeSelectedScale;
             
             MoveBlock(eventData);
@@ -79,6 +82,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void OnDrag(PointerEventData eventData)
         {
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
             _isDragging = true;
             MoveBlock(eventData);
 
@@ -91,8 +96,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         
         
-        public void OnEndDrag(PointerEventData eventData)
+        public void OnPointerUp(PointerEventData eventData)
         {
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
             List<Transform> shapeBlocks = new();
             foreach (Transform child in transform)
             {
@@ -123,15 +130,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             
             GridManager.Instance.ClearHoverPreview();
-        }
-        public void OnPointerUp(PointerEventData eventData)
-        {
-            if (!_isDragging)
-            {
-                _shapeTransform.localPosition = _startPosition; 
-                _shapeTransform.localScale = _shapeStartScale; 
-                GridManager.Instance.ClearHoverPreview();
-            }
         }
         
         private void MoveBlock(PointerEventData eventData)
