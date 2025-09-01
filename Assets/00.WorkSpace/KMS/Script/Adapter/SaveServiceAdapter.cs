@@ -47,17 +47,32 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
             _legacy.SaveGame();
         }, replaySticky: false);
 
-        // 인게임 점수 변동 → 최고점 경신 시 SaveGame() (AfterSave -> PublishState)
-        _bus.Subscribe<ScoreChanged>(e => {
-            _legacy.TryUpdateHighScore(e.value);
-            Debug.Log($"[SaveAdapter] ScoreChanged={e.value}, High={_legacy.gameData.highScore}");
+        _bus.Subscribe<ScoreChanged>(e =>
+        {
+            // 새 기록이면 바로 반영 + 저장
+            if (_legacy.gameData == null) _legacy.LoadGame();
 
+            if (e.value > _legacy.gameData.highScore)
+            {
+                _legacy.gameData.highScore = e.value;
+                _legacy.SaveGame();          
+                Debug.Log($"[SaveAdapter] NEW HIGH SCORE {e.value} (saved)");
+            }
+            else
+            {
+                Debug.Log($"[SaveAdapter] ScoreChanged={e.value}, High={_legacy.gameData.highScore}");
+            }
         }, replaySticky: true);
 
-        // 게임오버 → 라스트/플레이횟수/하이스코어 갱신 후 저장
-        _bus.Subscribe<GameOver>(e => {
-            _legacy.UpdateClassicScore(e.score); // AfterSave -> PublishState
-            Debug.Log($"[SaveAdapter] GameOver total={e.score}");
+        _bus.Subscribe<GameOver>(e =>
+        {
+            _legacy.UpdateClassicScore(e.score);
+            if (_legacy.gameData != null && e.score > _legacy.gameData.highScore)
+            {
+                _legacy.gameData.highScore = e.score;
+                _legacy.SaveGame();
+            }
+            Debug.Log($"[SaveAdapter] GameOver total={e.score}, High={_legacy.gameData?.highScore}");
         }, replaySticky: false);
     }
 
