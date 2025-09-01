@@ -164,8 +164,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (!TryGetPlacement(shapeBlocks, out var targetSquares))
                 return false;
 
-            var targetImage = shapeBlocks[0].GetComponent<UnityEngine.UI.Image>()?.sprite;
-
             foreach (var square in targetSquares)
                 SetCellOccupied(square.RowIndex, square.ColIndex, true, targetImage);
 
