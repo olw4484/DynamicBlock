@@ -84,8 +84,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             {
                 if (_currentBlocks[i]) 
                     Destroy(_currentBlocks[i].gameObject);
-                _currentBlocks.Clear();
             }
+            _currentBlocks.Clear();
 
             List<ShapeData> wave = BlockSpawnManager.Instance.GenerateBasicWave(blockSpawnPosList.Count);
             

@@ -8,6 +8,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     public class BlockSpawnManager : MonoBehaviour
     {
         public static BlockSpawnManager Instance { get; private set; }
+
+        [Header("Resources")] 
+        [SerializeField] private string resourcesPath = "Shapes";
         
         [SerializeField] private List<ShapeData> shapeData;
         private int[] _cumulativeWeights;
@@ -19,15 +22,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             Init();
 
+            LoadResources();
+            
             BuildWeightTable();
         }
-
-        public void BuildWeightTable()
-        {
-            BuildCumulativeTable();
-            BuildInverseCumulativeTable();
-        }
-
+        
         private void Init()
         {
             if (Instance == null)
@@ -36,8 +35,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Destroy(gameObject);
         }
         
+        private void LoadResources()
+        {
+            shapeData = new List<ShapeData>(Resources.LoadAll<ShapeData>(resourcesPath));
+        }
+
+        public void BuildWeightTable()
+        {
+            BuildCumulativeTable();
+            BuildInverseCumulativeTable();
+        }
+        
         /// <summary>
-        /// chanceForPlace ( 0 ~ 1 ) 의 확률로 배치 가능 생성  
+        /// 가중치 기반으로 블럭 생성
         /// </summary>
         public List<ShapeData> GenerateBasicWave(int count)
         {
