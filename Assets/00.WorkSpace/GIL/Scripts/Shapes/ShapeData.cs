@@ -11,13 +11,15 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         public ShapeRow[] rows = new ShapeRow[5];
 
         [Header("Classic Mode")]
-        public int scoreForSpawn = 1;
-        public int chanceForSpawn = 0;
+        public int chanceForSpawn;
+        public int activeBlockCount;
 
 
         private void OnValidate()
         {
-            chanceForSpawn = GetActiveShapeCount();
+            int count = GetActiveShapeCount();
+            chanceForSpawn = count;
+            activeBlockCount = count;
         }
 
         private int GetActiveShapeCount()
