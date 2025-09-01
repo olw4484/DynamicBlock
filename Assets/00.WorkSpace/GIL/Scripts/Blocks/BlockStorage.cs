@@ -15,24 +15,20 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         [Header("Block Prefab & Data")]
         [SerializeField] private GameObject blockPrefab;
-        [SerializeField] private List<ShapeData> shapeData;
         [SerializeField] private List<Sprite> shapeImageSprites;
         
         [Header("Spawn Positions")]
 
         [SerializeField] private List<Transform> blockSpawnPosList;
         [SerializeField] private Transform shapesPanel;
-    
+
+        [Header("Block Placement Helper")] 
+        [SerializeField] private bool previewMode = true;
+        
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
-        private GridSquare[,] Grid => GridManager.Instance.gridSquares;
-            
-        private int[] _cumulativeWeights;
-        private int[] _inverseCumulativeWeights;
-        private int _totalWeight;
-        private int _inverseTotalWeight;
-
+        
         // 게임 오버 1회만 발동 가드
         bool _gameOverFired;
         System.Action<ContinueGranted> _onContinue;
@@ -43,12 +39,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         #endregion
 
         #region Unity Callbacks
-
-        void Awake()
-        {
-            BuildCumulativeTable();
-            BuildInverseCumulativeTable();
-        }
 
         void Start() { TryBindBus(); }
 
@@ -83,86 +73,44 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         }
 
         #endregion
-
-        #region Weight Tables
-
-        private void BuildCumulativeTable()
-        {
-            _cumulativeWeights = new int[shapeData.Count];
-            _totalWeight = 0;
-            
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                _totalWeight += shapeData[i].chanceForSpawn;
-                _cumulativeWeights[i] = _totalWeight;
-            }
-            
-            Debug.Log($"가중치 계산 완료: {_totalWeight}");
-        }
-        
-        private void BuildInverseCumulativeTable()
-        {
-            _inverseCumulativeWeights = new int[shapeData.Count];
-            _inverseTotalWeight = 0;
-            
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                _inverseTotalWeight += (_totalWeight - shapeData[i].chanceForSpawn);
-                _inverseCumulativeWeights[i] = _inverseTotalWeight;
-            }
-            
-            Debug.Log($"역가중치 계산 완료: {_inverseTotalWeight}");
-        }
-
-        #endregion
         
         #region Block Generation
 
-        private IEnumerator GenerateBlocksNextFrame()
-        {
-            // 한 프레임 대기
-            yield return null;
-
-            // GridManager 준비 확인
-            if (GridManager.Instance == null || GridManager.Instance.gridSquares == null)
-                yield break;
-
-            GenerateAllBlocks();
-        }
-
         private void GenerateAllBlocks()
         {
-            if (_paused) return;
+            if (_paused) 
+                return;
 
             // 안전 정리
             for (int i = 0; i < _currentBlocks.Count; i++)
-                if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
+            {
+                if (_currentBlocks[i]) 
+                    Destroy(_currentBlocks[i].gameObject);
+            }
             _currentBlocks.Clear();
 
-            bool guaranteedPlaced = false;
-
+            List<ShapeData> wave = BlockSpawnManager.Instance.GenerateBasicWave(blockSpawnPosList.Count);
+            
+            var previewSprites = new List<Sprite>(blockSpawnPosList.Count);
+            
             for (int i = 0; i < blockSpawnPosList.Count; i++)
             {
-                var go = Instantiate(blockPrefab,
-                                     blockSpawnPosList[i].position,
-                                     Quaternion.identity,
-                                     shapesPanel);
-
+                var go = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
                 var block = go.GetComponent<Block>();
 
-                // 오프바이원 픽스: 마지막 인덱스 포함
-                block.shapePrefab.GetComponent<Image>().sprite =
-                    shapeImageSprites[Random.Range(0, shapeImageSprites.Count)];
-
-                var shape = !guaranteedPlaced ? GetGuaranteedPlaceableShape()
-                                              : GetRandomShapeByWeight();
-                guaranteedPlaced = true;
-
+                var sprite = shapeImageSprites[GetRandomImageIndex()];
+                // 이미지 세팅은 기존 그대로
+                block.shapePrefab.GetComponent<Image>().sprite = sprite;
+                previewSprites.Add(sprite);
+                
+                ShapeData shape = wave[i];
+                
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
             }
-
-            // CheckGameOver();
+            
+            if(previewMode)
+                BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, previewSprites);
         }
 
         private int GetRandomImageIndex()
@@ -170,96 +118,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             return Random.Range(0, shapeImageSprites.Count);
         }
         
-        private ShapeData GetRandomShapeByWeight()
-        {
-            float randomValue = Random.Range(0, _totalWeight);
-
-            for (int i = 0; i < _cumulativeWeights.Length; i++)
-            {
-                if (randomValue <= _cumulativeWeights[i])
-                    return shapeData[i];
-            }
-
-            return shapeData[shapeData.Count - 1];
-        }
-        
-        private ShapeData GetGuaranteedPlaceableShape()
-        {
-            foreach (var shape in shapeData)
-            {
-                if (CanPlaceShapeData(shape))
-                    return shape;
-            }
-
-            return GetRandomShapeByWeight();
-        }
-
         #endregion
-
-        #region Placement Chect
-
-        private bool CanPlaceShapeData(ShapeData shape)
-        {
-            if (Grid == null)
-                return false;
-            
-            int gridRows = GridManager.Instance.rows;
-            int gridCols = GridManager.Instance.cols;
-            
-            var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
-            int shapeRows = maxY - minY + 1;
-            int shapeCols = maxX - minX + 1;
-
-            for (int yOffset = 0; yOffset <= gridRows - shapeRows; yOffset++)
-            {
-                for (int xOffset = 0; xOffset <= gridCols - shapeCols; xOffset++)
-                {
-                    if (CanPlace(shape, minX, minY, shapeRows, shapeCols, Grid, yOffset, xOffset))
-                        return true;
-                }
-            }
-            return false;
-        }
         
-        private bool CanPlace(ShapeData shape, int minX, int minY, int shapeRows, int shapeCols, GridSquare[,] grid, int yOffset, int xOffset)
-        {
-            for (int y = 0; y < shapeRows; y++)
-            {
-                for (int x = 0; x < shapeCols; x++)
-                {
-                    if (shape.rows[y + minY].columns[x + minX])
-                    {
-                        if (grid[y + yOffset, x + xOffset].IsOccupied)
-                            return false;
-                    }
-                }
-            }
-            return true;
-            // TODO : 조건을 반대로 해보자
-        }
-        
-        private (int minX, int maxX, int minY, int maxY) GetShapeBounds(ShapeData shape)
-        {
-            int minX = int.MaxValue, minY = int.MaxValue;
-            int maxX = int.MinValue, maxY = int.MinValue;
-
-            for (int y = 0; y < shape.rows.Length; y++)
-            {
-                for (int x = 0; x < shape.rows[y].columns.Length; x++)
-                {
-                    if (shape.rows[y].columns[x])
-                    {
-                        if (x < minX) minX = x;
-                        if (x > maxX) maxX = x;
-                        if (y < minY) minY = y;
-                        if (y > maxY) maxY = y;
-                    }
-                }
-            }
-            return (minX, maxX, minY, maxY);
-        }
-
-        #endregion
 
         #region Game Check
 
@@ -270,7 +130,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             foreach (var block in _currentBlocks)
             {
-                if (CanPlaceShapeData(block.GetShapeData()))
+                if (BlockSpawnManager.Instance.CanPlaceShapeData(block.GetShapeData()))
                     return;
             }
 
@@ -282,7 +142,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void ActivateGameOver()
         {
-            
             FireGameOver("NoPlace");
         }
 
@@ -361,8 +220,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
 
-            BuildCumulativeTable();
-            BuildInverseCumulativeTable();
+            BlockSpawnManager.Instance.BuildWeightTable();
             // 생성은 GridReady에서 재개
         }
 
