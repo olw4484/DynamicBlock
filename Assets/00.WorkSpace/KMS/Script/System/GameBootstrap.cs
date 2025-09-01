@@ -61,6 +61,7 @@ public class GameBootstrap : MonoBehaviour
         group.Register(spawner);
         group.Register(scene);
         group.Register(input);
+        group.Register(saveAdapter);
         group.Register(audio);
         group.Register(ui);
 
