@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
 
 // ================================
@@ -24,10 +25,16 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
     public void SetDependencies(EventQueue bus) => _bus = bus;
 
     // Lifecycle
+    void Awake()
+    {
+        // 전역적으로 멀티터치 방지
+        Input.multiTouchEnabled = false;
+    }
     public void PreInit()
     {
         if (_bus == null) Debug.LogError("[InputManager] EventQueue 주입 필요");
 
+        Input.multiTouchEnabled = false;
     }
 
     public void Init()
@@ -116,6 +123,12 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         // 씬 리로드(이벤트 경로)
         _bus.Publish(new SceneChangeRequest("Gameplay"));
         // 또는 Game.Scene.LoadScene("Gameplay");
+    }
+
+    public bool IsUIBlockingInput() // 동시 터치를 막아야할 때 사용
+    {
+        if (EventSystem.current == null) return false;
+        return EventSystem.current.IsPointerOverGameObject();
     }
 
     // ──────────────────────────────────────────────────────────────
