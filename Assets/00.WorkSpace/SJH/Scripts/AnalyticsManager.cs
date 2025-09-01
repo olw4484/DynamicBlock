@@ -21,20 +21,15 @@ public class AnalyticsManager : MonoBehaviour
 	{
 		FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
 			var dependencyStatus = task.Result;
-			if (dependencyStatus == Firebase.DependencyStatus.Available)
+			if (dependencyStatus == DependencyStatus.Available)
 			{
-				// Create and hold a reference to your FirebaseApp,
-				// where app is a Firebase.FirebaseApp property of your application class.
 				FirebaseApp = FirebaseApp.DefaultInstance;
-				Debug.Log("성공");
-				// Set a flag here to indicate whether Firebase is ready to use by your app.
 				FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventLogin);
+				FirebaseAnalytics.LogEvent("TestEvent");
 			}
 			else
 			{
-				Debug.LogError(System.String.Format(
-				  "Could not resolve all Firebase dependencies: {0}", dependencyStatus));
-				// Firebase Unity SDK is not safe to use here.
+				Debug.LogError($"파이어베이스 초기화 실패 : [{dependencyStatus}]");
 			}
 		});
 	}

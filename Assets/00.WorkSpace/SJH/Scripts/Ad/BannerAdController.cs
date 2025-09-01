@@ -9,7 +9,7 @@ public class BannerAdController
 	 * 
 	 * 배너 광고 갱신은 구글 애드몹에서 갱신되게 설정하면 자동 갱신
 	 */
-	private const string _bannerAdId = "ca-app-pub-4554669209191050/5110942945";
+	private const string _bannerAdId = "ca-app-pub-3940256099942544/6300978111";
 	private BannerView _loadedAd;
 	private bool _isShow = false;
 	private bool _isLoaded = false;

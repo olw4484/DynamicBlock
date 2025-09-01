@@ -9,7 +9,7 @@ public class InterstitialAdController
 	 * 
 	 * 캐싱된 전면 광고의 유효시간은 1시간
 	 */
-	private const string _interstitialAdId = "ca-app-pub-4554669209191050/7419140576";
+	private const string _interstitialAdId = "ca-app-pub-3940256099942544/1033173712";
 	private InterstitialAd _loadedAd;
 
 	public void Init()
