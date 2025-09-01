@@ -25,7 +25,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private ShapeData _currentShapeData;
 
         private bool _isDragging;
-        
+        private bool _startReady;
+
         private void Awake()
         {
             _shapeStartScale = GetComponent<RectTransform>().localScale;
@@ -40,6 +41,33 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void GenerateBlock(ShapeData shapeData)
         {
+            if (shapeData == null)
+            {
+                Debug.LogError("[Block] shapeData is null");
+                return;
+            }
+
+            if (_shapeTransform == null)
+            {
+                if (shapePrefab != null)
+                    _shapeTransform = shapePrefab.GetComponent<RectTransform>();
+                if (_shapeTransform == null)
+                    _shapeTransform = GetComponentInChildren<RectTransform>(includeInactive: true);
+
+                if (_shapeTransform == null)
+                {
+                    Debug.LogError($"[Block] _shapeTransform not found on '{name}'. " +
+                                   $"Assign shapePrefab or _shapeTransform in prefab.");
+                    return;
+                }
+            }
+
+            if (!_startReady)
+            {
+                _startPosition = _shapeTransform.localPosition;
+                _startReady = true;
+            }
+
             _shapeTransform.localPosition = _startPosition;
             _currentShapeData = shapeData;
             CreateBlock(shapeData);

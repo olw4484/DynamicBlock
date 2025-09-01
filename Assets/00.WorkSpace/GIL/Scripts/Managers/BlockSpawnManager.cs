@@ -10,10 +10,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public Vector2Int offset;                 // 좌상단 오프셋 (col=x, row=y)
         public List<GridSquare> coveredSquares;   // 이 배치로 덮게 될 셀들
     }
-    
-    public class BlockSpawnManager : MonoBehaviour
+
+    public class BlockSpawnManager : MonoBehaviour, IManager
     {
         public static BlockSpawnManager Instance { get; private set; }
+
+        public int Order => 12;
+        private EventQueue _bus;
 
         [Header("Resources")] 
         [SerializeField] private string resourcesPath = "Shapes";
@@ -29,23 +32,29 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private int _totalWeight;
         private int _inverseTotalWeight;
 
+        public void SetDependencies(EventQueue bus) { _bus = bus; }
+
         void Awake()
         {
-            Init();
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject); return;
+            }
+            Instance = this;
+        }
 
+        public void PreInit()
+        {
             LoadResources();
-            
+        }
+
+        public void Init()
+        {
             BuildWeightTable();
         }
-        
-        private void Init()
-        {
-            if (Instance == null)
-                Instance = this;
-            else
-                Destroy(gameObject);
-        }
-        
+
+        public void PostInit() { }
+
         private void LoadResources()
         {
             shapeData = new List<ShapeData>(Resources.LoadAll<ShapeData>(resourcesPath));
@@ -56,47 +65,51 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             BuildCumulativeTable();
             BuildInverseCumulativeTable();
         }
-        
+
         /// <summary>
         /// 가중치 기반으로 블럭 생성, 3개 이하 블럭에 대해서는 별도의 생성 확률 적용
         /// </summary>
         public List<ShapeData> GenerateBasicWave(int count)
         {
-            var result = new List<ShapeData>(count);
+            // 초기화/리소스 가드
+            if (shapeData == null || shapeData.Count == 0)
+            {
+                Debug.LogError("[Spawn] shapeData empty. Did LoadResources() run? (Resources/Shapes)");
+                return new List<ShapeData>(count); // 빈 리스트
+            }
 
-            // 이번 웨이브에서 "소환 실패한 블록"은 이후 검색에서 제외
-            var excludedForThisWave = new HashSet<ShapeData>();
+            var result = new List<ShapeData>(count);
+            var excluded = new HashSet<ShapeData>();
 
             for (int i = 0; i < count; i++)
             {
                 ShapeData chosen = null;
-                int guard = 0; // 무한 루프 방지
+                int guard = 0, maxGuard = shapeData.Count * 2;
 
-                while (chosen == null && guard++ < shapeData.Count)
+                while (chosen == null && guard++ < maxGuard)
                 {
-                    // 제외 목록 반영해서 가중치 추첨
-                    var pick = GetRandomShapeByWeightExcluding(excludedForThisWave);
-                    if (pick == null) break; // 전부 제외된 경우
+                    var pick = GetRandomShapeByWeightExcluding(excluded);
+                    if (pick == null) break;
 
-                    // 소형 여부를 activeBlockCount로 판정
                     bool isSmall = pick.activeBlockCount <= smallBlockTileThreshold;
-
                     if (smallBlockPenaltyMode && isSmall && Random.value < smallBlockFailRate)
                     {
-                        // 소환 실패 → 이번 웨이브에서 제외하고 재검색
-                        excludedForThisWave.Add(pick);
+                        excluded.Add(pick);
                         continue;
                     }
-
-                    // 성공
                     chosen = pick;
                 }
 
-                // 그래도 못 뽑았으면 가중치 기반 생성 ( 발동할 일 매우 적음 )
+                if (chosen == null) chosen = GetRandomShapeByWeight(); // 최종 fallback
                 if (chosen == null)
                 {
-                    Debug.LogWarning("모든 후보가 소형 페널티로 제외되어 가중치 강제 소환을 수행합니다.");                    
-                    chosen = GetRandomShapeByWeight();
+                    if (shapeData.Count > 0) chosen = shapeData[Random.Range(0, shapeData.Count)];
+                }
+
+                if (chosen == null)
+                {
+                    Debug.LogError($"[Spawn] Failed to choose shape at slot {i}. Inserting skip.");
+                    continue;
                 }
 
                 result.Add(chosen);
@@ -107,6 +120,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private void BuildCumulativeTable()
         {
+            if (shapeData == null || shapeData.Count == 0)
+            {
+                Debug.LogError("[Spawn] BuildCumulativeTable: shapeData empty");
+                _cumulativeWeights = null; _totalWeight = 0; return;
+            }
+
             _cumulativeWeights = new int[shapeData.Count];
             _totalWeight = 0;
 
