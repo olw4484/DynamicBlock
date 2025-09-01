@@ -12,7 +12,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public static GridManager Instance { get; private set; }
 
         public GridSquare[,] gridSquares; // 시각적 표현용
-        private bool[,] gridStates;
+        public bool[,] gridStates;
         public int rows = 8;
         public int cols = 8;
 
