@@ -78,4 +78,17 @@ public class SaveManager : MonoBehaviour
     {
         return gameData.stageScores[stageIndex];
     }
+
+    /// <summary>현재 highScore보다 크면 갱신하고 저장.</summary>
+    public bool TryUpdateHighScore(int score, bool save = true)
+    {
+        if (gameData == null) LoadGame();
+        if (score > gameData.highScore)
+        {
+            gameData.highScore = score;
+            if (save) SaveGame();
+            return true;
+        }
+        return false;
+    }
 }

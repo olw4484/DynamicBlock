@@ -1818,7 +1818,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scoreText: {fileID: 4393052283992635256}
-  comboCount: 0
 --- !u!1 &970740106358998353
 GameObject:
   m_ObjectHideFlags: 0
@@ -8302,7 +8301,7 @@ GameObject:
   - component: {fileID: 7962312431294510090}
   - component: {fileID: 7963571151737706828}
   m_Layer: 5
-  m_Name: hige_Score
+  m_Name: InGaemHighScoreText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11896,6 +11895,7 @@ GameObject:
   - component: {fileID: 5059797980587663177}
   - component: {fileID: 332924069061411578}
   - component: {fileID: 5706284062136653159}
+  - component: {fileID: 391410729691383472}
   m_Layer: 5
   m_Name: Setting
   m_TagString: Untagged
@@ -12003,7 +12003,34 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 332924069061411578}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 391410729691383472}
+        m_TargetAssemblyTypeName: PanelToggleOnClick, Assembly-CSharp
+        m_MethodName: Invoke
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &391410729691383472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5029194540752643246}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f55bd6ed0e68fd74096088f0cdfc7ca6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  key: Options
+  on: 1
+  cooldown: 0.12
 --- !u!1 &5046932752866896698
 GameObject:
   m_ObjectHideFlags: 0
@@ -12207,7 +12234,7 @@ GameObject:
   - component: {fileID: 4570365719857464565}
   - component: {fileID: 4393052283992635256}
   m_Layer: 5
-  m_Name: Score
+  m_Name: InGameScoreText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

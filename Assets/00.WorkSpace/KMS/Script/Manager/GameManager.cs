@@ -32,16 +32,6 @@ public sealed class GameManager : IManager, IRuntimeReset
     }
 
     // ¿ÜºÎ API
-    public void AddScore(int add)
-    {
-        Score += add;
-        _bus.Publish(new ScoreChanged(Score));
-    }
-    public void SetCombo(int value)
-    {
-        Combo = value;
-        _bus.Publish(new ComboChanged(Combo));
-    }
     public void ResetRuntime()
     {
         Score = 0; Combo = 0;
