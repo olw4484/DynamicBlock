@@ -2,12 +2,22 @@
   <packages>
     <package>androidx.constraintlayout:constraintlayout:2.1.4</package>
     <package>com.google.android.gms:play-services-ads:24.5.0</package>
+    <package>com.google.android.gms:play-services-base:18.7.2</package>
     <package>com.google.android.ump:user-messaging-platform:3.2.0</package>
+    <package>com.google.firebase:firebase-analytics:23.0.0</package>
+    <package>com.google.firebase:firebase-analytics-unity:13.1.0</package>
+    <package>com.google.firebase:firebase-app-unity:13.1.0</package>
+    <package>com.google.firebase:firebase-common:22.0.0</package>
   </packages>
-  <files />
+  <files>
+    <file>Assets/GeneratedLocalRepo/Firebase/m2repository/com/google/firebase/firebase-analytics-unity/13.1.0/firebase-analytics-unity-13.1.0.aar</file>
+    <file>Assets/GeneratedLocalRepo/Firebase/m2repository/com/google/firebase/firebase-analytics-unity/13.1.0/firebase-analytics-unity-13.1.0.pom</file>
+    <file>Assets/GeneratedLocalRepo/Firebase/m2repository/com/google/firebase/firebase-app-unity/13.1.0/firebase-app-unity-13.1.0.aar</file>
+    <file>Assets/GeneratedLocalRepo/Firebase/m2repository/com/google/firebase/firebase-app-unity/13.1.0/firebase-app-unity-13.1.0.pom</file>
+  </files>
   <settings>
     <setting name="androidAbis" value="arm64-v8a,armeabi-v7a" />
-    <setting name="bundleId" value="com.DefaultCompany.DynamicBlock" />
+    <setting name="bundleId" value="com.NinePuzzle.DynamicBlock" />
     <setting name="explodeAars" value="True" />
     <setting name="gradleBuildEnabled" value="True" />
     <setting name="gradlePropertiesTemplateEnabled" value="True" />
