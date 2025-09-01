@@ -219,7 +219,11 @@ public readonly struct LinesCleared
     public LinesCleared(int rows, int cols) { this.rows = rows; this.cols = cols; this.total = rows + cols; }
 }
 public readonly struct GridReady { public readonly int rows, cols; public GridReady(int r, int c) { rows = r; cols = c; } }
-public readonly struct GameResetRequest { }   // 버튼 → 요청
+public readonly struct GameResetRequest
+{
+    public readonly string targetPanel; // "Game" or "Main" (필수)
+    public GameResetRequest(string targetPanel) { this.targetPanel = targetPanel; }
+}
 public readonly struct GameResetting { }      // 리셋 시작(입력잠금/모달닫기 등)
 public readonly struct GameResetDone { }      // 리셋 완료(입력해제/패널 복구 등)
 public readonly struct SplashFinish { }        // 스플래시 종료 트리거
