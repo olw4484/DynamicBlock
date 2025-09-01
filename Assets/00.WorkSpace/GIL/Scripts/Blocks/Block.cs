@@ -76,6 +76,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             if(TouchGate.GetTouchID() != eventData.pointerId) return;
             
+            BlockSpawnManager.Instance?.ClearPreview();
+            
             _isDragging = false;
             
             _shapeTransform.localScale = shapeSelectedScale;

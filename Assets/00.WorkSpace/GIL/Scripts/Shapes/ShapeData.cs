@@ -18,8 +18,7 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         private void OnValidate()
         {
             int count = GetActiveShapeCount();
-            chanceForSpawn = count;
-            activeBlockCount = count;
+            chanceForSpawn = activeBlockCount = count;
         }
 
         private int GetActiveShapeCount()
