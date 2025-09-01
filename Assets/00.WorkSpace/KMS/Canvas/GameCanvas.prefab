@@ -1682,7 +1682,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &6683641336735181916
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1818,7 +1818,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scoreText: {fileID: 4393052283992635256}
-  comboText: {fileID: 0}
+  comboText: {fileID: 7128788006672119246}
 --- !u!1 &970740106358998353
 GameObject:
   m_ObjectHideFlags: 0
