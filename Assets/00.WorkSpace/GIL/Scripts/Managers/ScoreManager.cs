@@ -15,6 +15,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public int Score => _score;
         public int Combo { get; private set; }
 
+        private bool _handHadClear = false; // 이번 세트(3개) 동안 한 번이라도 줄 제거가 있었는가
+
         public int comboCount
         {
             get => Combo;
@@ -50,6 +52,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             _score = 0;
             Combo = 0;
+            _handHadClear = false; // 콤보 초기화
             PublishScore();
             PublishCombo();
         }
@@ -78,32 +81,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (clearedLines == 0)
             {
                 AddScore(blockUnits);
-                SetCombo(0);
+                // SetCombo(0); // 콤보 유지가 필요 없을 경우 주석 해제
                 return;
             }
 
             int tier = (comboAtStart <= 4) ? 0 : (comboAtStart <= 9 ? 1 : 2); // 0,1,2
             int w = 2 + tier; // 2,3,4
 
-            int bonus;
-            if (clearedLines == 1)
-            {
-                int[] oneNum = { 1, 3, 2 };
-                int[] oneDen = { 1, 2, 1 };
-                bonus = baseScore * oneNum[tier] / oneDen[tier];
-            }
-            else if (clearedLines == 2)
-            {
-                int[] twoMul = { 2, 3, 4 };
-                bonus = baseScore * twoMul[tier];
-            }
-            else
-            {
-                bonus = baseScore * w * 3 * (clearedLines - 2);
-            }
+            int bonus = CalcBonus(baseScore, comboAtStart, clearedLines);
 
             AddScore(blockUnits + bonus);
             SetCombo(comboAtStart + 1);
+
+            _handHadClear = true;
         }
 
         // 기존 API는 위임
@@ -113,6 +103,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             ApplyMoveScore(0, lineCount);
         }
 
+        public void OnHandRefilled()
+        {
+            if (!_handHadClear)
+                SetCombo(0);   // 이번 세트(3개) 동안 한 번도 줄 제거가 없었으면 콤보 리셋
+
+            _handHadClear = false; // 다음 세트를 위해 플래그 초기화
+        }
 
         // =============== 내부 API ===============
         void PublishScore()
@@ -130,6 +127,28 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             var e = new ComboChanged(Combo);
             _bus.PublishSticky(e, alsoEnqueue: false);
             _bus.PublishImmediate(e);
+        }
+
+        private int CalcBonus(int baseScore, int comboAtStart, int clearedLines)
+        {
+            int tier = (comboAtStart <= 4) ? 0 : (comboAtStart <= 9 ? 1 : 2); // 0,1,2
+            int w = 2 + tier; // 2,3,4
+
+            if (clearedLines == 1)
+            {
+                int[] num = { 1, 3, 2 }; // 1, 1.5, 2
+                int[] den = { 1, 2, 1 };
+                return baseScore * num[tier] / den[tier];
+            }
+            else if (clearedLines == 2)
+            {
+                int[] mul = { 2, 3, 4 };
+                return baseScore * mul[tier];
+            }
+            else
+            {
+                return baseScore * w * 3 * (clearedLines - 2);
+            }
         }
 
         private void UpdateScoreUI()

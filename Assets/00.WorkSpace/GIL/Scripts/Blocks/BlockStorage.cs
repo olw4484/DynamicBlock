@@ -302,12 +302,17 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void OnBlockPlaced(Block placedBlock)
         {
             _currentBlocks.Remove(placedBlock);
-            
+
             CheckGameOver();
-            
+
             if (_currentBlocks.Count == 0)
             {
+                // 리필 실행
                 GenerateAllBlocks();
+
+                // 리필 직후: 이번 세트 평가 → 클리어 없었으면 콤보 0
+                if (ScoreManager.Instance != null)
+                    ScoreManager.Instance.OnHandRefilled();
             }
         }
 
