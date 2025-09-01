@@ -16,7 +16,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         [Header("Pointer")] 
         public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
         public Vector2 selectedOffset = new Vector2(0f, 500f);
-        
+        public float editorOffset = -200f;
         private Vector3 _shapeStartScale;
         private RectTransform _shapeTransform;
         private Canvas _canvas;
@@ -33,6 +33,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _canvas = GetComponentInParent<Canvas>();
             _startPosition = _shapeTransform.localPosition;
             _shapeStartScale = _shapeTransform.localScale;
+#if UNITY_EDITOR
+            selectedOffset.y += editorOffset;
+#endif
         }
         
         public void GenerateBlock(ShapeData shapeData)
