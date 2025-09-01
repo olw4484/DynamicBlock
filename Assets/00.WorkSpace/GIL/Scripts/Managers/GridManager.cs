@@ -157,53 +157,46 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             ClearHoverPreview();
 
+
+            // 블록 이미지/점유 처리
+            Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>().sprite;
+
             if (!TryGetPlacement(shapeBlocks, out var targetSquares))
                 return false;
 
-            var targetImage = shapeBlocks[0].GetComponent<UnityEngine.UI.Image>()?.sprite;
             foreach (var square in targetSquares)
                 SetCellOccupied(square.RowIndex, square.ColIndex, true, targetImage);
 
-            CheckForCompletedLines();
+            // 이번에 배치한 블록 칸 수(블록 자체 점수로 사용)
+            int blockUnits = targetSquares.Count;
+
+            CheckForCompletedLines(blockUnits);
             return true;
         }
 
-        private void CheckForCompletedLines()
+        private void CheckForCompletedLines(int blockUnits)
         {
             if (gridSquares == null || gridStates == null) return;
 
             List<int> completedCols = new();
             List<int> completedRows = new();
 
+            // 가로 체크
             for (int row = 0; row < rows; row++)
             {
                 bool complete = true;
                 for (int col = 0; col < cols; col++)
-                {
-                    if (!gridStates[row, col])
-                    {
-                        complete = false;
-                        break;
-                    }
-                }
-
-                if (complete)
-                    completedRows.Add(row);
+                    if (!gridStates[row, col]) { complete = false; break; }
+                if (complete) completedRows.Add(row);
             }
+
+            // 세로 체크
             for (int col = 0; col < cols; col++)
             {
                 bool complete = true;
                 for (int row = 0; row < rows; row++)
-                {
-                    if (!gridStates[row, col])
-                    {
-                        complete = false;
-                        break;
-                    }
-                }
-
-                if (complete)
-                    completedCols.Add(col);
+                    if (!gridStates[row, col]) { complete = false; break; }
+                if (complete) completedCols.Add(col);
             }
 
             _lineCount = completedRows.Count + completedCols.Count;
@@ -211,15 +204,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (_bus != null && _lineCount > 0)
                 _bus.Publish(new LinesCleared(completedRows.Count, completedCols.Count));
 
-            if (_lineCount == 0)
-            {
-                ScoreManager.Instance.SetCombo(0);
-                return;
-            }
+            // 여기서 콤보 조작/점수 가산을 직접 하지 말고 ScoreManager에 위임
+            ScoreManager.Instance.ApplyMoveScore(blockUnits, _lineCount);
 
-            ScoreManager.Instance.SetCombo(ScoreManager.Instance.Combo + _lineCount);
-            ScoreManager.Instance.CalculateLineClearScore(_lineCount);
-
+            // 라인 클리어 반영(이펙트/비우기)
             foreach (int row in completedRows)
             {
                 ActiveClearEffectLine(row, true);

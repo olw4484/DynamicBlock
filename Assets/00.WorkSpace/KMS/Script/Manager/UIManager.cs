@@ -110,9 +110,11 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<ScoreChanged>(e =>{if (_scoreText) _scoreText.text = FormatScore(e.value);}, replaySticky: true);
         _bus.Subscribe<ComboChanged>(e =>{if (_comboText) _comboText.text = $"x{e.value}";}, replaySticky: true);
 
-        _bus.Subscribe<GameDataChanged>(e => {
+        _bus.Subscribe<GameDataChanged>(e =>
+        {
             _lastHighScore = e.data.highScore;
             if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+            Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
         }, replaySticky: true);
 
         _bus.Subscribe<GameOver>(e =>

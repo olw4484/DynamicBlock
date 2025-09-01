@@ -142,7 +142,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (_gameOverFired) { Debug.Log("[GameOver] blocked by guard"); return; }
             _gameOverFired = true;
 
-            int score = ScoreManager.Instance != null ? ScoreManager.Instance.Score
+            int score = ScoreManager.Instance ? ScoreManager.Instance.Score
                        : (Game.GM != null ? Game.GM.Score : 0);
 
             Game.Bus.PublishSticky(new GameOver(score, reason));

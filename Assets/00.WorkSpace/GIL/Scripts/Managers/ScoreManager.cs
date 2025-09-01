@@ -67,18 +67,52 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             PublishCombo();
         }
 
+        public void ApplyMoveScore(int blockUnits, int clearedLines)
+        {
+            if (blockUnits < 0) blockUnits = 0;
+            if (clearedLines < 0) clearedLines = 0;
 
+            int comboAtStart = Combo;
+            int baseScore = (comboAtStart + 1) * 10;
+
+            if (clearedLines == 0)
+            {
+                AddScore(blockUnits);
+                SetCombo(0);
+                return;
+            }
+
+            int tier = (comboAtStart <= 4) ? 0 : (comboAtStart <= 9 ? 1 : 2); // 0,1,2
+            int w = 2 + tier; // 2,3,4
+
+            int bonus;
+            if (clearedLines == 1)
+            {
+                int[] oneNum = { 1, 3, 2 };
+                int[] oneDen = { 1, 2, 1 };
+                bonus = baseScore * oneNum[tier] / oneDen[tier];
+            }
+            else if (clearedLines == 2)
+            {
+                int[] twoMul = { 2, 3, 4 };
+                bonus = baseScore * twoMul[tier];
+            }
+            else
+            {
+                bonus = baseScore * w * 3 * (clearedLines - 2);
+            }
+
+            AddScore(blockUnits + bonus);
+            SetCombo(comboAtStart + 1);
+        }
+
+        // 기존 API는 위임
+        [Obsolete("Use ApplyMoveScore(blockUnits, clearedLines).")]
         public void CalculateLineClearScore(int lineCount)
         {
-            if (lineCount <= 0) return;
-
-            int combo = Combo;
-            int mul = combo <= 4 ? 2 : (combo <= 9 ? 3 : 4);
-            int baseLines = Mathf.Clamp(lineCount - 2, 1, Int32.MaxValue);
-
-            int clearScore = (combo + 1) * 10 * (mul * baseLines * 3);
-            AddScore(clearScore);
+            ApplyMoveScore(0, lineCount);
         }
+
 
         // =============== 내부 API ===============
         void PublishScore()
