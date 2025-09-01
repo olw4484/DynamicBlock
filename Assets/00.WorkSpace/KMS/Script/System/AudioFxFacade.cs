@@ -4,19 +4,32 @@ using UnityEngine;
 
 public sealed class AudioFxFacade : MonoBehaviour
 {
-    [SerializeField] int soundBudget = 5, effectBudget = 5;
-    private PhaseBuffer<SoundEvent> _snd = new();
-    private PhaseBuffer<EffectEvent> _fx = new();
+    [SerializeField] private SoundLane soundLane;
+    [SerializeField] private EffectLane effectLane;
 
-    public void EnqueueSound(int id, int delay = 0) => _snd.Enqueue(new SoundEvent(id, delay), delay);
-    public void EnqueueEffect(int id, Vector3 p, int delay = 0) => _fx.Enqueue(new EffectEvent(id, p, delay), delay);
+    public void EnqueueSound(int id, int delay = 0) =>
+        soundLane.Enqueue(new SoundEvent(id, delay));
 
-    void Update() { _snd.TickBegin(); _fx.TickBegin(); }
+    public void EnqueueEffect(int id, Vector3 pos, int delay = 0) =>
+        effectLane.Enqueue(new EffectEvent(id, pos, delay));
+
+    void Update()
+    {
+        // 프레임 시작 동기화
+        soundLane.TickBegin();
+        effectLane.TickBegin();
+    }
+
     void LateUpdate()
     {
-        _fx.Consume(effectBudget, PlayEffect);   // 이펙트 먼저
-        _snd.Consume(soundBudget, PlaySound);    // 그다음 사운드
+        // 페이즈 순서 보장: 이펙트 → 사운드
+        effectLane.Consume();
+        soundLane.Consume();
     }
-    void PlaySound(SoundEvent e) { /* AudioSourcePool.Get→Play→Release */ }
-    void PlayEffect(EffectEvent e) { /* EffectPool.Get(id)→Play→Release */ }
+
+    public void ClearAll()
+    {
+        soundLane.ClearAll();
+        effectLane.ClearAll();
+    }
 }
