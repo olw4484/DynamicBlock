@@ -11,8 +11,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [Header("Resources")] 
         [SerializeField] private string resourcesPath = "Shapes";
-        
         [SerializeField] private List<ShapeData> shapeData;
+        
+        [Header("Small block Penalty")] 
+        [SerializeField] private bool smallBlockPenaltyMode = true; // 켜/끄기
+        [SerializeField, Range(0f, 1f)] private float smallBlockFailRate = 0.5f; // 기본 50%
+        [SerializeField]private int smallBlockTileThreshold = 3;
+        
         private int[] _cumulativeWeights;
         private int[] _inverseCumulativeWeights;
         private int _totalWeight;
@@ -47,16 +52,48 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
         
         /// <summary>
-        /// 가중치 기반으로 블럭 생성
+        /// 가중치 기반으로 블럭 생성, 3개 이하 블럭에 대해서는 별도의 생성 확률 적용
         /// </summary>
         public List<ShapeData> GenerateBasicWave(int count)
         {
             var result = new List<ShapeData>(count);
 
+            // 이번 웨이브에서 "소환 실패한 블록"은 이후 검색에서 제외
+            var excludedForThisWave = new HashSet<string>();
+
             for (int i = 0; i < count; i++)
             {
-                ShapeData shape = GetRandomShapeByWeight();
-                result.Add(shape);
+                ShapeData chosen = null;
+                int guard = 0; // 무한 루프 방지
+
+                while (chosen == null && guard++ < shapeData.Count)
+                {
+                    // 제외 목록 반영해서 가중치 추첨
+                    var pick = GetRandomShapeByWeightExcluding(excludedForThisWave);
+                    if (pick == null) break; // 전부 제외된 경우
+
+                    // 소형 여부를 activeBlockCount로 판정
+                    bool isSmall = pick.activeBlockCount <= smallBlockTileThreshold;
+
+                    if (smallBlockPenaltyMode && isSmall && Random.value < smallBlockFailRate)
+                    {
+                        // 소환 실패 → 이번 웨이브에서 제외하고 재검색
+                        excludedForThisWave.Add(pick.Id);
+                        continue;
+                    }
+
+                    // 성공
+                    chosen = pick;
+                }
+
+                // 그래도 못 뽑았으면 가중치 기반 생성 ( 발동할 일 매우 적음 )
+                if (chosen == null)
+                {
+                    Debug.LogWarning("모든 후보가 소형 페널티로 제외되어 가중치 강제 소환을 수행합니다.");                    
+                    chosen = GetRandomShapeByWeight();
+                }
+
+                result.Add(chosen);
             }
 
             return result;
@@ -95,12 +132,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (shapeData == null || shapeData.Count == 0) return null;
             if (_cumulativeWeights == null || _cumulativeWeights.Length != shapeData.Count) BuildCumulativeTable();
 
-            float r = Random.Range(0, Mathf.Max(1, _totalWeight));
+            int r = Random.Range(0, Mathf.Max(1, _totalWeight));
             for (int i = 0; i < _cumulativeWeights.Length; i++)
             {
                 if (r <= _cumulativeWeights[i])
                 {
-                    Debug.Log($"소환 인덱스 : {i}");
                     return shapeData[i];
                 }
             }
@@ -117,11 +153,36 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 보장 실패 시 기존과 동일하게 가중치 폴백
             return GetRandomShapeByWeight();
         }
+    
+        private ShapeData GetRandomShapeByWeightExcluding(HashSet<string> excludedIds)
+        {
+            if (shapeData == null || shapeData.Count == 0) return null;
 
+            int total = 0;
+            for (int i = 0; i < shapeData.Count; i++)
+            {
+                var s = shapeData[i];
+                if (excludedIds != null && excludedIds.Contains(s.Id)) continue;
+                total += s.chanceForSpawn;
+            }
+            if (total <= 0) return null;
+
+            int r = Random.Range(0, total);
+            int acc = 0;
+            for (int i = 0; i < shapeData.Count; i++)
+            {
+                var s = shapeData[i];
+                if (excludedIds != null && excludedIds.Contains(s.Id)) continue;
+                acc += s.chanceForSpawn;
+                if (r < acc) return s;
+            }
+            return null;
+        }
+        
         public bool CanPlaceShapeData(ShapeData shape)
         {
             var gm = GridManager.Instance;
-            var grid = gm.gridSquares;
+            var states = gm.gridStates;
 
             var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
             int shapeRows = maxY - minY + 1;
@@ -131,7 +192,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {
                 for (int xOff = 0; xOff <= gm.cols - shapeCols; xOff++)
                 {
-                    if (CanPlace(shape, minX, minY, shapeRows, shapeCols, grid, yOff, xOff))
+                    if (CanPlace(shape, minX, minY, shapeRows, shapeCols, states, yOff, xOff))
                         return true;
                 }
             }
@@ -140,13 +201,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
 
         private bool CanPlace(ShapeData shape, int minX, int minY, int shapeRows, int shapeCols,
-            GridSquare[,] grid, int yOffset, int xOffset)
+            bool[,] grid, int yOffset, int xOffset)
         {
             for (int y = 0; y < shapeRows; y++)
             for (int x = 0; x < shapeCols; x++)
             {
                 if (!shape.rows[y + minY].columns[x + minX]) continue;
-                if (grid[y + yOffset, x + xOffset].IsOccupied) return false;
+                if (grid[y + yOffset, x + xOffset]) return false;
             }
 
             return true;
