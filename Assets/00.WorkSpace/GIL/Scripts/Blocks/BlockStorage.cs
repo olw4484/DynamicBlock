@@ -21,11 +21,13 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         [SerializeField] private List<Transform> blockSpawnPosList;
         [SerializeField] private Transform shapesPanel;
-    
+
+        [Header("Block Placement Helper")] 
+        [SerializeField] private bool previewMode = true;
+        
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
-        private GridSquare[,] Grid => GridManager.Instance.gridSquares;
         
         // 게임 오버 1회만 발동 가드
         bool _gameOverFired;
@@ -89,19 +91,26 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             List<ShapeData> wave = BlockSpawnManager.Instance.GenerateBasicWave(blockSpawnPosList.Count);
             
+            var previewSprites = new List<Sprite>(blockSpawnPosList.Count);
+            
             for (int i = 0; i < blockSpawnPosList.Count; i++)
             {
                 var go = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
                 var block = go.GetComponent<Block>();
 
+                var sprite = shapeImageSprites[GetRandomImageIndex()];
                 // 이미지 세팅은 기존 그대로
-                block.shapePrefab.GetComponent<UnityEngine.UI.Image>().sprite = shapeImageSprites[GetRandomImageIndex()];
-
+                block.shapePrefab.GetComponent<Image>().sprite = sprite;
+                previewSprites.Add(sprite);
+                
                 ShapeData shape = wave[i];
                 
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
             }
+            
+            if(previewMode)
+                BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, previewSprites);
         }
 
         private int GetRandomImageIndex()

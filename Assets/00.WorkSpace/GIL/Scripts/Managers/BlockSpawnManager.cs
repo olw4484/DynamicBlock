@@ -5,6 +5,12 @@ using UnityEngine;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
+    public struct FitInfo
+    {
+        public Vector2Int offset;                 // 좌상단 오프셋 (col=x, row=y)
+        public List<GridSquare> coveredSquares;   // 이 배치로 덮게 될 셀들
+    }
+    
     public class BlockSpawnManager : MonoBehaviour
     {
         public static BlockSpawnManager Instance { get; private set; }
@@ -16,7 +22,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [Header("Small block Penalty")] 
         [SerializeField] private bool smallBlockPenaltyMode = true; // 켜/끄기
         [SerializeField, Range(0f, 1f)] private float smallBlockFailRate = 0.5f; // 기본 50%
-        [SerializeField]private int smallBlockTileThreshold = 3;
+        [SerializeField] private int smallBlockTileThreshold = 3;
         
         private int[] _cumulativeWeights;
         private int[] _inverseCumulativeWeights;
@@ -59,7 +65,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             var result = new List<ShapeData>(count);
 
             // 이번 웨이브에서 "소환 실패한 블록"은 이후 검색에서 제외
-            var excludedForThisWave = new HashSet<string>();
+            var excludedForThisWave = new HashSet<ShapeData>();
 
             for (int i = 0; i < count; i++)
             {
@@ -78,7 +84,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (smallBlockPenaltyMode && isSmall && Random.value < smallBlockFailRate)
                     {
                         // 소환 실패 → 이번 웨이브에서 제외하고 재검색
-                        excludedForThisWave.Add(pick.Id);
+                        excludedForThisWave.Add(pick);
                         continue;
                     }
 
@@ -143,18 +149,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             return shapeData[shapeData.Count - 1];
         }
-
-        private ShapeData GetGuaranteedPlaceableShape()
-        {
-            foreach (var s in shapeData)
-                if (CanPlaceShapeData(s))
-                    return s;
-
-            // 보장 실패 시 기존과 동일하게 가중치 폴백
-            return GetRandomShapeByWeight();
-        }
     
-        private ShapeData GetRandomShapeByWeightExcluding(HashSet<string> excludedIds)
+        private ShapeData GetRandomShapeByWeightExcluding(HashSet<ShapeData> excludedIds)
         {
             if (shapeData == null || shapeData.Count == 0) return null;
 
@@ -162,7 +158,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int i = 0; i < shapeData.Count; i++)
             {
                 var s = shapeData[i];
-                if (excludedIds != null && excludedIds.Contains(s.Id)) continue;
+                if (excludedIds != null && excludedIds.Contains(s)) continue;
                 total += s.chanceForSpawn;
             }
             if (total <= 0) return null;
@@ -172,7 +168,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int i = 0; i < shapeData.Count; i++)
             {
                 var s = shapeData[i];
-                if (excludedIds != null && excludedIds.Contains(s.Id)) continue;
+                if (excludedIds != null && excludedIds.Contains(s)) continue;
                 acc += s.chanceForSpawn;
                 if (r < acc) return s;
             }
@@ -234,9 +230,122 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {
                 minX = minY = 0;
                 maxX = maxY = 0;
-            } // 빈 데이터 방어
+            }
 
             return (minX, maxX, minY, maxY);
+        }
+
+        /// <summary>
+        /// 현 보드(실제 상태 기준)에서 shape를 놓을 수 있는 모든 위치 중
+        /// '겹치지 않는' 하나를 찾아 반환 (좌상단 우선). 못 찾으면 false.
+        /// </summary>
+        public bool TryFindOneFit(ShapeData shape, bool[,] virtualBoard, out FitInfo fit)
+        {
+            fit = default;
+            var gm = GridManager.Instance;
+            var squares = gm.gridSquares;
+
+            // 경계 상자
+            var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
+            int shRows = maxY - minY + 1, shCols = maxX - minX + 1;
+
+            for (int oy = 0; oy <= gm.rows - shRows; oy++)
+            {
+                for (int ox = 0; ox <= gm.cols - shCols; ox++)
+                {
+                    bool ok = true;
+                    var list = new List<GridSquare>(8);
+
+                    for (int y = 0; y < shRows && ok; y++)
+                    for (int x = 0; x < shCols; x++)
+                    {
+                        if (!shape.rows[y + minY].columns[x + minX]) continue;
+
+                        // 실제/가상 보드 중 가상 보드 우선(중복 방지)
+                        bool occupied = virtualBoard != null
+                            ? virtualBoard[oy + y, ox + x]
+                            : squares[oy + y, ox + x].IsOccupied;
+
+                        if (occupied) { ok = false; break; }
+                        list.Add(squares[oy + y, ox + x]);
+                    }
+
+                    if (ok)
+                    {
+                        fit = new FitInfo { offset = new Vector2Int(ox, oy), coveredSquares = list };
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        
+
+        /// <summary>
+        /// 웨이브 전체에 대해 겹치지 않는 위치를 계산하고 Hover로 표시.
+        /// 같은 셀 중복 하이라이트를 막기 위해 가상보드에 순차 점유 마킹.
+        /// </summary>
+        public void PreviewWaveNonOverlapping(List<ShapeData> wave, List<Sprite> spritesOrNull)
+        {
+            ClearPreview();
+
+            var gm = GridManager.Instance;
+            var rows = gm.rows; 
+            var cols = gm.cols;
+            var squares = gm.gridSquares;
+
+            // 가상 보드: 현재 점유 상태를 복사하고, 미리보기로 선점한 칸은 true로 마킹
+            var virtualBoard = new bool[rows, cols];
+            for (int row = 0; row < rows; row++)
+                for (int col = 0; col < cols; col++)
+                    virtualBoard[row, col] = squares[row, col].IsOccupied;
+
+            for (int i = 0; i < wave.Count; i++)
+            {
+                if (wave[i] == null) continue;
+                if (TryFindOneFit(wave[i], virtualBoard, out var fit))
+                {
+                    // 스프라이트는 선택 사항: null이면 그리드의 기본 hover이미지로 표시됨
+                    var sprite = (spritesOrNull != null && i < spritesOrNull.Count) ? spritesOrNull[i] : null;
+                    ApplyPreview(fit, sprite);
+
+                    // 가상보드 점유 마킹(다음 블록 프리뷰가 겹치지 않게)
+                    foreach (var sq in fit.coveredSquares)
+                        virtualBoard[sq.RowIndex, sq.ColIndex] = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 지정된 배치의 셀들을 Hover 상태로 표시(점유 갱신 X)
+        /// </summary>
+        private void ApplyPreview(FitInfo fit, Sprite spriteOrNull)
+        {
+            foreach (var sq in fit.coveredSquares)
+            {
+                if (spriteOrNull != null) 
+                    sq.SetImage(spriteOrNull);
+                if (!sq.IsOccupied) 
+                    sq.SetState(GridState.Hover); // Hover 이미지를 켬
+            }
+        }
+
+        /// <summary>
+        /// 현재 보드에서 점유되지 않은 셀들의 Hover를 모두 해제
+        /// </summary>
+        public void ClearPreview()
+        {
+            var gm = GridManager.Instance;
+            var squares = gm.gridSquares;
+            for (int r = 0; r < gm.rows; r++)
+            {
+                for (int c = 0; c < gm.cols; c++)
+                {
+                    if (!squares[r, c].IsOccupied)
+                        squares[r, c].SetState(GridState.Normal);
+                }
+            }
         }
     }
 }
