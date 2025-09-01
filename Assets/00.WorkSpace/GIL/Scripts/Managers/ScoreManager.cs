@@ -11,6 +11,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [Header("Score Text")]
         [SerializeField] private TMP_Text scoreText;
+        [SerializeField] private TMP_Text comboText;
         private int _score = 0;
         public int Score => _score;
         public int Combo { get; private set; }
@@ -123,6 +124,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         void PublishCombo()
         {
+            if (comboText) comboText.text = $"Combo : {Combo}";
             if (_bus == null) return;
             var e = new ComboChanged(Combo);
             _bus.PublishSticky(e, alsoEnqueue: false);
