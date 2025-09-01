@@ -60,27 +60,27 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             scoreField.RegisterValueChangedCallback(evt => { _target.scoreForSpawn = evt.newValue; });
             classicContainer.Add(scoreField);
             
-            var sliderContainer = new VisualElement { name = "slider-container" };
-            sliderContainer.style.flexDirection = FlexDirection.Row;
-            var chanceField = new SliderInt("Spawn Weight", 0, 4) { value = _target.chanceForSpawn };
-            var chanceValue = new IntegerField { value = _target.chanceForSpawn };
-            chanceValue.style.marginLeft = 10;
-            chanceValue.RegisterValueChangedCallback(evt => { chanceField.value = evt.newValue; });
-            chanceField.RegisterValueChangedCallback(evt =>
-            {
-                chanceValue.value = evt.newValue;
-                _target.chanceForSpawn = evt.newValue;
-            });
-            
-            chanceField.style.width = 250;
-            chanceField.RegisterValueChangedCallback(evt =>
-            {
-                _target.chanceForSpawn = evt.newValue;
-                EditorUtility.SetDirty(_target);
-            });
-            sliderContainer.Add(chanceField);
-            sliderContainer.Add(chanceValue);
-            root.Add(sliderContainer);
+            // var sliderContainer = new VisualElement { name = "slider-container" };
+            // sliderContainer.style.flexDirection = FlexDirection.Row;
+            // var chanceField = new SliderInt("Spawn Weight", 0, 4) { value = _target.chanceForSpawn };
+            // var chanceValue = new IntegerField { value = _target.chanceForSpawn };
+            // chanceValue.style.marginLeft = 10;
+            // chanceValue.RegisterValueChangedCallback(evt => { chanceField.value = evt.newValue; });
+            // chanceField.RegisterValueChangedCallback(evt =>
+            // {
+            //     chanceValue.value = evt.newValue;
+            //     _target.chanceForSpawn = evt.newValue;
+            // });
+            //
+            // chanceField.style.width = 250;
+            // chanceField.RegisterValueChangedCallback(evt =>
+            // {
+            //     _target.chanceForSpawn = evt.newValue;
+            //     EditorUtility.SetDirty(_target);
+            // });
+            // sliderContainer.Add(chanceField);
+            // sliderContainer.Add(chanceValue);
+            // root.Add(sliderContainer);
             
             root.Add(classicContainer);
 
