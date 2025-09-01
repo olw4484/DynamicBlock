@@ -1,12 +1,13 @@
 using UnityEngine;
 namespace _00.WorkSpace.GIL.Scripts.Gizmos
 {
+#if UNITY_EDITOR
     [RequireComponent(typeof(BoxCollider2D))]
     public class BoxColliderGizmoDrawer : MonoBehaviour
     {
 
         [SerializeField] private Color gizmoColor = Color.green;
-#if UNITY_EDITOR
+
         private void OnDrawGizmos()
         {
             var col = GetComponent<BoxCollider2D>();

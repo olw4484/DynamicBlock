@@ -81,6 +81,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             _isDragging = true;
             MoveBlock(eventData);
+
+            var shapeBlocks = new List<Transform>();
+            foreach (Transform child in transform)
+                if (child.gameObject.activeSelf) shapeBlocks.Add(child);
+
+            GridManager.Instance.UpdateHoverPreview(shapeBlocks);
         }
         
         
@@ -106,15 +112,17 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
 
-                int placedCount = 0;
-                foreach (Transform child in shapeBlocks)
-                {
-                    if (child.gameObject.activeSelf)
-                        placedCount++;
-                }
-                ScoreManager.Instance.AddScore(placedCount);
+                //int placedCount = 0;
+                //foreach (Transform child in shapeBlocks)
+                //{
+                //    if (child.gameObject.activeSelf)
+                //        placedCount++;
+                //}
+                //ScoreManager.Instance.AddScore(placedCount);
                 Destroy(gameObject);
             }
+            
+            GridManager.Instance.ClearHoverPreview();
         }
         public void OnPointerUp(PointerEventData eventData)
         {
@@ -122,6 +130,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             {
                 _shapeTransform.localPosition = _startPosition; 
                 _shapeTransform.localScale = _shapeStartScale; 
+                GridManager.Instance.ClearHoverPreview();
             }
         }
         
@@ -130,7 +139,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 _canvas.transform as RectTransform,
                 eventData.position,
-                eventData.pressEventCamera,
+                null,
                 out Vector2 localPos);
             
             _shapeTransform.localPosition = localPos + selectedOffset;
