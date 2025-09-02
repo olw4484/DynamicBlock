@@ -9,6 +9,7 @@ using UnityEngine.UI;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
+    [DefaultExecutionOrder(-10)]
     public class BlockStorage : MonoBehaviour, IRuntimeReset
     {
         #region Variables & Properties
@@ -78,8 +79,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void GenerateAllBlocks()
         {
-            if (_paused) 
+            Debug.Log($"[Storage] >>> ENTER GenerateAllBlocks | paused={_paused} | " +
+                      $"spawnPos={(blockSpawnPosList == null ? -1 : blockSpawnPosList.Count)} | " +
+                      $"sprites={(shapeImageSprites == null ? -1 : shapeImageSprites.Count)} | " +
+                      $"hasSpawner={(BlockSpawnManager.Instance != null)} | this={GetInstanceID()}");
+
+            if (_paused)
+            {
+                Debug.LogWarning("[Storage] GenerateAllBlocks EARLY-RETURN: paused==true");
                 return;
+            }
 
             // 안전 정리
             for (int i = 0; i < _currentBlocks.Count; i++)
@@ -89,27 +98,43 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             _currentBlocks.Clear();
 
-            List<ShapeData> wave = BlockSpawnManager.Instance.GenerateBasicWave(blockSpawnPosList.Count);
-            
+            var spawner = BlockSpawnManager.Instance;
+            if (spawner == null) { Debug.LogError("[Storage] Spawner null"); return; }
+
+            var wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
+
+            if (wave == null || wave.Count == 0)
+            {
+                Debug.LogError("[Storage] Wave is null/empty. Rebuilding weights and retry.");
+                spawner.BuildWeightTable();
+                wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
+                if (wave == null || wave.Count == 0) return;
+            }
+
             var previewSprites = new List<Sprite>(blockSpawnPosList.Count);
-            
+
             for (int i = 0; i < blockSpawnPosList.Count; i++)
             {
+                var shape = (i < wave.Count) ? wave[i] : null;
+                if (shape == null)
+                {
+                    Debug.LogWarning($"[Storage] wave[{i}] is null → skip this slot.");
+                    continue; 
+                }
+
                 var go = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
                 var block = go.GetComponent<Block>();
+                if (block == null) { Debug.LogError("[Storage] Block component missing"); Destroy(go); continue; }
 
+                // 이미지 세팅
                 var sprite = shapeImageSprites[GetRandomImageIndex()];
-                // 이미지 세팅은 기존 그대로
                 block.shapePrefab.GetComponent<Image>().sprite = sprite;
-                previewSprites.Add(sprite);
-                
-                ShapeData shape = wave[i];
-                
+
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
             }
-            
-            if(previewMode)
+
+            if (previewMode)
                 BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, previewSprites);
         }
 
@@ -226,22 +251,20 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void OnGridReady(GridReady e)
         {
-            // 디듀프 가드: 같은 프레임/두 번 이상 호출 방지
+            Debug.Log($"[Storage] OnGridReady | before: paused={_paused}, initialized={_initialized}, this={GetInstanceID()}");
+
             if (_paused == false && _initialized)
             {
-                // 이미 정상 진행 중이면, 리셋·중복이 아닌 이상 굳이 재생성 안 함
+                Debug.Log("[Storage] OnGridReady SKIP: already running");
                 return;
             }
 
             _paused = false;
-
-            // 초기 한 번은 생성하도록 플래그만 세팅
             if (!_initialized) _initialized = true;
 
-            Debug.Log("[Storage] OnGridReady → GenerateAllBlocks()");
+            Debug.Log("[Storage] OnGridReady → call GenerateAllBlocks()");
             GenerateAllBlocks();
         }
-
 
         private void TryBindBus()
         {

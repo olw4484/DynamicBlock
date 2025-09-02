@@ -4,6 +4,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
+using LJJ;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -105,21 +106,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 ClearHoverPreview();
             }
         }
-        
+
         public void InitializeGridSquares(List<GridSquare> squareList, int rowCount, int colCount)
         {
-            rows = rowCount;
-            cols = colCount;
+            rows = rowCount; cols = colCount;
             gridSquares = new GridSquare[rows, cols];
             gridStates = new bool[rows, cols];
 
             foreach (var sq in squareList)
                 gridSquares[sq.RowIndex, sq.ColIndex] = sq;
 
-            // 스티키로 상태 저장
             _bus?.PublishSticky(new GridReady(rows, cols), alsoEnqueue: false);
-
-            // 즉시 한 번도 쏘기 — 단, BlockStorage에 디듀프 가드가 있어야 중복 생성되지 않음
             _bus?.PublishImmediate(new GridReady(rows, cols));
         }
         public void SetCellOccupied(int row, int col, bool occupied, Sprite occupiedImage = null)
@@ -228,6 +225,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void ActiveClearEffectLine(int index, bool isRow)
         {
             // TODO: 나중에 이펙트 / 사운드 추가
+            if(isRow)
+            { LJJ.GameEvents.OnBlockDestroyed?.Invoke(index, Color.white, true); }
+            else
+            { LJJ.GameEvents.OnBlockDestroyed?.Invoke(index, Color.white, false); }
         }
 
         public void SetDependencies(EventQueue bus)
