@@ -8,15 +8,15 @@ using UnityEngine.EventSystems;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragHandler, IPointerUpHandler
+    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
 
         [Header("Pointer")] 
         public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
-        public Vector2 selectedOffset = new Vector2(0f, 700f);
-        
+        public Vector2 selectedOffset = new Vector2(0f, 500f);
+        public float editorOffset = -200f;
         private Vector3 _shapeStartScale;
         private RectTransform _shapeTransform;
         private Canvas _canvas;
@@ -25,7 +25,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private ShapeData _currentShapeData;
 
         private bool _isDragging;
-        
+        private bool _startReady;
+
         private void Awake()
         {
             _shapeStartScale = GetComponent<RectTransform>().localScale;
@@ -33,10 +34,40 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _canvas = GetComponentInParent<Canvas>();
             _startPosition = _shapeTransform.localPosition;
             _shapeStartScale = _shapeTransform.localScale;
+#if UNITY_EDITOR
+            selectedOffset.y += editorOffset;
+#endif
         }
         
         public void GenerateBlock(ShapeData shapeData)
         {
+            if (shapeData == null)
+            {
+                Debug.LogError("[Block] shapeData is null");
+                return;
+            }
+
+            if (_shapeTransform == null)
+            {
+                if (shapePrefab != null)
+                    _shapeTransform = shapePrefab.GetComponent<RectTransform>();
+                if (_shapeTransform == null)
+                    _shapeTransform = GetComponentInChildren<RectTransform>(includeInactive: true);
+
+                if (_shapeTransform == null)
+                {
+                    Debug.LogError($"[Block] _shapeTransform not found on '{name}'. " +
+                                   $"Assign shapePrefab or _shapeTransform in prefab.");
+                    return;
+                }
+            }
+
+            if (!_startReady)
+            {
+                _startPosition = _shapeTransform.localPosition;
+                _startReady = true;
+            }
+
             _shapeTransform.localPosition = _startPosition;
             _currentShapeData = shapeData;
             CreateBlock(shapeData);
@@ -69,9 +100,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void OnPointerDown(PointerEventData eventData)
         {
+            if(TouchGate.GetTouchID() == int.MinValue) TouchGate.SetTouchID(eventData.pointerId);
+            
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
+            BlockSpawnManager.Instance?.ClearPreview();
+            
             _isDragging = false;
             
-            _shapeTransform.localPosition = _startPosition + (Vector3)selectedOffset;
             _shapeTransform.localScale = shapeSelectedScale;
             
             MoveBlock(eventData);
@@ -79,6 +115,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void OnDrag(PointerEventData eventData)
         {
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
             _isDragging = true;
             MoveBlock(eventData);
 
@@ -91,8 +129,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         
         
-        public void OnEndDrag(PointerEventData eventData)
+        public void OnPointerUp(PointerEventData eventData)
         {
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
             List<Transform> shapeBlocks = new();
             foreach (Transform child in transform)
             {
@@ -124,25 +164,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             GridManager.Instance.ClearHoverPreview();
         }
-        public void OnPointerUp(PointerEventData eventData)
-        {
-            if (!_isDragging)
-            {
-                _shapeTransform.localPosition = _startPosition; 
-                _shapeTransform.localScale = _shapeStartScale; 
-                GridManager.Instance.ClearHoverPreview();
-            }
-        }
         
         private void MoveBlock(PointerEventData eventData)
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                _canvas.transform as RectTransform,
+                _shapeTransform.parent as RectTransform, 
                 eventData.position,
-                null,
+                 _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera,
                 out Vector2 localPos);
             
-            _shapeTransform.localPosition = localPos + selectedOffset;
+            _shapeTransform.anchoredPosition = localPos + (selectedOffset / _canvas.scaleFactor);
         }
         
         public ShapeData GetShapeData() => _currentShapeData;

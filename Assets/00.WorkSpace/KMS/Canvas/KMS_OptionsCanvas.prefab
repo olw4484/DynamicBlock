@@ -1786,10 +1786,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68ef6b8dfc9409c4293251e938943853, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  offKey: Options
-  onKey: Main
+  targetPanel: Main
+  closeModalFirst: 1
+  modalsToClose:
+  - Game
+  - Options
   cooldown: 0.12
-  viaEvent: 1
 --- !u!1 &3689581715059436605
 GameObject:
   m_ObjectHideFlags: 0
@@ -1973,10 +1975,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 7697879797323798192}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 241.445, y: -64.5}
-  m_SizeDelta: {x: 80, y: 80}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 80}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &6818643543433249692
 CanvasRenderer:
@@ -2478,10 +2480,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1443658464348661476}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 410, y: -64.5}
-  m_SizeDelta: {x: 116.99, y: 50}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3370755869691559567
 CanvasRenderer:
@@ -4963,10 +4965,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1443658464348661476}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 251.505, y: -64.5}
-  m_SizeDelta: {x: 80, y: 80}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 80}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &3631877445011276545
 CanvasRenderer:
@@ -5177,12 +5179,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 121a85491e4ed154db23a6942a8dc0e7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mode: 0
   closePanels:
   - Options
   - GameOver
+  openPanelAfter: Game
   gameplayScene: Gameplay
   cooldown: 0.12
-  useSceneEvent: 1
 --- !u!1 &8988647580363820498
 GameObject:
   m_ObjectHideFlags: 0
@@ -5215,10 +5218,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 7697879797323798192}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 410, y: -64.5}
-  m_SizeDelta: {x: 137.11, y: 50}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3395388897890429978
 CanvasRenderer:

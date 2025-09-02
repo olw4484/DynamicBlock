@@ -54,34 +54,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             
             var classicContainer = new VisualElement { style = { flexDirection = FlexDirection.Column, marginBottom = 5 } };
             classicContainer.Add(new Label("\nClassic Mode Parameters"));
-
-            var scoreField = new IntegerField("Score For Spawn") { value = _target.scoreForSpawn };
-            scoreField.style.width = 200;
-            scoreField.RegisterValueChangedCallback(evt => { _target.scoreForSpawn = evt.newValue; });
-            classicContainer.Add(scoreField);
-            
-            var sliderContainer = new VisualElement { name = "slider-container" };
-            sliderContainer.style.flexDirection = FlexDirection.Row;
-            var chanceField = new SliderInt("Spawn Weight", 0, 4) { value = _target.chanceForSpawn };
-            var chanceValue = new IntegerField { value = _target.chanceForSpawn };
-            chanceValue.style.marginLeft = 10;
-            chanceValue.RegisterValueChangedCallback(evt => { chanceField.value = evt.newValue; });
-            chanceField.RegisterValueChangedCallback(evt =>
-            {
-                chanceValue.value = evt.newValue;
-                _target.chanceForSpawn = evt.newValue;
-            });
-            
-            chanceField.style.width = 250;
-            chanceField.RegisterValueChangedCallback(evt =>
-            {
-                _target.chanceForSpawn = evt.newValue;
-                EditorUtility.SetDirty(_target);
-            });
-            sliderContainer.Add(chanceField);
-            sliderContainer.Add(chanceValue);
-            root.Add(sliderContainer);
-            
             root.Add(classicContainer);
 
             LoadShapes();

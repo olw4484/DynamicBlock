@@ -1,4 +1,7 @@
+using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Managers;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 // ================================
@@ -10,11 +13,19 @@ using UnityEngine;
 [AddComponentMenu("System/GameBootstrap")]
 public class GameBootstrap : MonoBehaviour
 {
+    [SerializeField] private GridManager gridManager;
+    [SerializeField] private Transform gridRoot;
+
     private void Awake()
     {
         var group = ManagerGroup.Instance
               ?? new GameObject("ManagerGroup").AddComponent<ManagerGroup>();
         DontDestroyOnLoad(group.gameObject);
+
+        if (gridManager == null)
+            throw new System.Exception("[Bootstrap] GridManager reference missing");
+        if (gridRoot == null)
+            throw new System.Exception("[Bootstrap] GridRoot reference missing");
 
         // 순수 C# 매니저
         var bus = new EventQueue();           // 0
@@ -23,8 +34,8 @@ public class GameBootstrap : MonoBehaviour
         var audio = new NullSoundManager();     // 50
 
         // 씬 오브젝트 보장 (없으면 생성)
-        var input = EnsureInScene<InputManager>("InputManager"); // 30
-        var ui = EnsureInScene<UIManager>("UIManager");       // 100
+        var ui = EnsureInScene<UIManager>("UIManager");
+        var input = EnsureInScene<InputManager>("InputManager");
 
         // 레거시 세이브 매니저 확보(없으면 생성)
         var legacySave = FindFirstObjectByType<SaveManager>()
@@ -35,9 +46,9 @@ public class GameBootstrap : MonoBehaviour
         var saveAdapter = new SaveServiceAdapter();              // 40
         saveAdapter.SetDependencies(bus, legacySave);
 
-        // GridManager는 씬 상주
-        var grid = FindFirstObjectByType<GridManager>();
-        if (grid != null) grid.SetDependencies(bus);
+        // spawnerManager
+        var spawner = EnsureInScene<BlockSpawnManager>("BlockSpawnManager");
+        spawner.SetDependencies(bus);
 
         // DI
         scene.SetDependencies(bus);
@@ -47,6 +58,7 @@ public class GameBootstrap : MonoBehaviour
         // 등록 (Order로 정렬되므로 순서는 크게 무관)
         group.Register(bus);
         group.Register(game);
+        group.Register(spawner);
         group.Register(scene);
         group.Register(input);
         group.Register(saveAdapter);
@@ -57,7 +69,18 @@ public class GameBootstrap : MonoBehaviour
         group.Initialize();
         var report = Game.Bind(group);
         Debug.Log(report.Detail);
-    }
+
+        var squares = new List<GridSquare>();
+        gridRoot.GetComponentsInChildren(includeInactive: true, result: squares);
+
+        int maxR = -1, maxC = -1;
+        foreach (var s in squares)
+        {
+            maxR = Mathf.Max(maxR, s.RowIndex);
+            maxC = Mathf.Max(maxC, s.ColIndex);
+        }
+        gridManager.InitializeGridSquares(squares, maxR + 1, maxC + 1);
+}
 
     static T EnsureInScene<T>(string name = null) where T : Component
     {

@@ -11,9 +11,29 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         public ShapeRow[] rows = new ShapeRow[5];
 
         [Header("Classic Mode")]
-        public int scoreForSpawn = 1;
-        public int chanceForSpawn = 1;
+        public int chanceForSpawn;
+        public int activeBlockCount;
 
+
+        private void OnValidate()
+        {
+            int count = GetActiveShapeCount();
+            chanceForSpawn = activeBlockCount = count;
+        }
+
+        private int GetActiveShapeCount()
+        {
+            if (rows == null) return 0;
+            int count = 0;
+            for (int i = 0; i < 5; i++)
+            {
+                var row = rows[i];
+                if (row?.columns == null) continue;
+                for (int x = 0; x < 5; x++)
+                    if (row.columns[x]) count++;
+            }
+            return count;
+        }
         private void OnEnable()
         {
             if (rows == null || rows.Length != 5)
@@ -29,7 +49,7 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         }
     }
 
-    [Serializable]
+    [Serializable]                                                                                                                                     
     public class ShapeRow
     {
         public bool[] columns = new bool[5];

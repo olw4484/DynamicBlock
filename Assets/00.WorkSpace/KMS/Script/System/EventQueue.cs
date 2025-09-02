@@ -219,9 +219,28 @@ public readonly struct LinesCleared
     public LinesCleared(int rows, int cols) { this.rows = rows; this.cols = cols; this.total = rows + cols; }
 }
 public readonly struct GridReady { public readonly int rows, cols; public GridReady(int r, int c) { rows = r; cols = c; } }
-public readonly struct GameResetRequest { }   // 버튼 → 요청
+public readonly struct GameResetRequest
+{
+    public readonly string targetPanel; // "Game" or "Main" (필수)
+    public GameResetRequest(string targetPanel) { this.targetPanel = targetPanel; }
+}
 public readonly struct GameResetting { }      // 리셋 시작(입력잠금/모달닫기 등)
 public readonly struct GameResetDone { }      // 리셋 완료(입력해제/패널 복구 등)
 public readonly struct SplashFinish { }        // 스플래시 종료 트리거
 public readonly struct SplashSkipRequest { }   // 사용자가 탭으로 스킵 요청
 public readonly struct PreloadDone { }         // 에셋 프리로드가 끝났을 때 발행
+public readonly struct SoundEvent
+{
+    public readonly int id;
+    public readonly int delay; // delayFrames
+    public SoundEvent(int id, int delay = 0) { this.id = id; this.delay = delay; }
+}
+
+public readonly struct EffectEvent
+{
+    public readonly int id;
+    public readonly UnityEngine.Vector3 pos;
+    public readonly int delay; // delayFrames
+    public EffectEvent(int id, UnityEngine.Vector3 pos, int delay = 0)
+    { this.id = id; this.pos = pos; this.delay = delay; }
+}
