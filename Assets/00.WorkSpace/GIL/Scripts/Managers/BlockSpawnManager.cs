@@ -2,13 +2,15 @@ using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
+using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
     public struct FitInfo
     {
-        public Vector2Int offset;                 // 좌상단 오프셋 (col=x, row=y)
-        public List<GridSquare> coveredSquares;   // 이 배치로 덮게 될 셀들
+        public Vector2Int Offset;                 // 좌상단 오프셋 (col=x, row=y)
+        public List<GridSquare> CoveredSquares;   // 이 배치로 덮게 될 셀들
     }
     
     public class BlockSpawnManager : MonoBehaviour
@@ -23,6 +25,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private bool smallBlockPenaltyMode = true; // 켜/끄기
         [SerializeField, Range(0f, 1f)] private float smallBlockFailRate = 0.5f; // 기본 50%
         [SerializeField] private int smallBlockTileThreshold = 3;
+
+        [Header("Wave Rules")] 
+        [SerializeField, Range(1, 3)] private int maxDuplicatesPerWave = 2;
         
         private int[] _cumulativeWeights;
         private int[] _inverseCumulativeWeights;
@@ -37,7 +42,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             BuildWeightTable();
         }
-        
+
         private void Init()
         {
             if (Instance == null)
@@ -63,10 +68,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public List<ShapeData> GenerateBasicWave(int count)
         {
             var result = new List<ShapeData>(count);
-
-            // 이번 웨이브에서 "소환 실패한 블록"은 이후 검색에서 제외
-            var excludedForThisWave = new HashSet<ShapeData>();
-
+            
+            // 이번 웨이브에서 "소환 실패한 블록" 은 이후 검색에서 제외
+            var excludedByPenalty = new HashSet<string>();
+            var excludedByDupes = new HashSet<string>();
+            var perShapeCount = new Dictionary<string, int>();
+            
             for (int i = 0; i < count; i++)
             {
                 ShapeData chosen = null;
@@ -75,36 +82,77 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 while (chosen == null && guard++ < shapeData.Count)
                 {
                     // 제외 목록 반영해서 가중치 추첨
-                    var pick = GetRandomShapeByWeightExcluding(excludedForThisWave);
+                    var pick = GetRandomShapeByWeightExcluding(excludedByPenalty, excludedByDupes);
                     if (pick == null) break; // 전부 제외된 경우
 
                     // 소형 여부를 activeBlockCount로 판정
                     bool isSmall = pick.activeBlockCount <= smallBlockTileThreshold;
-
                     if (smallBlockPenaltyMode && isSmall && Random.value < smallBlockFailRate)
                     {
                         // 소환 실패 → 이번 웨이브에서 제외하고 재검색
-                        excludedForThisWave.Add(pick);
+                        excludedByPenalty.Add(pick.Id);
                         continue;
                     }
 
                     // 성공
                     chosen = pick;
                 }
-
-                // 그래도 못 뽑았으면 가중치 기반 생성 ( 발동할 일 매우 적음 )
+                // 소형 패널티는 무시하지만, 중복 한도 제외는 반드시 시킴
                 if (chosen == null)
                 {
-                    Debug.LogWarning("모든 후보가 소형 페널티로 제외되어 가중치 강제 소환을 수행합니다.");                    
-                    chosen = GetRandomShapeByWeight();
+                    chosen = GetRandomShapeByWeightExcluding(null, excludedByDupes);
+                    // 그래도 못 뽑았으면 가중치 기반 생성 ( 4개 이상 블럭은 삭제되지 않아서 발생할 확률이 없음 )
+                    if (chosen == null)
+                    {
+                        Debug.LogWarning("모든 후보가 소형 페널티로 제외되어 가중치 강제 소환을 수행합니다.");                    
+                        chosen = GetRandomShapeByWeight();
+                    }
                 }
-
                 result.Add(chosen);
+                
+                string chosenId = chosen.Id;
+                perShapeCount.TryGetValue(chosenId, out int cnt);
+                cnt++;
+                perShapeCount[chosenId] = cnt;
+                if (cnt >= maxDuplicatesPerWave)
+                {
+#if UNITY_EDITOR
+                    Debug.Log($"{maxDuplicatesPerWave}이상 중복됨, 다음 선택에서 제외");
+#endif                    
+                    excludedByDupes.Add(chosenId); // 다음 선택에서 제외.
+                }
             }
 
             return result;
         }
+        
+        private ShapeData GetRandomShapeByWeightExcluding(HashSet<string> exPenalty, HashSet<string> exDupes)
+        {
+            if (shapeData == null || shapeData.Count == 0) return null;
 
+            var total = 0;
+            for (int i = 0; i < shapeData.Count; i++)
+            {
+                var s = shapeData[i];
+                if ((exPenalty != null && exPenalty.Contains(s.Id)) ||
+                    (exDupes   != null && exDupes.Contains(s.Id))) continue;
+                total += s.chanceForSpawn;
+            }
+            if (total <= 0) return null;
+
+            var r = Random.Range(0, total); // [0,total)
+            var acc = 0;
+            for (int i = 0; i < shapeData.Count; i++)
+            {
+                var s = shapeData[i];
+                if ((exPenalty != null && exPenalty.Contains(s.Id)) ||
+                    (exDupes   != null && exDupes.Contains(s.Id))) continue;
+                acc += s.chanceForSpawn;
+                if (r < acc) return s;
+            }
+            return null;
+        }
+        
         private void BuildCumulativeTable()
         {
             _cumulativeWeights = new int[shapeData.Count];
@@ -139,40 +187,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (_cumulativeWeights == null || _cumulativeWeights.Length != shapeData.Count) BuildCumulativeTable();
 
             int r = Random.Range(0, Mathf.Max(1, _totalWeight));
-            for (int i = 0; i < _cumulativeWeights.Length; i++)
+            for (int i = 0; i < _cumulativeWeights?.Length; i++)
             {
-                if (r <= _cumulativeWeights[i])
+                if (r < _cumulativeWeights[i])
                 {
                     return shapeData[i];
                 }
             }
             
-            return shapeData[shapeData.Count - 1];
-        }
-    
-        private ShapeData GetRandomShapeByWeightExcluding(HashSet<ShapeData> excludedIds)
-        {
-            if (shapeData == null || shapeData.Count == 0) return null;
-
-            int total = 0;
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                var s = shapeData[i];
-                if (excludedIds != null && excludedIds.Contains(s)) continue;
-                total += s.chanceForSpawn;
-            }
-            if (total <= 0) return null;
-
-            int r = Random.Range(0, total);
-            int acc = 0;
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                var s = shapeData[i];
-                if (excludedIds != null && excludedIds.Contains(s)) continue;
-                acc += s.chanceForSpawn;
-                if (r < acc) return s;
-            }
-            return null;
+            return shapeData[^1];
         }
         
         public bool CanPlaceShapeData(ShapeData shape)
@@ -272,7 +295,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                     if (ok)
                     {
-                        fit = new FitInfo { offset = new Vector2Int(ox, oy), coveredSquares = list };
+                        fit = new FitInfo { Offset = new Vector2Int(ox, oy), CoveredSquares = list };
                         return true;
                     }
                 }
@@ -311,7 +334,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     ApplyPreview(fit, sprite);
 
                     // 가상보드 점유 마킹(다음 블록 프리뷰가 겹치지 않게)
-                    foreach (var sq in fit.coveredSquares)
+                    foreach (var sq in fit.CoveredSquares)
                         virtualBoard[sq.RowIndex, sq.ColIndex] = true;
                 }
             }
@@ -322,7 +345,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         private void ApplyPreview(FitInfo fit, Sprite spriteOrNull)
         {
-            foreach (var sq in fit.coveredSquares)
+            foreach (var sq in fit.CoveredSquares)
             {
                 if (spriteOrNull != null) 
                     sq.SetImage(spriteOrNull);
