@@ -68,13 +68,13 @@ public class AudioManager : MonoBehaviour
         SEVolume = PlayerPrefs.GetFloat("SEVolume", SEVolume);
         ApplyVolume();
     }
-
+    // 앱 포커스/일시정지 시 BGM 일시정지
     private void OnApplicationPause(bool pause)
     {
         if (pause) bgmSource.Pause();
         else bgmSource.UnPause();
     }
-
+    // 앱 포커스/일시정지 시 BGM 일시정지
     private void OnApplicationFocus(bool focus)
     {
         if (!focus) bgmSource.Pause();
@@ -82,6 +82,7 @@ public class AudioManager : MonoBehaviour
     }
 
     #region BGM
+    // 동일 BGM이 재생 중이면 무시
     public void PlayBGM(AudioClip clip)
     {
         if (clip == null) return;
@@ -90,9 +91,9 @@ public class AudioManager : MonoBehaviour
         bgmSource.volume = BGMVolume;
         bgmSource.Play();
     }
-
+    // BGM 정지
     public void StopBGM() => bgmSource.Stop();
-
+    // BGM 볼륨 설정 (0~1)
     public void SetBGMVolume(float volume)
     {
         BGMVolume = Mathf.Clamp01(volume);
@@ -102,6 +103,7 @@ public class AudioManager : MonoBehaviour
     #endregion
 
     #region SE
+    // 사용 가능한 AudioSource가 있으면 재생, 없으면 새로 생성
     public void PlaySE(AudioClip clip, bool vibrate = false)
     {
         if (clip == null) return;
@@ -128,7 +130,7 @@ public class AudioManager : MonoBehaviour
 
         if (vibrate) Handheld.Vibrate();
     }
-
+    // SE 볼륨 설정 (0~1)
     public void SetSEVolume(float volume)
     {
         SEVolume = Mathf.Clamp01(volume);
@@ -136,7 +138,7 @@ public class AudioManager : MonoBehaviour
         ApplyVolume();
     }
     #endregion
-
+    // 볼륨 적용
     private void ApplyVolume()
     {
         if (bgmSource != null) bgmSource.volume = BGMVolume;
@@ -145,6 +147,7 @@ public class AudioManager : MonoBehaviour
     }
 
     #region Helpers for Game Events
+    // 줄 클리어 SE 재생 (1~6줄)
     public void PlayLineClearSE(int lineCount)
     {
         if (lineCount <= 0) return;
