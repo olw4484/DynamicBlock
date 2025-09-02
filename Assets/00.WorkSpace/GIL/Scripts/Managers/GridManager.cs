@@ -4,6 +4,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
+using LJJ;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -228,6 +229,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void ActiveClearEffectLine(int index, bool isRow)
         {
             // TODO: 나중에 이펙트 / 사운드 추가
+            if(isRow)
+            { LJJ.GameEvents.OnBlockDestroyed?.Invoke(index, Color.white, true); }
+            else
+            { LJJ.GameEvents.OnBlockDestroyed?.Invoke(index, Color.white, false); }
         }
 
         public void SetDependencies(EventQueue bus)
