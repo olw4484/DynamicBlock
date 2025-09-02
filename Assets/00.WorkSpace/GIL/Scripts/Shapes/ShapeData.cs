@@ -19,6 +19,8 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         {
             int count = GetActiveShapeCount();
             chanceForSpawn = activeBlockCount = count;
+
+            Id = name;
         }
 
         private int GetActiveShapeCount()

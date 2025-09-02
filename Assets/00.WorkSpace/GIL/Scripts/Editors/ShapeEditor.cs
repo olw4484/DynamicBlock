@@ -27,10 +27,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var nameField = new TextField("Name") { value = _target.name };
             nameField.RegisterValueChangedCallback(evt => { ChangeName(evt); });
             root.Add(nameField);
-
-            var idField = new TextField("ID") { value = _target.Id };
-            idField.RegisterValueChangedCallback(evt => { ChangeName(evt); });
-            root.Add(nameField);
+            
+            // var idField = new TextField("ID") { value = _target.Id };
+            // idField.RegisterValueChangedCallback(evt => { _target.Id = evt.newValue; });
+            // root.Add(idField);
             
             // Navigation buttons
             var navContainer = new VisualElement { style = { flexDirection = FlexDirection.Row, justifyContent = Justify.SpaceBetween, marginBottom = 5 } };
@@ -51,10 +51,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             // Grid container
             gridContainer = new VisualElement { style = { flexDirection = FlexDirection.Column, alignItems = Align.Center, marginBottom = 5 } };
             root.Add(gridContainer);
-            
-            var classicContainer = new VisualElement { style = { flexDirection = FlexDirection.Column, marginBottom = 5 } };
-            classicContainer.Add(new Label("\nClassic Mode Parameters"));
-            root.Add(classicContainer);
 
             LoadShapes();
             CreateGrid();
