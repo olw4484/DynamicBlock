@@ -13,8 +13,6 @@ public class AnalyticsManager : MonoBehaviour
 		Instance = this;
 
 		Init();
-
-		FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventLogin);
 	}
 
 	public void Init()
