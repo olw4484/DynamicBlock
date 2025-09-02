@@ -8,16 +8,25 @@ public class ParticleManager : MonoBehaviour
     public GameObject colParticle;
     public int poolSize = 5;
 
+    private Queue<ParticleSystem> rowPool = new Queue<ParticleSystem>();
+    private Queue<ParticleSystem> colPool = new Queue<ParticleSystem>();
+
+    [Header("Particle Setting")]
     private Vector2 startPosition = Vector2.zero;
     private Vector2 spacing = new Vector2(5f, 5f);
     [SerializeField] private GameObject gridSquare;
+    [SerializeField] private Transform gridParent;
+    private Vector2 squareSize;
+    private Vector3 squarePos;
 
-    private Queue<ParticleSystem> rowPool = new Queue<ParticleSystem>();
-    private Queue<ParticleSystem> colPool = new Queue<ParticleSystem>();
 
     private void Awake()
     {
         InitializePool();
+        RectTransform squareRect = gridSquare.GetComponent<RectTransform>();
+        squareSize = squareRect.sizeDelta;
+
+       squarePos = squareRect.position;
     }
 
     // 풀 초기화
@@ -25,8 +34,8 @@ public class ParticleManager : MonoBehaviour
     {
         for (int i = 0; i < poolSize; i++)
         {
-            GameObject obj = Instantiate(rowParticle, transform);
-            GameObject obj2 = Instantiate(colParticle, transform);
+            GameObject obj = Instantiate(rowParticle, gridParent);
+            GameObject obj2 = Instantiate(colParticle, gridParent);
             obj.SetActive(false);
             obj2.SetActive(false);
             ParticleSystem ps = obj.GetComponent<ParticleSystem>();
@@ -35,7 +44,7 @@ public class ParticleManager : MonoBehaviour
             colPool.Enqueue(ps2);
         }
     }
-    // 세로 파티클 재생
+    // 가로 파티클 재생
     public void PlayRowParticle(int index, Color color)
     {
         if (rowPool.Count == 0)
@@ -45,21 +54,25 @@ public class ParticleManager : MonoBehaviour
         }
 
         ParticleSystem ps = rowPool.Dequeue();
-        ps.transform.position = RowIndexToWorld(index);
-
         
+        //ps.transform.localScale = new Vector3(6f, 6f, 1f); // 필요에 따라 크기 조정
+
         // 색상 설정 (예: ParticleSystem의 Main 모듈 사용)
         var main = ps.main;
         main.startColor = color;
 
         ps.gameObject.SetActive(true);
+        ps.Clear();
+        ps.transform.localPosition = RowIndexToWorld(index);
+        ps.transform.localScale = new Vector3(6f, 6f, 1f);
+
         Debug.Log($"ps.transform.position: {ps.transform.position}");
         ps.Play();
 
         StartCoroutine(ReturnToRowPool(ps, main.duration));
     }
 
-    // 가로 파티클 재생
+    // 세로 파티클 재생
     public void PlayColParticle(int index, Color color)
     {
         if (colPool.Count == 0)
@@ -69,45 +82,49 @@ public class ParticleManager : MonoBehaviour
         }
 
         ParticleSystem ps = colPool.Dequeue();
-        ps.transform.position = ColIndexToWorld(index);
         
+        //ps.transform.localScale = new Vector3(5f, 5f, 1f); // 필요에 따라 크기 조정
+
         // 색상 설정 (예: ParticleSystem의 Main 모듈 사용)
         var main = ps.main;
         main.startColor = color;
 
         ps.gameObject.SetActive(true);
-        Debug.Log($"Col Particle Position: {ps.transform.position}");
+        ps.Clear();
+        ps.transform.localPosition = ColIndexToWorld(index);
+        ps.transform.localScale = new Vector3(5f, 5f, 1f);
+
+        Debug.Log($"Col Particle position: {ps.transform.position}");
         ps.Play();
 
         StartCoroutine(ReturnToColPool(ps, main.duration));
     }
 
-    // 그리드 좌표를 월드 좌표로 변환하는 예시 함수
-    private Vector3 RowIndexToWorld(int index)
+    private Vector3 RowIndexToWorld(int rowIndex)
     {
-        // 그리드 좌표를 월드 좌표로 변환하는 로직을 여기에 구현하세요.
-        RectTransform squareRect = gridSquare.GetComponent<RectTransform>();
-        Vector2 squareSize = squareRect.sizeDelta;
+        // 중앙 열 기준으로 X 위치 계산 (예: 8칸이면 3.5칸 offset)
+        float offsetX = (squareSize.x + spacing.x) * 3.5f;
+        float offsetY = -(squareSize.y + spacing.y) * rowIndex;
 
-        float posX = startPosition.x + (squareSize.x + spacing.x) * 3.5f; // 중앙 정렬 가정
-        float posY = startPosition.y - index * (squareSize.y + spacing.y);
-        Vector3 worldPos = new Vector3(posX, posY, 0);
-        Debug.Log($"Row Particle World Position: {worldPos}");
-        return worldPos;
+        Vector3 offset = new Vector3(offsetX, offsetY, 0);
+        Vector3 worldPos = squarePos + offset;
+
+        Debug.Log($"Row Particle World Position: {offset}");
+        return offset;
     }
 
-    private Vector3 ColIndexToWorld(int index)
+    private Vector3 ColIndexToWorld(int colIndex)
     {
-        // 그리드 좌표를 월드 좌표로 변환하는 로직을 여기에 구현하세요.
-        RectTransform squareRect = gridSquare.GetComponent<RectTransform>();
-        Vector3 squareSize = squareRect.sizeDelta;
+        float offsetX = (squareSize.x + spacing.x) * colIndex;
+        float offsetY = -(squareSize.y + spacing.y) * 3.5f; // 중앙 행 기준
 
-        float posX = startPosition.x + index * (squareSize.x + spacing.x);
-        float posY = startPosition.y - (squareSize.y + spacing.y) * 3.5f; // 중앙 정렬 가정
-        Vector3 worldPos = new Vector3(posX, posY, 0);
-        Debug.Log($"Col Particle World Position: {worldPos}");
-        return worldPos;
+        Vector3 offset = new Vector3(offsetX, offsetY, 0);
+        Vector3 worldPos = squarePos + offset;
+
+        Debug.Log($"Col Particle World Position: {offset}");
+        return offset;
     }
+
 
     // 세로 Return to pool
     private System.Collections.IEnumerator ReturnToRowPool(ParticleSystem ps, float delay)
