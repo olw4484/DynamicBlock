@@ -5,11 +5,6 @@ using UnityEngine;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
-    public struct FitInfo
-    {
-        public Vector2Int Offset;                 // 좌상단 오프셋 (col=x, row=y)
-        public List<GridSquare> CoveredSquares;   // 이 배치로 덮게 될 셀들
-    }
     public partial class BlockSpawnManager
     {
         /// <summary>
