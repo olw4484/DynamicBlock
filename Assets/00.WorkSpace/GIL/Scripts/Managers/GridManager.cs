@@ -13,7 +13,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public static GridManager Instance { get; private set; }
 
         public GridSquare[,] gridSquares; // 시각적 표현용
-        private bool[,] gridStates;
+        public bool[,] gridStates;
         public int rows = 8;
         public int cols = 8;
 
@@ -106,21 +106,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 ClearHoverPreview();
             }
         }
-        
+
         public void InitializeGridSquares(List<GridSquare> squareList, int rowCount, int colCount)
         {
-            rows = rowCount;
-            cols = colCount;
+            rows = rowCount; cols = colCount;
             gridSquares = new GridSquare[rows, cols];
             gridStates = new bool[rows, cols];
 
             foreach (var sq in squareList)
                 gridSquares[sq.RowIndex, sq.ColIndex] = sq;
 
-            // 스티키로 상태 저장
             _bus?.PublishSticky(new GridReady(rows, cols), alsoEnqueue: false);
-
-            // 즉시 한 번도 쏘기 — 단, BlockStorage에 디듀프 가드가 있어야 중복 생성되지 않음
             _bus?.PublishImmediate(new GridReady(rows, cols));
         }
         public void SetCellOccupied(int row, int col, bool occupied, Sprite occupiedImage = null)

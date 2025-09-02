@@ -16,7 +16,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         [Header("Pointer")] 
         public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
         public Vector2 selectedOffset = new Vector2(0f, 500f);
-        
+        public float editorOffset = -200f;
         private Vector3 _shapeStartScale;
         private RectTransform _shapeTransform;
         private Canvas _canvas;
@@ -25,7 +25,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private ShapeData _currentShapeData;
 
         private bool _isDragging;
-        
+        private bool _startReady;
+
         private void Awake()
         {
             _shapeStartScale = GetComponent<RectTransform>().localScale;
@@ -33,10 +34,40 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _canvas = GetComponentInParent<Canvas>();
             _startPosition = _shapeTransform.localPosition;
             _shapeStartScale = _shapeTransform.localScale;
+#if UNITY_EDITOR
+            selectedOffset.y += editorOffset;
+#endif
         }
         
         public void GenerateBlock(ShapeData shapeData)
         {
+            if (shapeData == null)
+            {
+                Debug.LogError("[Block] shapeData is null");
+                return;
+            }
+
+            if (_shapeTransform == null)
+            {
+                if (shapePrefab != null)
+                    _shapeTransform = shapePrefab.GetComponent<RectTransform>();
+                if (_shapeTransform == null)
+                    _shapeTransform = GetComponentInChildren<RectTransform>(includeInactive: true);
+
+                if (_shapeTransform == null)
+                {
+                    Debug.LogError($"[Block] _shapeTransform not found on '{name}'. " +
+                                   $"Assign shapePrefab or _shapeTransform in prefab.");
+                    return;
+                }
+            }
+
+            if (!_startReady)
+            {
+                _startPosition = _shapeTransform.localPosition;
+                _startReady = true;
+            }
+
             _shapeTransform.localPosition = _startPosition;
             _currentShapeData = shapeData;
             CreateBlock(shapeData);
@@ -72,6 +103,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if(TouchGate.GetTouchID() == int.MinValue) TouchGate.SetTouchID(eventData.pointerId);
             
             if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
+            BlockSpawnManager.Instance?.ClearPreview();
             
             _isDragging = false;
             

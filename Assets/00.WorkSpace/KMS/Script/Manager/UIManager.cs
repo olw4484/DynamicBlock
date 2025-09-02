@@ -24,6 +24,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         public bool isModal = false;         // 모달 여부
         public bool closeOnEscape = true;    // ESC로 닫기 허용
         public int baseSorting = 1000;       // 모달 기본 정렬
+        public string fallbackKey = null;    // 닫힐 때 자동으로 켜줄 패널
     }
 
     [Header("HUD")]
@@ -130,6 +131,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         // 패널 토글 이벤트 구독 (Sticky 재생 켜둠)
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
+
+        _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
     }
 
     private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);
@@ -247,6 +250,11 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
                 _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 0f, 0.12f, false, key));
             }
             else p.root.SetActive(false);
+
+            if (!string.IsNullOrEmpty(p.fallbackKey))
+            {
+                SetPanel(p.fallbackKey, true);
+            }
         }
 
         ReorderModals();
@@ -292,6 +300,31 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         SetPanel("GameOver", false);
         SetPanel("Game", true);
     }
+    private void OnGameResetRequest(GameResetRequest req)
+    {
+        // 1) 보장: 시간 재개 + 엔진 쪽 리셋 이벤트
+        Time.timeScale = 1f;
+        _bus.PublishImmediate(new GameResetting());
+        _bus.PublishImmediate(new ComboChanged(0));
+        _bus.PublishImmediate(new ScoreChanged(0));
+
+        // 2) UI 전환(원자적)
+        SetPanel("GameOver", false);
+        if (req.targetPanel == "Game")
+        {
+            SetPanel("Main", false);
+            SetPanel("Game", true);
+        }
+        else // "Main"
+        {
+            SetPanel("Game", false);
+            SetPanel("Main", true);
+        }
+
+        // 3) 런타임 리셋(그리드/핸드 등은 각 매니저가 GameResetRequest 수신 시 처리)
+        _bus.PublishImmediate(new GameResetDone());
+    }
+
 }
 
 // 패널 토글 이벤트
