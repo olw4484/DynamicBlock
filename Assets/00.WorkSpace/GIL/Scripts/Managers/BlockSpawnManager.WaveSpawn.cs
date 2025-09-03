@@ -27,13 +27,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int i = 0; i < count; i++)
             {
                 ShapeData chosen = null;
+                FitInfo fitFromStep3 = default;
                 int guard = 0; // 무한 루프 방지
 
                 while (chosen == null && guard++ < shapeData.Count)
                 {
-                    // 제외 목록 반영해서 가중치 추첨
-                    var pick = GetRandomShapeByWeightExcluding(excludedByPenalty, excludedByDupes);
-                    if (pick == null) break; // 전부 제외된 경우
+                    ShapeData pick;
+                    if (!TryPickWeightedAmongPlaceablesFromRandomStart(
+                            excludedByPenalty, excludedByDupes, aForGate,
+                            out pick, out fitFromStep3))
+                    {
+                        // 후보가 전무하면 기존 방식으로 폴백
+                        pick = GetRandomShapeByWeightExcluding(excludedByPenalty, excludedByDupes);
+                    }
+                    if (pick == null) break;
 
                     // 소형 여부를 activeBlockCount로 판정
                     if (!PassSmallBlockGate(pick, aForGate))
@@ -67,22 +74,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         chosen = GetRandomShapeByWeight();
                     }
                 }
-                
-                if (!CanPlaceShapeData(chosen))
-                {
-                    Debug.LogWarning($"{count}번째 블록 생성 실패, 라인 보정 로직 작동");
-                    var board = SnapshotBoard();
-                    if (TryApplyLineCorrectionOnce(board, excludedByPenalty, excludedByDupes, out var correctedShape, out _ ))
-                    {
-                        chosen = correctedShape; // 보정 성공 → 교체
-                    }
-                    else
-                    {
-                        var retry = GetRandomShapeByWeightExcluding(null, excludedByDupes);
-                        if (retry != null) chosen = retry;
-                    }
-                }
-                
                 result.Add(chosen);
                 
                 string chosenId = chosen.Id;
@@ -94,19 +85,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     Debug.Log($"{maxDuplicatesPerWave}이상 중복됨, 다음 선택에서 제외");
                     excludedByDupes.Add(chosenId); // 다음 선택에서 제외.
                 }
-            }
-            
-            if (TryGuaranteePlaceableWave(result, out int replacedIndex, out var newShape, out var newFit))
-            {
-                // perShapeCount 조정
-                string oldId = result[replacedIndex].Id;
-                if (perShapeCount.TryGetValue(oldId, out int oldCnt) && oldCnt > 0)
-                    perShapeCount[oldId] = oldCnt - 1;
-
-                perShapeCount.TryGetValue(newShape.Id, out int newCnt);
-                perShapeCount[newShape.Id] = newCnt + 1;
-
-                result[replacedIndex] = newShape;
             }
             
             // 여기서 3연속 방지 검사/치환

@@ -1,5 +1,7 @@
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Grids;
+using UnityEngine;
+
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
     public partial class BlockSpawnManager
@@ -70,9 +72,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int oxMax = boardCols - shapeCols;
             if (oyMax < 0 || oxMax < 0) return;
 
-            int startOy = UnityEngine.Random.Range(0, oyMax + 1);
-            int startOx = UnityEngine.Random.Range(0, oxMax + 1);
-
+            int startOy = Random.Range(0, oyMax + 1);
+            int startOx = Random.Range(0, oxMax + 1);
+            
+            
             for (int dy = 0; dy <= oyMax; dy++)
             {
                 int oy = startOy + dy;
