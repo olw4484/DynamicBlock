@@ -650,6 +650,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 487c6a0f44f330e4eabd0dbe07be5b70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gridManager: {fileID: 0}
+  gridRoot: {fileID: 0}
 --- !u!4 &1142712089
 Transform:
   m_ObjectHideFlags: 0
@@ -876,6 +878,69 @@ Transform:
   - {fileID: 2079112121}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1541941572
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1541941575}
+  - component: {fileID: 1541941574}
+  - component: {fileID: 1541941573}
+  m_Layer: 0
+  m_Name: EffectManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1541941573
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1541941572}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc848dd3f7df0b44ea9b65f58313d72c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rowParticle: {fileID: 0}
+  colParticle: {fileID: 0}
+  poolSize: 5
+  gridSquare: {fileID: 0}
+  gridParent: {fileID: 0}
+--- !u!114 &1541941574
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1541941572}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98fa5aa28f1575f4091fdb08694a68f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  particleManager: {fileID: 1541941573}
+--- !u!4 &1541941575
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1541941572}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -16.137459, y: 0.34242427, z: 14252.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2012711760
 GameObject:
   m_ObjectHideFlags: 0
@@ -922,6 +987,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _scoreText: {fileID: 0}
   _comboText: {fileID: 0}
+  _hudBestText: {fileID: 0}
+  _gameOverTotalText: {fileID: 0}
+  _gameOverBestText: {fileID: 0}
   _panels:
   - key: Game
     root: {fileID: 7946031031037071651}
@@ -930,6 +998,7 @@ MonoBehaviour:
     isModal: 0
     closeOnEscape: 0
     baseSorting: 100
+    fallbackKey: 
   - key: Main
     root: {fileID: 1404889112}
     defaultActive: 0
@@ -937,6 +1006,7 @@ MonoBehaviour:
     isModal: 0
     closeOnEscape: 0
     baseSorting: 100
+    fallbackKey: 
   - key: GameOver
     root: {fileID: 910381090}
     defaultActive: 0
@@ -944,6 +1014,7 @@ MonoBehaviour:
     isModal: 1
     closeOnEscape: 0
     baseSorting: 1000
+    fallbackKey: 
   - key: Game_Open
     root: {fileID: 4137700808967914465}
     defaultActive: 1
@@ -951,6 +1022,7 @@ MonoBehaviour:
     isModal: 0
     closeOnEscape: 0
     baseSorting: 0
+    fallbackKey: 
   - key: Options
     root: {fileID: 7749205270024131278}
     defaultActive: 0
@@ -958,6 +1030,7 @@ MonoBehaviour:
     isModal: 1
     closeOnEscape: 0
     baseSorting: 1100
+    fallbackKey: 
 --- !u!1 &2079112120
 GameObject:
   m_ObjectHideFlags: 0
@@ -1396,3 +1469,4 @@ SceneRoots:
   - {fileID: 1517388832}
   - {fileID: 4639519006285812215}
   - {fileID: 2961743476362994621}
+  - {fileID: 1541941575}
