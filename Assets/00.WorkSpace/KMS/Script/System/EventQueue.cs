@@ -232,15 +232,15 @@ public readonly struct PreloadDone { }         // 에셋 프리로드가 끝났을 때 발행
 public readonly struct SoundEvent
 {
     public readonly int id;
-    public readonly int delay; // delayFrames
-    public SoundEvent(int id, int delay = 0) { this.id = id; this.delay = delay; }
+    public readonly int delayMs;
+    public SoundEvent(int id, int delayMs = 0) { this.id = id; this.delayMs = delayMs; }
 }
+
 
 public readonly struct EffectEvent
 {
     public readonly int id;
-    public readonly UnityEngine.Vector3 pos;
-    public readonly int delay; // delayFrames
-    public EffectEvent(int id, UnityEngine.Vector3 pos, int delay = 0)
-    { this.id = id; this.pos = pos; this.delay = delay; }
+    public readonly Vector3 pos;
+    public readonly int delayMs;
+    public EffectEvent(int id, Vector3 pos, int delayMs = 0) { this.id = id; this.pos = pos; this.delayMs = delayMs; }
 }

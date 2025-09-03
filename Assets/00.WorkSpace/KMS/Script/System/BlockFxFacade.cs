@@ -6,28 +6,25 @@ public sealed class BlockFxFacade : MonoBehaviour
 {
     [Header("Bridged Managers")]
     [SerializeField] private ParticleManager particleManager;
-    [SerializeField] private AudioFxFacade audioFx; // 기존 파사드
+    [SerializeField] private AudioFxFacade audioFx;
+    [SerializeField] private EffectLane effectLane;
 
     [Header("Optional Data")]
     [SerializeField] private FxTheme theme;
 
     // === 표준 API ===
-    public void PlayRowClear(int rowIndex, Color? color = null, int sfxId = -1)
+    public void PlayRowClear(int row, Color c)
     {
-        var c = color ?? (theme ? theme.rowClearColor : Color.cyan);
-        particleManager.PlayRowParticle(rowIndex, c);
-
-        int id = sfxId >= 0 ? sfxId : (theme ? theme.rowClearSfxId : (int)SfxId.RowClear);
-        audioFx.EnqueueSound(id);
+        // 이펙트
+        effectLane.Enqueue(new EffectEvent(id: 2000, pos: new Vector3(0, row, 0)));
+        // 사운드
+        audioFx.EnqueueSound((int)SfxId.RowClear);
     }
 
-    public void PlayColClear(int colIndex, Color? color = null, int sfxId = -1)
+    public void PlayColClear(int col, Color c)
     {
-        var c = color ?? (theme ? theme.colClearColor : Color.magenta);
-        particleManager.PlayColParticle(colIndex, c);
-
-        int id = sfxId >= 0 ? sfxId : (theme ? theme.colClearSfxId : (int)SfxId.ColClear);
-        audioFx.EnqueueSound(id);
+        effectLane.Enqueue(new EffectEvent(id: 2001, pos: new Vector3(col, 0, 0)));
+        audioFx.EnqueueSound((int)SfxId.ColClear);
     }
 
     // 필요시: 블록 배치 등 묶음 호출
