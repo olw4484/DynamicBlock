@@ -235,12 +235,32 @@ public readonly struct SoundEvent
     public readonly int delayMs;
     public SoundEvent(int id, int delayMs = 0) { this.id = id; this.delayMs = delayMs; }
 }
-
-
 public readonly struct EffectEvent
 {
     public readonly int id;
     public readonly Vector3 pos;
     public readonly int delayMs;
     public EffectEvent(int id, Vector3 pos, int delayMs = 0) { this.id = id; this.pos = pos; this.delayMs = delayMs; }
+}
+public readonly struct RowClearFxEvent
+{
+    public readonly int row;
+    public readonly Color color;
+
+    public RowClearFxEvent(int row, Color color)
+    {
+        this.row = row;
+        this.color = color;
+    }
+}
+public readonly struct ColClearFxEvent
+{
+    public readonly int col;
+    public readonly Color color;
+
+    public ColClearFxEvent(int col, Color color)
+    {
+        this.col = col;
+        this.color = color;
+    }
 }

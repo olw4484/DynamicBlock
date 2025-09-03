@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public sealed class NullSoundManager : IManager, IAudioService
+public sealed class NullSoundManager : IManager
 {
     public int Order => 50;
     public void PreInit() { }

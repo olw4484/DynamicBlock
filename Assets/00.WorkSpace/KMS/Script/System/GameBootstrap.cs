@@ -13,8 +13,15 @@ using UnityEngine;
 [AddComponentMenu("System/GameBootstrap")]
 public class GameBootstrap : MonoBehaviour
 {
+    [Header("Gird")]
     [SerializeField] private GridManager gridManager;
     [SerializeField] private Transform gridRoot;
+
+    [Header("Scene Facades / Lanes")]
+    [SerializeField] private AudioFxFacade audioFx;
+    [SerializeField] private BlockFxFacade blockFx;
+    [SerializeField] private EffectLane effectLane;
+    [SerializeField] private SoundLane soundLane;
 
     private void Awake()
     {
@@ -31,7 +38,7 @@ public class GameBootstrap : MonoBehaviour
         var bus = new EventQueue();           // 0
         var game = new GameManager(bus);       // 10
         var scene = new SceneFlowManager();     // 20
-        var audio = new NullSoundManager();     // 50
+        var audio = new AudioServiceAdapter();     // 50
 
         // 씬 오브젝트 보장 (없으면 생성)
         var ui = EnsureInScene<UIManager>("UIManager");
@@ -70,6 +77,15 @@ public class GameBootstrap : MonoBehaviour
         var report = Game.Bind(group);
         Debug.Log(report.Detail);
 
+        // 씬 파사드/레인 확보 & 바인딩
+        if (!audioFx) audioFx = FindFirstObjectByType<AudioFxFacade>();
+        if (!blockFx) blockFx = FindFirstObjectByType<BlockFxFacade>();
+        if (!effectLane) effectLane = FindFirstObjectByType<EffectLane>();
+        if (!soundLane) soundLane = FindFirstObjectByType<SoundLane>();
+
+        Game.BindSceneFacades(audioFx, blockFx, effectLane, soundLane);
+
+        // 그리드 스캔
         var squares = new List<GridSquare>();
         gridRoot.GetComponentsInChildren(includeInactive: true, result: squares);
 

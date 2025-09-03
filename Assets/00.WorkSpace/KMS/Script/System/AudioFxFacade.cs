@@ -26,10 +26,4 @@ public sealed class AudioFxFacade : MonoBehaviour
         effectLane.Consume();
         soundLane.Consume();
     }
-
-    public void ClearAll()
-    {
-        soundLane.ClearAll();
-        effectLane.ClearAll();
-    }
 }
