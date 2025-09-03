@@ -26,7 +26,9 @@ public class ParticleManager : MonoBehaviour
         RectTransform squareRect = gridSquare.GetComponent<RectTransform>();
         squareSize = squareRect.sizeDelta;
 
-       squarePos = squareRect.position;
+        //squarePos = squareRect.position;
+        //부모 기준 레이아웃이면 localPosition이 일관적이라 생각/
+        squarePos = squareRect.localPosition;
     }
 
     // 풀 초기화
@@ -110,7 +112,8 @@ public class ParticleManager : MonoBehaviour
         Vector3 worldPos = squarePos + offset;
 
         Debug.Log($"Row Particle World Position: {offset}");
-        return offset;
+        // return offset;
+        return worldPos;
     }
 
     private Vector3 ColIndexToWorld(int colIndex)
@@ -122,7 +125,8 @@ public class ParticleManager : MonoBehaviour
         Vector3 worldPos = squarePos + offset;
 
         Debug.Log($"Col Particle World Position: {offset}");
-        return offset;
+        // return offset;
+        return worldPos;
     }
 
 

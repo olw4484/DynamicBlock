@@ -1173,17 +1173,9 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1982038297154348447, guid: 4f0e19e4bc3a6d44db67000a9737686e, type: 3}
-      propertyPath: m_Name
-      value: InGameHighScore
-      objectReference: {fileID: 0}
     - target: {fileID: 2853467377527786894, guid: 4f0e19e4bc3a6d44db67000a9737686e, type: 3}
       propertyPath: m_Name
       value: GameCanvas
-      objectReference: {fileID: 0}
-    - target: {fileID: 2853467377527786894, guid: 4f0e19e4bc3a6d44db67000a9737686e, type: 3}
-      propertyPath: m_IsActive
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8661223340143079981, guid: 4f0e19e4bc3a6d44db67000a9737686e, type: 3}
       propertyPath: m_Pivot.x
