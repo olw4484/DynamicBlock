@@ -15,8 +15,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 이번 웨이브에서 "소환 실패한 블록" 은 이후 검색에서 제외
             var excludedByPenalty = new HashSet<string>();
             var excludedByDupes = new HashSet<string>();
+            
+            // 중복 제한, 반복 구성 방지 계산용 카운터
             var perShapeCount = new Dictionary<string, int>();
-            float a = ComputeAForGate();
+            
+            // a 지수
+            float aForGate = ComputeAForGate();
+            
+            Debug.Log($"a 지수 : {aForGate}");
             
             for (int i = 0; i < count; i++)
             {
@@ -30,8 +36,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (pick == null) break; // 전부 제외된 경우
 
                     // 소형 여부를 activeBlockCount로 판정
-                    if (!PassSmallBlockGate(pick, a))
+                    if (!PassSmallBlockGate(pick, aForGate))
                     {
+                        Debug.LogWarning($"{count}번째 블록 생성 실패, 라인 보정 로직 작동");
+                        var board = SnapshotBoard(); // 현재 보드 점유 스냅샷
+                        if (TryApplyLineCorrectionOnce(board, excludedByPenalty, excludedByDupes,
+                                out var correctedShape, out _ ))
+                        {
+                            chosen = correctedShape; // 보정 성공 → 이걸 채택
+                            break;
+                        }
+                        
                         Debug.LogWarning($"소형 패널티에 걸려 {pick.Id} 제외!");
                         excludedByPenalty.Add(pick.Id);
                         continue;
@@ -44,6 +59,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 if (chosen == null)
                 {
                     chosen = GetRandomShapeByWeightExcluding(null, excludedByDupes);
+                    
                     // 그래도 못 뽑았으면 가중치 기반 생성 ( 4개 이상 블럭은 삭제되지 않아서 발생할 확률이 없음 )
                     if (chosen == null)
                     {
@@ -51,6 +67,22 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         chosen = GetRandomShapeByWeight();
                     }
                 }
+                
+                if (!CanPlaceShapeData(chosen))
+                {
+                    Debug.LogWarning($"{count}번째 블록 생성 실패, 라인 보정 로직 작동");
+                    var board = SnapshotBoard();
+                    if (TryApplyLineCorrectionOnce(board, excludedByPenalty, excludedByDupes, out var correctedShape, out _ ))
+                    {
+                        chosen = correctedShape; // 보정 성공 → 교체
+                    }
+                    else
+                    {
+                        var retry = GetRandomShapeByWeightExcluding(null, excludedByDupes);
+                        if (retry != null) chosen = retry;
+                    }
+                }
+                
                 result.Add(chosen);
                 
                 string chosenId = chosen.Id;
@@ -59,16 +91,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 perShapeCount[chosenId] = cnt;
                 if (cnt >= maxDuplicatesPerWave)
                 {
-#if UNITY_EDITOR
                     Debug.Log($"{maxDuplicatesPerWave}이상 중복됨, 다음 선택에서 제외");
-#endif                    
                     excludedByDupes.Add(chosenId); // 다음 선택에서 제외.
                 }
             }
             
+            if (TryGuaranteePlaceableWave(result, out int replacedIndex, out var newShape, out var newFit))
+            {
+                // perShapeCount 조정
+                string oldId = result[replacedIndex].Id;
+                if (perShapeCount.TryGetValue(oldId, out int oldCnt) && oldCnt > 0)
+                    perShapeCount[oldId] = oldCnt - 1;
+
+                perShapeCount.TryGetValue(newShape.Id, out int newCnt);
+                perShapeCount[newShape.Id] = newCnt + 1;
+
+                result[replacedIndex] = newShape;
+            }
+            
             // 여기서 3연속 방지 검사/치환
             string wave = MakeWaveHistory(result);
-            
             if (WouldBecomeNStreak(wave, maxSameWaveStreak))
             {
                 // 교체할 인덱스 선택(랜덤 하나)
@@ -101,7 +143,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 if (candidate != null)
                 {
                     // 카운트 갱신
-                    perShapeCount[oldId] -= 1;
+                    if (perShapeCount.TryGetValue(oldId, out int oc) && oc > 0)
+                        perShapeCount[oldId] = oc - 1;
                     perShapeCount.TryGetValue(candidate.Id, out int cc);
                     perShapeCount[candidate.Id] = cc + 1;
 
@@ -110,49 +153,45 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
                 else
                 {
-                    // 모든 후보가 중복 한도로 막혔을 때: last resort로 아무거나 한 번 더 시도
+                    // 모든 후보가 중복 한도로 막혔을 때 최후에 아무거나 한 번 더 시도
                     var fallback = GetRandomShapeByWeightExcluding(null, excludedByDupes);
                     if (fallback != null && fallback.Id != oldId)
                     {
-                        perShapeCount[oldId] -= 1;
+                        if (perShapeCount.TryGetValue(oldId, out int oc2) && oc2 > 0)
+                            perShapeCount[oldId] = oc2 - 1;
                         perShapeCount.TryGetValue(fallback.Id, out int fc);
                         perShapeCount[fallback.Id] = fc + 1;
+                        
                         result[idx] = fallback;
                         wave = MakeWaveHistory(result);
                     }
                 }
             }
+            
+            bool anyPlaceable = false;
+            for (int i = 0; i < result.Count; i++)
+            {
+                if (result[i] != null && CanPlaceShapeData(result[i])) { anyPlaceable = true; break; }
+            }
+            if (!anyPlaceable)
+            {
+                if (TryGuaranteePlaceableWave(result, out int rIdx2, out var nShape2, out var nFit2))
+                {
+                    string oldId2 = result[rIdx2].Id;
+                    if (perShapeCount.TryGetValue(oldId2, out int oc3) && oc3 > 0)
+                        perShapeCount[oldId2] = oc3 - 1;
 
+                    perShapeCount.TryGetValue(nShape2.Id, out int nc3);
+                    perShapeCount[nShape2.Id] = nc3 + 1;
+
+                    result[rIdx2] = nShape2;
+                    wave = MakeWaveHistory(result); // 최종 구성으로 갱신
+                }
+            }
+            
             // 이력 등록(직전 N-1개만 유지)
             RegisterWaveHistory(wave);
-            
             return result;
         }
-        // private ShapeData GetRandomShapeByWeightExcluding(HashSet<string> exPenalty, HashSet<string> exDupes)
-        // {
-        //     if (shapeData == null || shapeData.Count == 0) return null;
-        //
-        //     var total = 0;
-        //     for (int i = 0; i < shapeData.Count; i++)
-        //     {
-        //         var s = shapeData[i];
-        //         if ((exPenalty != null && exPenalty.Contains(s.Id)) ||
-        //             (exDupes   != null && exDupes.Contains(s.Id))) continue;
-        //         total += s.chanceForSpawn;
-        //     }
-        //     if (total <= 0) return null;
-        //
-        //     var r = Random.Range(0, total); // [0,total)
-        //     var acc = 0;
-        //     for (int i = 0; i < shapeData.Count; i++)
-        //     {
-        //         var s = shapeData[i];
-        //         if ((exPenalty != null && exPenalty.Contains(s.Id)) ||
-        //             (exDupes   != null && exDupes.Contains(s.Id))) continue;
-        //         acc += s.chanceForSpawn;
-        //         if (r < acc) return s;
-        //     }
-        //     return null;
-        // }
     }
 }

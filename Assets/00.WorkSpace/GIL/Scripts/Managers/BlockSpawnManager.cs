@@ -16,10 +16,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private string resourcesPath = "Shapes";
         [SerializeField] private List<ShapeData> shapeData;
         
-        [Header("Small block Penalty")] 
-        [SerializeField, Range(0f, 1f)] private float smallBlockFailRate = 0.5f; // 기본 50%
-        [SerializeField] private int smallBlockTileThreshold = 3;
-        
         [Header("Wave Rules")] 
         [SerializeField, Range(1, 3)] private int maxDuplicatesPerWave = 2;
         
@@ -33,24 +29,24 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [Header("Dynamic Weight (tile^a)")] 
         public float aExponent = 0.3f;
         [SerializeField] private bool useDynamicWeightByTilePowA = true;
-
-        // 정수 누적표를 만들 때 소수값 손실을 줄이기 위한 스케일
-        [SerializeField] private int dynamicWeightScale = 100;
-
-        private int[] _dynCumulativeWeights;
-        private int   _dynTotalWeight;
-        private float _lastAForWeights = -999f;
-        
-// a 범위 (문서 기준 0.3~1.0)
         [SerializeField] private float aMin = 0f;
         [SerializeField] private float aMax = 1.0f;
         
-        [SerializeField] private SmallBlockGate[] smallBlockGates = new SmallBlockGate[]
+        [SerializeField] private SmallBlockGate[] smallBlockGates =
         {
             new SmallBlockGate{ tiles=1, percentAtAMin=30, percentAtAMax=10 },
             new SmallBlockGate{ tiles=2, percentAtAMin=50, percentAtAMax=20 },
             new SmallBlockGate{ tiles=3, percentAtAMin=70, percentAtAMax=30 },
         };
+        // 정수 누적표를 만들 때 소수값 손실을 줄이기 위한 스케일
+        
+        private readonly int _dynamicWeightScale = 100;
+        private int[] _dynCumulativeWeights;
+        private int   _dynTotalWeight;
+        private float _lastAForWeights = -999f;
+        
+// a 범위 (문서 기준 0.3~1.0)
+        
         
         
         private int[] _cumulativeWeights;

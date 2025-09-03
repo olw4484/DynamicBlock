@@ -29,7 +29,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 float w = tiles > 0 ? Mathf.Pow(tiles, a) : 0f;
 
                 // 정수화 (최소 0; 0이면 실제로는 뽑히지 않음)
-                int iw = Mathf.Max(0, Mathf.RoundToInt(w * dynamicWeightScale));
+                int iw = Mathf.Max(0, Mathf.RoundToInt(w * _dynamicWeightScale));
 
                 total += iw;
                 _dynCumulativeWeights[i] = total;
