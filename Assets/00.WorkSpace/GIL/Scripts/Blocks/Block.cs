@@ -151,14 +151,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             {
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
-
-                //int placedCount = 0;
-                //foreach (Transform child in shapeBlocks)
-                //{
-                //    if (child.gameObject.activeSelf)
-                //        placedCount++;
-                //}
-                //ScoreManager.Instance.AddScore(placedCount);
                 Destroy(gameObject);
             }
             

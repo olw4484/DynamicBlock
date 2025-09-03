@@ -9,12 +9,10 @@ public static class TouchGate
     public static void SetTouchID(int value)
     {
         TouchId = value;
-        Debug.Log("Set Touch ID: " + TouchId);
     }
     
     public static int GetTouchID()
     {
-        Debug.Log("Get Touch ID: " + TouchId);
         return TouchId;
     }
 }
