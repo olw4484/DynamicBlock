@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 851bc1e522f4c694cb207fe7045dc986, type: 3}
+  m_Name: EffectRegistry
+  m_EditorClassIdentifier: 
+  entries:
+  - id: 2000
+    prefab: {fileID: 4883431078802176644, guid: aa3cdc57cda59f5469c8fef9a0ba7580, type: 3}
+    supportsColor: 1
+    defaultScale: {x: 0, y: 0, z: 0}
+  - id: 2001
+    prefab: {fileID: 5539121658716097015, guid: e5e4f0f246da34465871391a4db98da3, type: 3}
+    supportsColor: 1
+    defaultScale: {x: 0, y: 0, z: 0}

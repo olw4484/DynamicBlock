@@ -3,72 +3,24 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // ===== 사운드 레인 =====
-public sealed class SoundLane : MonoBehaviour
+public sealed class SoundLane : LaneBase<SoundEvent>
 {
-    [Header("Budget / Cooldown")]
-    [SerializeField] private int budgetPerFrame = 5;
-    [SerializeField] private int defaultCooldownMs = 60; // 동일 SFX 최소 간격
+    [SerializeField] private AudioManager audioMgr;
+    [SerializeField] private AudioClip[] idTable; // 인덱스=ID, 또는 Dictionary로 교체
 
-    [Header("Clips")]
-    [SerializeField] private AudioClip[] clips; // id = index
-
-    [Header("Deps")]
-    [SerializeField] private AudioSourcePool pool;
-
-    private readonly PhaseBuffer<SoundEvent> _buf = new();
-    private readonly Dictionary<int, double> _lastPlayedDsp = new(); // 쿨다운 체크용
-    private readonly HashSet<int> _playedThisFrame = new(); // 코얼레싱
-
-    // 외부에서 호출
-    public void Enqueue(in SoundEvent e) => _buf.Enqueue(e, e.delay);
-
-    public void TickBegin()
+    protected override bool TryConsume(SoundEvent e)
     {
-        _playedThisFrame.Clear();
-        _buf.TickBegin();
+        if (!IsCooledDown(e.id)) return false;
+        var clip = ResolveClip(e.id);
+        if (!clip) return true; // 소비는 했지만 재생할 건 없음(로그만)
+        // delayMs 필요하면 코루틴으로 지연
+        audioMgr.PlaySE(clip);
+        return true;
     }
 
-    public void Consume()
+    private AudioClip ResolveClip(int id)
     {
-        _buf.Consume(budgetPerFrame, Play);
-    }
-
-    private void Play(SoundEvent e)
-    {
-        // 코얼레싱: 같은 프레임 동일 id 1회만
-        if (_playedThisFrame.Contains(e.id)) return;
-
-        // 쿨다운(DSP time 기준)
-        var now = AudioSettings.dspTime;
-        var cdSec = defaultCooldownMs / 1000.0;
-        if (_lastPlayedDsp.TryGetValue(e.id, out var last) && (now - last) < cdSec) return;
-
-        var clip = (e.id >= 0 && e.id < clips.Length) ? clips[e.id] : null;
-        if (!clip) return;
-
-        var src = pool.Rent();
-        src.clip = clip;
-        src.volume = 1f;
-        src.pitch = 1f;
-        // 타이밍 안정: 즉시 재생 또는 PlayScheduled(now)
-        src.Play();
-
-        _lastPlayedDsp[e.id] = now;
-        _playedThisFrame.Add(e.id);
-        StartCoroutine(ReturnWhenDone(src));
-    }
-
-    private IEnumerator ReturnWhenDone(AudioSource s)
-    {
-        yield return new WaitWhile(() => s.isPlaying);
-        s.clip = null; // 풀 반환시 초기화
-    }
-
-    public void ClearAll()
-    {
-        _buf.Clear();
-        pool.StopAndClearAll();
-        _playedThisFrame.Clear();
-        _lastPlayedDsp.Clear();
+        if (id < 0 || id >= idTable.Length) return null;
+        return idTable[id];
     }
 }

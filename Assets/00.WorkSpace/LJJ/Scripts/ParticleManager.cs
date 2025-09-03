@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Drawing;
 using UnityEngine;
 
 public class ParticleManager : MonoBehaviour
@@ -18,7 +19,10 @@ public class ParticleManager : MonoBehaviour
     [SerializeField] private Transform gridParent;
     private Vector2 squareSize;
     private Vector3 squarePos;
-
+    [SerializeField] private Canvas uiCanvas;        // GameCanvas
+    [SerializeField] private Camera fxCamera;        // FXCamera
+    [SerializeField] private Transform fxRoot;
+    public Transform GridParent => gridParent;
 
     private void Awake()
     {
@@ -26,14 +30,33 @@ public class ParticleManager : MonoBehaviour
         RectTransform squareRect = gridSquare.GetComponent<RectTransform>();
         squareSize = squareRect.sizeDelta;
 
-       squarePos = squareRect.position;
+        //squarePos = squareRect.position;
+        //부모 기준 레이아웃이면 localPosition이 일관적이라 생각
+        squarePos = squareRect.localPosition;
     }
 
     // 풀 초기화
     private void InitializePool()
     {
+        if (!fxRoot) { Debug.LogError("[PM] fxRoot is null. Assign FX_GridRoot."); return; }
+
         for (int i = 0; i < poolSize; i++)
         {
+            var r = Instantiate(rowParticle, fxRoot);
+            var c = Instantiate(colParticle, fxRoot);
+            r.SetActive(false); c.SetActive(false);
+
+            int fxLayer = LayerMask.NameToLayer("FX");
+            if (fxLayer >= 0)
+            {
+                LayerUtil.SetLayerRecursive(rowParticle, fxLayer); // rowObj 프리팹 인스턴스
+                LayerUtil.SetLayerRecursive(colParticle, fxLayer);
+            }
+            else
+            {
+                Debug.LogWarning("[ParticleManager] 'FX' layer not found. Check Project Settings > Tags and Layers.");
+            }
+
             GameObject obj = Instantiate(rowParticle, gridParent);
             GameObject obj2 = Instantiate(colParticle, gridParent);
             obj.SetActive(false);
@@ -44,8 +67,20 @@ public class ParticleManager : MonoBehaviour
             colPool.Enqueue(ps2);
         }
     }
+
+    private static float LifetimeMax(ParticleSystem.MainModule main)
+    {
+        var s = main.startLifetime;
+        return s.mode switch
+        {
+            ParticleSystemCurveMode.TwoConstants => Mathf.Max(s.constantMin, s.constantMax),
+            ParticleSystemCurveMode.TwoCurves => Mathf.Max(s.curveMin.keys[^1].time, s.curveMax.keys[^1].time),
+            ParticleSystemCurveMode.Curve => s.curve.keys[^1].time,
+            _ => s.constant,
+        };
+    }
     // 가로 파티클 재생
-    public void PlayRowParticle(int index, Color color)
+    public void PlayRowParticle(int index, UnityEngine.Color color)
     {
         if (rowPool.Count == 0)
         {
@@ -64,7 +99,7 @@ public class ParticleManager : MonoBehaviour
         ps.gameObject.SetActive(true);
         ps.Clear();
         ps.transform.localPosition = RowIndexToWorld(index);
-        ps.transform.localScale = new Vector3(6f, 6f, 1f);
+        ps.transform.localScale = new Vector3(100f, 50f, 1f);
 
         Debug.Log($"ps.transform.position: {ps.transform.position}");
         ps.Play();
@@ -73,7 +108,7 @@ public class ParticleManager : MonoBehaviour
     }
 
     // 세로 파티클 재생
-    public void PlayColParticle(int index, Color color)
+    public void PlayColParticle(int index, UnityEngine.Color color)
     {
         if (colPool.Count == 0)
         {
@@ -92,7 +127,7 @@ public class ParticleManager : MonoBehaviour
         ps.gameObject.SetActive(true);
         ps.Clear();
         ps.transform.localPosition = ColIndexToWorld(index);
-        ps.transform.localScale = new Vector3(5f, 5f, 1f);
+        ps.transform.localScale = new Vector3(100f, 50f, 1f);
 
         Debug.Log($"Col Particle position: {ps.transform.position}");
         ps.Play();
@@ -100,29 +135,31 @@ public class ParticleManager : MonoBehaviour
         StartCoroutine(ReturnToColPool(ps, main.duration));
     }
 
-    private Vector3 RowIndexToWorld(int rowIndex)
+    public Vector3 RowIndexToWorld(int rowIndex)
     {
         // 중앙 열 기준으로 X 위치 계산 (예: 8칸이면 3.5칸 offset)
         float offsetX = (squareSize.x + spacing.x) * 3.5f;
         float offsetY = -(squareSize.y + spacing.y) * rowIndex;
 
-        Vector3 offset = new Vector3(offsetX, offsetY, 0);
+        Vector3 offset = new Vector3(offsetX, offsetY, -5f);
         Vector3 worldPos = squarePos + offset;
 
         Debug.Log($"Row Particle World Position: {offset}");
-        return offset;
+        // return offset;
+        return worldPos;
     }
 
-    private Vector3 ColIndexToWorld(int colIndex)
+    public Vector3 ColIndexToWorld(int colIndex)
     {
         float offsetX = (squareSize.x + spacing.x) * colIndex;
         float offsetY = -(squareSize.y + spacing.y) * 3.5f; // 중앙 행 기준
 
-        Vector3 offset = new Vector3(offsetX, offsetY, 0);
+        Vector3 offset = new Vector3(offsetX, offsetY, -5f);
         Vector3 worldPos = squarePos + offset;
 
         Debug.Log($"Col Particle World Position: {offset}");
-        return offset;
+        // return offset;
+        return worldPos;
     }
 
 
@@ -142,5 +179,34 @@ public class ParticleManager : MonoBehaviour
         ps.Stop();
         ps.gameObject.SetActive(false);
         colPool.Enqueue(ps);
+    }
+
+    private Vector3 UiLocalToFxLocal(Vector3 uiLocal)
+    {
+        if (!gridParent || !uiCanvas || !fxCamera) return uiLocal;
+
+        var gridRT = gridParent as RectTransform;
+
+        // 1) UI 로컬 → UI 월드
+        Vector3 uiWorld = gridRT.TransformPoint(uiLocal);
+
+        // 2) UI 월드 → 스크린 픽셀
+        var uiCam = uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : uiCanvas.worldCamera;
+        Vector2 screen = RectTransformUtility.WorldToScreenPoint(uiCam, uiWorld);
+
+        // 3) RT 해상도 차이 보정
+        if (fxCamera.targetTexture != null)
+        {
+            float sx = (float)fxCamera.pixelWidth / Screen.width;
+            float sy = (float)fxCamera.pixelHeight / Screen.height;
+            screen.x *= sx; screen.y *= sy;
+        }
+
+        // 4) 스크린 → FX 월드 (직교/원근 둘 다 z는 카메라↔FX평면 거리)
+        float depth = Mathf.Abs(fxRoot.position.z - fxCamera.transform.position.z);
+        Vector3 fxWorld = fxCamera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, depth));
+
+        // 5) FX 월드 → FX 로컬
+        return fxRoot.InverseTransformPoint(fxWorld);
     }
 }

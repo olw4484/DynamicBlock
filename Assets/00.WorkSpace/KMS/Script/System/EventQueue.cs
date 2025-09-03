@@ -232,15 +232,41 @@ public readonly struct PreloadDone { }         // 에셋 프리로드가 끝났을 때 발행
 public readonly struct SoundEvent
 {
     public readonly int id;
-    public readonly int delay; // delayFrames
-    public SoundEvent(int id, int delay = 0) { this.id = id; this.delay = delay; }
+    public readonly int delayMs;
+    public SoundEvent(int id, int delayMs = 0) { this.id = id; this.delayMs = delayMs; }
 }
-
 public readonly struct EffectEvent
 {
     public readonly int id;
-    public readonly UnityEngine.Vector3 pos;
-    public readonly int delay; // delayFrames
-    public EffectEvent(int id, UnityEngine.Vector3 pos, int delay = 0)
-    { this.id = id; this.pos = pos; this.delay = delay; }
+    public readonly Vector3 pos;
+    public readonly bool hasColor;
+    public readonly Color color;
+
+    public EffectEvent(int id, Vector3 pos)
+    { this.id = id; this.pos = pos; this.hasColor = false; this.color = Color.white; }
+
+    public EffectEvent(int id, Vector3 pos, Color color)
+    { this.id = id; this.pos = pos; this.hasColor = true; this.color = color; }
+}
+public readonly struct RowClearFxEvent
+{
+    public readonly int row;
+    public readonly Color color;
+
+    public RowClearFxEvent(int row, Color color)
+    {
+        this.row = row;
+        this.color = color;
+    }
+}
+public readonly struct ColClearFxEvent
+{
+    public readonly int col;
+    public readonly Color color;
+
+    public ColClearFxEvent(int col, Color color)
+    {
+        this.col = col;
+        this.color = color;
+    }
 }
