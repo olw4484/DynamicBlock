@@ -10,6 +10,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 {
     public class GridManager : MonoBehaviour, IRuntimeReset
     {
+        [SerializeField] private BlockFxFacade fx;
         public static GridManager Instance { get; private set; }
 
         public GridSquare[,] gridSquares; // 시각적 표현용
@@ -224,11 +225,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private void ActiveClearEffectLine(int index, bool isRow)
         {
-            // TODO: 나중에 이펙트 / 사운드 추가
-            if(isRow)
-            { LJJ.GameEvents.OnBlockDestroyed?.Invoke(index, Color.white, true); }
-            else
-            { LJJ.GameEvents.OnBlockDestroyed?.Invoke(index, Color.white, false); }
+            if (fx == null) return;              
+            var color = Color.white;              
+
+            if (isRow) fx.PlayRowClear(index, color);
+            else fx.PlayColClear(index, color);
         }
 
         public void SetDependencies(EventQueue bus)

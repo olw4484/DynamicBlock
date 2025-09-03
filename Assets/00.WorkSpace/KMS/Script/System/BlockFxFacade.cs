@@ -1,140 +1,50 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public sealed class BlockFxFacade : MonoBehaviour
 {
-    [Header("Bridged Managers")]
-    [SerializeField] private ParticleManager particleManager;
-    [SerializeField] private AudioFxFacade audioFx;
-    [SerializeField] private EffectLane effectLane;
+    [Header("Bridged")]
+    [SerializeField] private ParticleManager particle;
+    [SerializeField] private EffectLane effectLane; 
+Â  Â  [SerializeField] private AudioFxFacade audioFx; 
 
-    [Header("Optional Data")]
-    [SerializeField] private FxTheme theme;
-
-    [Header("IDs")]
-    [SerializeField] private int rowClearSfxId = (int)SfxId.RowClear;
-    [SerializeField] private int colClearSfxId = (int)SfxId.ColClear;
+Â  Â  [Header("IDs")]
     [SerializeField] private int rowClearFxId = 2000;
     [SerializeField] private int colClearFxId = 2001;
+    [SerializeField] private int rowClearSfxId = (int)SfxId.RowClear;
+    [SerializeField] private int colClearSfxId = (int)SfxId.ColClear;
 
-    bool _subscribed;
+    [Header("Optional")]
+    [SerializeField] private FxTheme theme; 
+Â  Â  [SerializeField] private Transform fxSpawnParent;
 
-    private void Awake()
+    // ì™¸ë¶€ API
+Â  Â  public void PlayRowClear(int row, Color color)
     {
-        if (!particleManager) Debug.LogWarning("[BlockFxFacade] ParticleManager missing.");
-        if (!audioFx) Debug.LogWarning("[BlockFxFacade] AudioFxFacade missing.");
-    }
-
-    private void OnEnable()
-    {
-        StartCoroutine(DelaySubscribe());
-    }
-
-    private void OnDisable()
-    {
-        if (_subscribed && Game.IsBound)
+        if (particle != null)
         {
-            Game.Bus.Unsubscribe<RowClearFxEvent>(OnRowFx);
-            Game.Bus.Unsubscribe<ColClearFxEvent>(OnColFx);
-            _subscribed = false;
+            particle.PlayRowParticle(row, ResolveRowColor(color));
         }
+        audioFx?.EnqueueSound(rowClearSfxId);
     }
 
-    private IEnumerator DelaySubscribe()
+    public void PlayColClear(int col, Color color)
     {
-        // Game.Bind ÀÌÈÄ ±¸µ¶ º¸Àå
-        yield return null;
-        if (!_subscribed && Game.IsBound)
+        if (particle != null)
         {
-            Game.Bus.Subscribe<RowClearFxEvent>(OnRowFx, replaySticky: false);
-            Game.Bus.Subscribe<ColClearFxEvent>(OnColFx, replaySticky: false);
-            _subscribed = true;
+            particle.PlayColParticle(col, ResolveColColor(color));
         }
+        audioFx?.EnqueueSound(colClearSfxId);
     }
 
-    // ========== Ç¥ÁØ API ==========
-    public void PlayRowClear(int row, Color c)
-    {
-        var color = ResolveRowColor(c);
-        PlayRowParticle(row, color);
-        EnqueueRowLane(row);
-        PlayRowSound();
-    }
-
-    public void PlayColClear(int col, Color c)
-    {
-        var color = ResolveColColor(c);
-        PlayColParticle(col, color);
-        EnqueueColLane(col);
-        PlayColSound();
-    }
-
-    public void PlayBlockPlace(int sfxId = (int)SfxId.BlockPlace)
-    {
-        if (audioFx) audioFx.EnqueueSound(sfxId);
-    }
-
-    public void PlayBlockSelect(int sfxId = (int)SfxId.BlockSelect)
-    {
-        if (audioFx) audioFx.EnqueueSound(sfxId);
-    }
-
-    // ========== ÀÌº¥Æ® ÇÚµé·¯ ==========
-    private void OnRowFx(RowClearFxEvent e) => PlayRowClear(e.row, e.color);
+    // ì´ë²¤íŠ¸ í•¸ë“¤ëŸ¬(ì‚¬ìš©ì•ˆí•¨)
+Â  Â  private void OnRowFx(RowClearFxEvent e) => PlayRowClear(e.row, e.color);
     private void OnColFx(ColClearFxEvent e) => PlayColClear(e.col, e.color);
 
-    // ========== ³»ºÎ ÇïÆÛ ==========
-    private Color ResolveRowColor(Color candidate)
-    {
-        // È£Ãâ ÀÎÀÚ ¿ì¼±, ¾øÀ¸¸é Å×¸¶, ¾øÀ¸¸é ±âº»
-        if (candidate.a > 0f) return candidate;
-        if (theme) return theme.rowClearColor;
-        return Color.cyan;
-    }
-
+    // ë‚´ë¶€ í—¬í¼
+Â  Â  private Color ResolveRowColor(Color candidate)
+    => candidate.a > 0f ? candidate : (theme ? theme.rowClearColor : Color.cyan);
     private Color ResolveColColor(Color candidate)
-    {
-        if (candidate.a > 0f) return candidate;
-        if (theme) return theme.colClearColor;
-        return Color.magenta;
-    }
-
-    private void PlayRowParticle(int row, Color color)
-    {
-        if (!particleManager) return;
-        particleManager.PlayRowParticle(row, color);
-    }
-
-    private void PlayColParticle(int col, Color color)
-    {
-        if (!particleManager) return;
-        particleManager.PlayColParticle(col, color);
-    }
-
-    private void EnqueueRowLane(int row)
-    {
-        // ¼±ÅÃ: ·¹ÀÎ¿¡ ¡°¸¶Ä¿¡±·Îµµ ³²°Ü ½º·ÎÆ²/ºÐ¼®/¸®ÇÃ·¹ÀÌ È°¿ë
-        if (!effectLane) return;
-        // row¸¦ pos.y¿¡, colÀº 0À¸·Î ÀÎÄÚµù(Çö ±¸Á¶¿¡¼­ »ö»óÀº laneÀ¸·Î Àü´Þ ºÒ°¡)
-        effectLane.Enqueue(new EffectEvent(id: rowClearFxId, pos: new Vector3(0, row, 0)));
-    }
-
-    private void EnqueueColLane(int col)
-    {
-        if (!effectLane) return;
-        effectLane.Enqueue(new EffectEvent(id: colClearFxId, pos: new Vector3(col, 0, 0)));
-    }
-
-    private void PlayRowSound()
-    {
-        if (audioFx) audioFx.EnqueueSound(rowClearSfxId);
-        else if (Game.Audio != null) Game.Audio.PlayLineClear(1);
-    }
-
-    private void PlayColSound()
-    {
-        if (audioFx) audioFx.EnqueueSound(colClearSfxId);
-        else if (Game.Audio != null) Game.Audio.PlayLineClear(1);
-    }
+      => candidate.a > 0f ? candidate : (theme ? theme.colClearColor : Color.magenta);
 }

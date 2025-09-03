@@ -239,8 +239,14 @@ public readonly struct EffectEvent
 {
     public readonly int id;
     public readonly Vector3 pos;
-    public readonly int delayMs;
-    public EffectEvent(int id, Vector3 pos, int delayMs = 0) { this.id = id; this.pos = pos; this.delayMs = delayMs; }
+    public readonly bool hasColor;
+    public readonly Color color;
+
+    public EffectEvent(int id, Vector3 pos)
+    { this.id = id; this.pos = pos; this.hasColor = false; this.color = Color.white; }
+
+    public EffectEvent(int id, Vector3 pos, Color color)
+    { this.id = id; this.pos = pos; this.hasColor = true; this.color = color; }
 }
 public readonly struct RowClearFxEvent
 {
