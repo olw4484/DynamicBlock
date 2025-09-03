@@ -63,5 +63,29 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             return (minX, maxX, minY, maxY);
         }
+        
+        private static void ForEachOffsetFromRandomStart(int boardRows, int boardCols, int shapeRows, int shapeCols, System.Action<int,int> body)
+        {
+            int oyMax = boardRows - shapeRows;
+            int oxMax = boardCols - shapeCols;
+            if (oyMax < 0 || oxMax < 0) return;
+
+            int startOy = UnityEngine.Random.Range(0, oyMax + 1);
+            int startOx = UnityEngine.Random.Range(0, oxMax + 1);
+
+            for (int dy = 0; dy <= oyMax; dy++)
+            {
+                int oy = startOy + dy;
+                if (oy > oyMax) oy -= (oyMax + 1);
+
+                for (int dx = 0; dx <= oxMax; dx++)
+                {
+                    int ox = startOx + dx;
+                    if (ox > oxMax) ox -= (oxMax + 1);
+
+                    body(oy, ox);
+                }
+            }
+        }
     }
 }

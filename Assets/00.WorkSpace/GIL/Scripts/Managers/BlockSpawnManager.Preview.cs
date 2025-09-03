@@ -14,42 +14,53 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public bool TryFindOneFit(ShapeData shape, bool[,] virtualBoard, out FitInfo fit)
         {
             fit = default;
+            FitInfo foundFit = default;
+            
             var gm = GridManager.Instance;
             var squares = gm.gridSquares;
-
+            var states = gm.gridStates;
+            
             // 경계 상자
             var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
-            int shRows = maxY - minY + 1, shCols = maxX - minX + 1;
-
-            for (int oy = 0; oy <= gm.rows - shRows; oy++)
+            int shRows = maxY - minY + 1;
+            int shCols = maxX - minX + 1;
+            
+            bool okFound = false;
+            List<GridSquare> list = null;
+            
+            ForEachOffsetFromRandomStart(gm.rows, gm.cols, shRows, shCols, (oy, ox) =>
             {
-                for (int ox = 0; ox <= gm.cols - shCols; ox++)
+                if (okFound) return;
+
+                bool ok = true;
+                list = list ?? new List<GridSquare>(8);
+                list.Clear();
+
+                for (int y = 0; y < shRows && ok; y++)
+                for (int x = 0; x < shCols; x++)
                 {
-                    bool ok = true;
-                    var list = new List<GridSquare>(8);
+                    if (!shape.rows[y + minY].columns[x + minX]) continue;
 
-                    for (int y = 0; y < shRows && ok; y++)
-                    for (int x = 0; x < shCols; x++)
-                    {
-                        if (!shape.rows[y + minY].columns[x + minX]) continue;
+                    bool occupied = virtualBoard != null
+                        ? virtualBoard[oy + y, ox + x]
+                        : squares[oy + y, ox + x].IsOccupied;
 
-                        // 실제/가상 보드 중 가상 보드 우선(중복 방지)
-                        bool occupied = virtualBoard != null
-                            ? virtualBoard[oy + y, ox + x]
-                            : squares[oy + y, ox + x].IsOccupied;
-
-                        if (occupied) { ok = false; break; }
-                        list.Add(squares[oy + y, ox + x]);
-                    }
-
-                    if (ok)
-                    {
-                        fit = new FitInfo { Offset = new Vector2Int(ox, oy), CoveredSquares = list };
-                        return true;
-                    }
+                    if (occupied) { ok = false; break; }
+                    list.Add(squares[oy + y, ox + x]);
                 }
-            }
-            return false;
+
+                if (ok)
+                {
+                    foundFit = new FitInfo
+                    {
+                        Offset = new Vector2Int(ox, oy),
+                        CoveredSquares = new List<GridSquare>(list) // 복사본
+                    };
+                    okFound = true;
+                }
+            });
+            fit = foundFit;
+            return okFound;
         }
 
         
@@ -81,7 +92,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     // 스프라이트는 선택 사항: null이면 그리드의 기본 hover이미지로 표시됨
                     var sprite = (spritesOrNull != null && i < spritesOrNull.Count) ? spritesOrNull[i] : null;
                     ApplyPreview(fit, sprite);
-
+                    
+                    if (fit.CoveredSquares == null) continue;
+                    
                     // 가상보드 점유 마킹(다음 블록 프리뷰가 겹치지 않게)
                     foreach (var sq in fit.CoveredSquares)
                         virtualBoard[sq.RowIndex, sq.ColIndex] = true;
@@ -94,8 +107,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         private void ApplyPreview(FitInfo fit, Sprite spriteOrNull)
         {
+            if (fit.CoveredSquares == null || fit.CoveredSquares.Count == 0)
+            {
+                Debug.LogError("fit 설정이 안되어있다.");
+                return;
+            }
+            
             foreach (var sq in fit.CoveredSquares)
             {
+                if (sq == null) 
+                    continue;
                 if (spriteOrNull != null) 
                     sq.SetImage(spriteOrNull);
                 if (!sq.IsOccupied) 

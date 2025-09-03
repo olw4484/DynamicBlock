@@ -12,11 +12,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public List<ShapeData> GenerateBasicWave(int count)
         {
             var result = new List<ShapeData>(count);
-            
             // 이번 웨이브에서 "소환 실패한 블록" 은 이후 검색에서 제외
             var excludedByPenalty = new HashSet<string>();
             var excludedByDupes = new HashSet<string>();
             var perShapeCount = new Dictionary<string, int>();
+            float a = ComputeAForGate();
             
             for (int i = 0; i < count; i++)
             {
@@ -30,10 +30,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (pick == null) break; // 전부 제외된 경우
 
                     // 소형 여부를 activeBlockCount로 판정
-                    bool isSmall = pick.activeBlockCount <= smallBlockTileThreshold;
-                    if (smallBlockPenaltyMode && isSmall && Random.value < smallBlockFailRate)
+                    if (!PassSmallBlockGate(pick, a))
                     {
-                        // 소환 실패 → 이번 웨이브에서 제외하고 재검색
+                        Debug.LogWarning($"소형 패널티에 걸려 {pick.Id} 제외!");
                         excludedByPenalty.Add(pick.Id);
                         continue;
                     }
@@ -129,31 +128,31 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             return result;
         }
-        private ShapeData GetRandomShapeByWeightExcluding(HashSet<string> exPenalty, HashSet<string> exDupes)
-        {
-            if (shapeData == null || shapeData.Count == 0) return null;
-
-            var total = 0;
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                var s = shapeData[i];
-                if ((exPenalty != null && exPenalty.Contains(s.Id)) ||
-                    (exDupes   != null && exDupes.Contains(s.Id))) continue;
-                total += s.chanceForSpawn;
-            }
-            if (total <= 0) return null;
-
-            var r = Random.Range(0, total); // [0,total)
-            var acc = 0;
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                var s = shapeData[i];
-                if ((exPenalty != null && exPenalty.Contains(s.Id)) ||
-                    (exDupes   != null && exDupes.Contains(s.Id))) continue;
-                acc += s.chanceForSpawn;
-                if (r < acc) return s;
-            }
-            return null;
-        }
+        // private ShapeData GetRandomShapeByWeightExcluding(HashSet<string> exPenalty, HashSet<string> exDupes)
+        // {
+        //     if (shapeData == null || shapeData.Count == 0) return null;
+        //
+        //     var total = 0;
+        //     for (int i = 0; i < shapeData.Count; i++)
+        //     {
+        //         var s = shapeData[i];
+        //         if ((exPenalty != null && exPenalty.Contains(s.Id)) ||
+        //             (exDupes   != null && exDupes.Contains(s.Id))) continue;
+        //         total += s.chanceForSpawn;
+        //     }
+        //     if (total <= 0) return null;
+        //
+        //     var r = Random.Range(0, total); // [0,total)
+        //     var acc = 0;
+        //     for (int i = 0; i < shapeData.Count; i++)
+        //     {
+        //         var s = shapeData[i];
+        //         if ((exPenalty != null && exPenalty.Contains(s.Id)) ||
+        //             (exDupes   != null && exDupes.Contains(s.Id))) continue;
+        //         acc += s.chanceForSpawn;
+        //         if (r < acc) return s;
+        //     }
+        //     return null;
+        // }
     }
 }

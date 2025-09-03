@@ -112,7 +112,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             var previewSprites = new List<Sprite>(blockSpawnPosList.Count);
-
+            
+            for (int k = 0; k < blockSpawnPosList.Count; k++) previewSprites.Add(null);
+            
             for (int i = 0; i < blockSpawnPosList.Count; i++)
             {
                 var shape = (i < wave.Count) ? wave[i] : null;
@@ -129,7 +131,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 // 이미지 세팅
                 var sprite = shapeImageSprites[GetRandomImageIndex()];
                 block.shapePrefab.GetComponent<Image>().sprite = sprite;
-
+                previewSprites[i] = sprite;
+                
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
             }
