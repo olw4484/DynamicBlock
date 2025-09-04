@@ -5,7 +5,6 @@ using UnityEngine.UI;
 public class AdManager : MonoBehaviour
 {
 	public static AdManager Instance { get; private set; }
-
 	public InterstitialAdController Interstitial { get; private set; }
 	public BannerAdController Banner { get; private set; }
 	public RewardAdController Reward { get; private set; }
