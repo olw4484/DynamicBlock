@@ -15,65 +15,82 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 이번 웨이브에서 "소환 실패한 블록" 은 이후 검색에서 제외
             var excludedByPenalty = new HashSet<string>();
             var excludedByDupes = new HashSet<string>();
-            
             // 중복 제한, 반복 구성 방지 계산용 카운터
             var perShapeCount = new Dictionary<string, int>();
-            
             // a 지수
             float aForGate = ComputeAForGate();
             
-            Debug.Log($"a 지수 : {aForGate}");
+            bool[,] waveBoard = reserveCellsDuringWave ? SnapshotBoard() : null;
             
             for (int i = 0; i < count; i++)
             {
                 ShapeData chosen = null;
                 FitInfo fitFromStep3 = default;
+                FitInfo fitToCommit = default;
                 int guard = 0; // 무한 루프 방지
 
                 while (chosen == null && guard++ < shapeData.Count)
                 {
-                    ShapeData pick;
-                    if (!TryPickWeightedAmongPlaceablesFromRandomStart(
-                            excludedByPenalty, excludedByDupes, aForGate,
-                            out pick, out fitFromStep3))
+                    ShapeData pick = null;
+                    
+                    bool pickedOnReserveBoard = false;
+                    if (reserveCellsDuringWave)
                     {
-                        // 후보가 전무하면 기존 방식으로 폴백
+                        //예약 보드를 기준으로 실제 배치 가능한 집합에서 가중치 선택
+                        pickedOnReserveBoard = TryPickWeightedAmongPlaceableFromRandom(waveBoard, excludedByPenalty, excludedByDupes, aForGate, out pick, out fitFromStep3);
+                    }
+                    if (!pickedOnReserveBoard)
+                    {
                         pick = GetRandomShapeByWeightExcluding(excludedByPenalty, excludedByDupes);
                     }
+                    // 후보가 전무하면 기존 방식으로 폴백
                     if (pick == null) break;
 
                     // 소형 여부를 activeBlockCount로 판정
                     if (!PassSmallBlockGate(pick, aForGate))
                     {
-                        Debug.LogWarning($"{count}번째 블록 생성 실패, 라인 보정 로직 작동");
-                        var board = SnapshotBoard(); // 현재 보드 점유 스냅샷
-                        if (TryApplyLineCorrectionOnce(board, excludedByPenalty, excludedByDupes,
-                                out var correctedShape, out _ ))
+                        var boardRef = reserveCellsDuringWave ? waveBoard : SnapshotBoard();
+                        if (TryApplyLineCorrectionOnce(boardRef, excludedByPenalty, excludedByDupes, out var correctedShape, out var correctedFit))
                         {
                             chosen = correctedShape; // 보정 성공 → 이걸 채택
+                            if (reserveCellsDuringWave) fitToCommit = correctedFit;
                             break;
                         }
-                        
-                        Debug.LogWarning($"소형 패널티에 걸려 {pick.Id} 제외!");
                         excludedByPenalty.Add(pick.Id);
                         continue;
                     }
-
                     // 성공
                     chosen = pick;
+                    
+                    // 예약 모드면 최종 커밋용 Fit 확보 (step3에서 이미 갖고 오거나, 폴백이면 새로 탐색)
+                    if (reserveCellsDuringWave)
+                    {
+                        if (pickedOnReserveBoard)
+                        {
+                            fitToCommit = fitFromStep3;
+                        }
+                        else
+                        {
+                            // 폴백으로 뽑힌 경우, 현재 예약 보드 기준으로 실제 배치 위치를 찾아야 함
+                            if (!TryFindFitFromRandomStart(waveBoard, chosen, out fitToCommit))
+                            {
+                                // 예약 보드에선 배치 불가 → 실패로 간주하고 다음 후보를 계속 탐색
+                                chosen = null;
+                                excludedByPenalty.Add(pick.Id);
+                            }
+                        }
+                    }
                 }
                 // 소형 패널티는 무시하지만, 중복 한도 제외는 반드시 시킴
                 if (chosen == null)
                 {
-                    chosen = GetRandomShapeByWeightExcluding(null, excludedByDupes);
-                    
-                    // 그래도 못 뽑았으면 가중치 기반 생성 ( 4개 이상 블럭은 삭제되지 않아서 발생할 확률이 없음 )
-                    if (chosen == null)
-                    {
-                        Debug.LogWarning("모든 후보가 소형 페널티로 제외되어 가중치 강제 소환을 수행합니다.");                    
-                        chosen = GetRandomShapeByWeight();
-                    }
+                    Debug.LogWarning("모든 후보가 소형 페널티로 제외되어 가중치 강제 소환을 수행합니다.");                    
+                    chosen = GetRandomShapeByWeightExcluding(null, excludedByDupes) ?? GetRandomShapeByWeight();
                 }
+                
+                // 최종 확정 시, 예약 보드에 점유 마킹
+                if (reserveCellsDuringWave && fitToCommit.CoveredSquares != null) ReserveAndResolveLines(waveBoard, chosen, fitToCommit);
+                
                 result.Add(chosen);
                 
                 string chosenId = chosen.Id;

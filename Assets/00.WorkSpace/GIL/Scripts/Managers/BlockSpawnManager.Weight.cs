@@ -5,35 +5,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 {
     public partial class BlockSpawnManager
     {
-        private void BuildCumulativeTable()
-        {
-            _cumulativeWeights = new int[shapeData.Count];
-            _totalWeight = 0;
-
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                _totalWeight += shapeData[i].chanceForSpawn;
-                _cumulativeWeights[i] = _totalWeight;
-            }
-
-            Debug.Log($"가중치 계산 완료: {_totalWeight}");
-        }
-
-        private void BuildInverseCumulativeTable()
-        {
-            _inverseCumulativeWeights = new int[shapeData.Count];
-            _inverseTotalWeight = 0;
-
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                _inverseTotalWeight += (_totalWeight - shapeData[i].chanceForSpawn);
-                _inverseCumulativeWeights[i] = _inverseTotalWeight;
-            }
-
-            Debug.Log($"역가중치 계산 완료: {_inverseTotalWeight}");
-        }    
-        
-// 점수→a (가중치에는 아직 쓰지 않고 오직 성공확률에만 사용)
         private float ComputeAForGate()
         {
             int score = 0;

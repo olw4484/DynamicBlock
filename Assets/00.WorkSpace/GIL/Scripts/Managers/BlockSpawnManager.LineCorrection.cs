@@ -12,23 +12,23 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [System.Serializable]
         public struct LineFirstCorrectionConfig
         {
-            public bool UseLineFirstCorrection;
-            public int MaxRunLength;           
-            public bool ScanRows;              
-            public bool ScanCols;              
-            public bool AllowNonLineShapes;    
-            public int PairBudget;
+            public bool useLineFirstCorrection;
+            public int maxRunLength;           
+            public bool scanRows;              
+            public bool scanCols;              
+            public bool allowNonLineShapes;    
+            public int pairBudget;
         }
 
         [Header("Line-First Correction")]
         [SerializeField] private LineFirstCorrectionConfig correctionCfg = new LineFirstCorrectionConfig
         {
-            UseLineFirstCorrection = true,
-            MaxRunLength = 5,
-            ScanRows = true,
-            ScanCols = true,
-            AllowNonLineShapes = true,
-            PairBudget = 200
+            useLineFirstCorrection = true,
+            maxRunLength = 5,
+            scanRows = true,
+            scanCols = true,
+            allowNonLineShapes = true,
+            pairBudget = 200
         };
 
         public readonly struct LineRun
@@ -71,20 +71,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return board;
         }
 
-        private List<LineRun> FindLineCandidates(bool[,] board, LineFirstCorrectionConfig cfg)
+        private static List<LineRun> FindLineCandidates(bool[,] board, LineFirstCorrectionConfig cfg)
         {
             var gm = GridManager.Instance;
-            int R = gm.rows, C = gm.cols;
+            int row = gm.rows, col = gm.cols;
             var runs = new List<LineRun>(16);
 
-            void ScanLine(LineAxis axis, int idx)
+            void ScanLine(LineAxis axis, int index)
             {
-                int length = (axis == LineAxis.Row) ? C : R;
+                int length = (axis == LineAxis.Row) ? col : row;
                 int zeroStart = -1, zeroLen = 0, zeroSegments = 0;
 
                 for (int i = 0; i < length; i++)
                 {
-                    bool occupied = (axis == LineAxis.Row) ? board[idx, i] : board[i, idx];
+                    bool occupied = (axis == LineAxis.Row) ? board[index, i] : board[i, index];
                     bool isZero = !occupied;
 
                     if (isZero)
@@ -98,18 +98,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         {
                             zeroSegments++;
                             // 조건: 연속 0 런이 정확히 1개이며, 길이 제한 필요
-                            if (zeroSegments == 1 && zeroLen <= cfg.MaxRunLength)
+                            if (zeroSegments == 1 && zeroLen <= cfg.maxRunLength)
                             {
                                 // 나머지 칸이 모두 1인지 확인
                                 bool othersAllOne = true;
                                 for (int j = 0; j < length; j++)
                                 {
                                     if (j >= zeroStart && j < zeroStart + zeroLen) continue;
-                                    bool occ = (axis == LineAxis.Row) ? board[idx, j] : board[j, idx];
+                                    bool occ = (axis == LineAxis.Row) ? board[index, j] : board[j, index];
                                     if (!occ) { othersAllOne = false; break; }
                                 }
                                 if (othersAllOne)
-                                    runs.Add(new LineRun(axis, idx, zeroStart, zeroLen));
+                                    runs.Add(new LineRun(axis, index, zeroStart, zeroLen));
                             }
                             // 다음 런 탐색 초기화
                             zeroStart = -1; zeroLen = 0;
@@ -118,28 +118,28 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
             }
 
-            if (cfg.ScanRows)
-                for (int r = 0; r < R; r++) ScanLine(LineAxis.Row, r);
-            if (cfg.ScanCols)
-                for (int c = 0; c < C; c++) ScanLine(LineAxis.Col, c);
+            if (cfg.scanRows)
+                for (int r = 0; r < row; r++) ScanLine(LineAxis.Row, r);
+            if (cfg.scanCols)
+                for (int c = 0; c < col; c++) ScanLine(LineAxis.Col, c);
 
             return runs;
         }
 
-        private IEnumerable<ShapeData> EnumerateShapesForRun(LineRun run, IReadOnlyList<ShapeData> allShapes, LineFirstCorrectionConfig cfg)
+        private static IEnumerable<ShapeData> EnumerateShapesForRun(LineRun run, IReadOnlyList<ShapeData> allShapes, LineFirstCorrectionConfig cfg)
         {
-            int L = run.Length;
+            int runLength = run.Length;
 
             for (int i = 0; i < allShapes.Count; i++)
             {
-                var s = allShapes[i];
-                if (s == null) continue;
-                if (s.activeBlockCount < L) continue;
-                yield return s;
+                var allShape = allShapes[i];
+                if (allShape == null) continue;
+                if (allShape.activeBlockCount < runLength) continue;
+                yield return allShape;
             }
         }
 
-        private bool TryFitInRun(LineRun run, ShapeData shape, bool[,] virtualBoard, out FitInfo fit, LineFirstCorrectionConfig cfg)
+        private static bool TryFitInRun(LineRun run, ShapeData shape, bool[,] virtualBoard, out FitInfo fit, LineFirstCorrectionConfig cfg)
         {
             var gm = GridManager.Instance;
             var squares = gm.gridSquares;
@@ -153,8 +153,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int runEnd = run.Start + run.Length - 1;
 
             FitInfo found = default;
-            bool okFound = false;
-            List<GridSquare> tmp = new List<GridSquare>(shape.activeBlockCount);
+            var okFound = false;
+            var tmp = new List<GridSquare>(shape.activeBlockCount);
 
             ForEachOffsetFromRandomStart(gm.rows, gm.cols, shRows, shCols, (oy, ox) =>
             {
@@ -256,10 +256,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (TryFitInRun(run, shape, virtualBoard, out var fit, cfg))
                     {
                         pairs.Add(new CorrectionCandidate(run, shape, fit));
-                        if (pairs.Count >= cfg.PairBudget) break;
+                        if (pairs.Count >= cfg.pairBudget) break;
                     }
                 }
-                if (pairs.Count >= cfg.PairBudget) break;
+                if (pairs.Count >= cfg.pairBudget) break;
             }
 
             if (pairs.Count == 0) return false;
@@ -279,7 +279,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             correctedShape = null;
             correctedFit = default;
 
-            if (!correctionCfg.UseLineFirstCorrection) return false;
+            if (!correctionCfg.useLineFirstCorrection) return false;
 
             var runs = FindLineCandidates(virtualBoard, correctionCfg);
             if (runs == null || runs.Count == 0) return false;

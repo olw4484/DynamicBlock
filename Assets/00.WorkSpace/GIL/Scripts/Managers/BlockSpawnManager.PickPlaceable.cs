@@ -10,16 +10,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private struct PlaceableCandidate
         {
             public ShapeData Shape;
-            public FitInfo Fit;   // 기존 프로젝트에 정의된 FitInfo 사용 (Offset, CoveredSquares 등)
+            public FitInfo Fit;
             public float Weight;
         }
 
         /// <summary>
-        /// [엄밀화 3단계]
         /// 현재 보드 스냅샷 기준으로, (랜덤 시작 오프셋 스캔 순서로) 실제로 놓일 수 있는 셋만 수집하고
         /// tile^a 가중치로 1개를 선택함.
         /// </summary>
-        private bool TryPickWeightedAmongPlaceablesFromRandomStart(
+        private bool TryPickWeightedAmongPlaceableFromRandomStart(
             HashSet<string> excludedByPenalty,
             HashSet<string> excludedByDupes,
             float a,

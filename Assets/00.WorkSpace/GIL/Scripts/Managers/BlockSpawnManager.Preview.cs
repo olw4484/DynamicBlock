@@ -63,7 +63,52 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return okFound;
         }
 
+        private bool TryPickWeightedAmongPlaceableFromRandom(
+            bool[,] board,
+            HashSet<string> excludedByPenalty,
+            HashSet<string> excludedByDupes,
+            float a,
+            out ShapeData chosen,
+            out FitInfo chosenFit)
+        {
+            chosen = null; chosenFit = default;
+            var candidates = new List<(ShapeData s, FitInfo fit, float w)>();
         
+            for (int i = 0; i < shapeData.Count; i++)
+            {
+                var s = shapeData[i];
+                if (s == null) continue;
+                if (excludedByPenalty != null && excludedByPenalty.Contains(s.Id)) continue;
+                if (excludedByDupes   != null && excludedByDupes.Contains(s.Id)) continue;
+        
+                if (TryFindFitFromRandomStart(board, s, out var fit))
+                {
+                    float w = Mathf.Pow(Mathf.Max(1, s.activeBlockCount), a);
+                    candidates.Add((s, fit, w));
+                }
+            }
+            if (candidates.Count == 0) return false;
+        
+            float total = 0f; foreach (var c in candidates) total += c.w;
+            float r = Random.value * total;
+            foreach (var c in candidates)
+            {
+                if (r < c.w) { chosen = c.s; chosenFit = c.fit; return true; }
+                r -= c.w;
+            }
+            var last = candidates[candidates.Count - 1];
+            chosen = last.s; chosenFit = last.fit; return true;
+        }
+        
+        private void MarkFitOccupied(bool[,] board, ShapeData shape, FitInfo fit)
+        {
+            var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
+            int rows = maxY - minY + 1, cols = maxX - minX + 1;
+            for (int y = 0; y < rows; y++)
+            for (int x = 0; x < cols; x++)
+                if (shape.rows[minY + y].columns[minX + x])
+                    board[fit.Offset.y + y, fit.Offset.x + x] = true;
+        }
 
         /// <summary>
         /// 웨이브 전체에 대해 겹치지 않는 위치를 계산하고 Hover로 표시.

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using UnityEngine;
@@ -89,6 +90,56 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     body(oy, ox);
                 }
             }
+        }
+        
+        private void ReserveAndResolveLines(bool[,] board, ShapeData shape, FitInfo fit)
+        {
+            var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
+            int rows = maxY - minY + 1, cols = maxX - minX + 1;
+            int oy = fit.Offset.y, ox = fit.Offset.x;
+
+            for (int y = 0; y < rows; y++)
+            for (int x = 0; x < cols; x++)
+                if (shape.rows[minY + y].columns[minX + x])
+                    board[oy + y, ox + x] = true;
+
+            ResolveCompletedLinesInPlace(board);
+        }
+
+        private void ResolveCompletedLinesInPlace(bool[,] board)
+        {
+            var gm = GridManager.Instance;
+            int R = gm.rows, C = gm.cols;
+
+            // 가득 찬 행/열 수집
+            List<int> fullRows = null;
+            for (int r = 0; r < R; r++)
+            {
+                bool full = true;
+                for (int c = 0; c < C; c++)
+                    if (!board[r, c]) { full = false; break; }
+                if (full) (fullRows ??= new List<int>()).Add(r);
+            }
+
+            List<int> fullCols = null;
+            for (int c = 0; c < C; c++)
+            {
+                bool full = true;
+                for (int r = 0; r < R; r++)
+                    if (!board[r, c]) { full = false; break; }
+                if (full) (fullCols ??= new List<int>()).Add(c);
+            }
+
+            // 동시 제거
+            if (fullRows != null)
+                foreach (int r in fullRows)
+                    for (int c = 0; c < C; c++)
+                        board[r, c] = false;
+
+            if (fullCols != null)
+                foreach (int c in fullCols)
+                    for (int r = 0; r < R; r++)
+                        board[r, c] = false;
         }
     }
 }

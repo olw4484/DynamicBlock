@@ -18,25 +18,24 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         [Header("Wave Rules")] 
         [SerializeField, Range(1, 3)] private int maxDuplicatesPerWave = 2;
-        
-        [Header("Wave Record Rules")]
         [SerializeField, Range(2, 5)] private int maxSameWaveStreak = 3;
         private readonly Queue<string> _lastWaves = new();
         
-        [Header("Small Block Success Gate")]
+        [Header("Block Spawn Rules")]
         [SerializeField] private bool useSmallBlockSuccessGate = true;
-
+        [SerializeField] private bool reserveCellsDuringWave = true;
+        
         [Header("Dynamic Weight (tile^a)")] 
         public float aExponent = 0.3f;
         [SerializeField] private bool useDynamicWeightByTilePowA = true;
-        [SerializeField] private float aMin = 0f;
+        [SerializeField] private float aMin;
         [SerializeField] private float aMax = 1.0f;
         
         [SerializeField] private SmallBlockGate[] smallBlockGates =
         {
-            new SmallBlockGate{ tiles=1, percentAtAMin=30, percentAtAMax=10 },
-            new SmallBlockGate{ tiles=2, percentAtAMin=50, percentAtAMax=20 },
-            new SmallBlockGate{ tiles=3, percentAtAMin=70, percentAtAMax=30 },
+            new() { tiles=1, percentAtAMin=30, percentAtAMax=10 },
+            new() { tiles=2, percentAtAMin=50, percentAtAMax=20 },
+            new() { tiles=3, percentAtAMin=70, percentAtAMax=30 },
         };
         // 정수 누적표를 만들 때 소수값 손실을 줄이기 위한 스케일
         
@@ -46,9 +45,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private float _lastAForWeights = -999f;
         
 // a 범위 (문서 기준 0.3~1.0)
-        
-        
-        
+
         private int[] _cumulativeWeights;
         private int[] _inverseCumulativeWeights;
         private int _totalWeight;
@@ -56,7 +53,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void SetDependencies(EventQueue bus) { _bus = bus; }
 
-        void Awake()
+        private void Awake()
         {
             if (Instance != null && Instance != this)
             {
@@ -70,22 +67,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             LoadResources();
         }
 
-        public void Init()
-        {
-            BuildWeightTable();
-        }
+        public void Init() { }
         
         public void PostInit() { }
 
         private void LoadResources()
         {
             shapeData = new List<ShapeData>(Resources.LoadAll<ShapeData>(resourcesPath));
-        }
-
-        public void BuildWeightTable()
-        {
-            BuildCumulativeTable();
-            BuildInverseCumulativeTable();
         }
     }
     

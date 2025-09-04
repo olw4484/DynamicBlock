@@ -106,7 +106,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (wave == null || wave.Count == 0)
             {
                 Debug.LogError("[Storage] Wave is null/empty. Rebuilding weights and retry.");
-                spawner.BuildWeightTable();
+                //spawner.BuildWeightTable();
                 wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
                 if (wave == null || wave.Count == 0) return;
             }
@@ -248,7 +248,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
 
-            BlockSpawnManager.Instance.BuildWeightTable();
             // 생성은 GridReady에서 재개
         }
 
