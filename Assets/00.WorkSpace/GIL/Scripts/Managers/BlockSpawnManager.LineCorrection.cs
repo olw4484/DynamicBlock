@@ -21,7 +21,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
 
         [Header("Line-First Correction")]
-        [SerializeField] private LineFirstCorrectionConfig correctionCfg = new LineFirstCorrectionConfig
+        [SerializeField] private LineFirstCorrectionConfig correctionCfg = new ()
         {
             useLineFirstCorrection = true,
             maxRunLength = 5,
@@ -71,20 +71,27 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return board;
         }
 
-        private static List<LineRun> FindLineCandidates(bool[,] board, LineFirstCorrectionConfig cfg)
+        private List<LineRun> FindLineCandidates(bool[,] board, LineFirstCorrectionConfig cfg)
         {
             var gm = GridManager.Instance;
             int row = gm.rows, col = gm.cols;
             var runs = new List<LineRun>(16);
 
+            if (cfg.scanRows)
+                for (int r = 0; r < row; r++) ScanLine(LineAxis.Row, r);
+            if (!cfg.scanCols) return runs;
+            for (int c = 0; c < col; c++) ScanLine(LineAxis.Col, c);
+
+            return runs;
+
             void ScanLine(LineAxis axis, int index)
             {
-                int length = (axis == LineAxis.Row) ? col : row;
+                int length = axis == LineAxis.Row ? col : row;
                 int zeroStart = -1, zeroLen = 0, zeroSegments = 0;
 
                 for (int i = 0; i < length; i++)
                 {
-                    bool occupied = (axis == LineAxis.Row) ? board[index, i] : board[i, index];
+                    bool occupied = axis == LineAxis.Row ? board[index, i] : board[i, index];
                     bool isZero = !occupied;
 
                     if (isZero)
@@ -105,8 +112,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                                 for (int j = 0; j < length; j++)
                                 {
                                     if (j >= zeroStart && j < zeroStart + zeroLen) continue;
-                                    bool occ = (axis == LineAxis.Row) ? board[index, j] : board[j, index];
-                                    if (!occ) { othersAllOne = false; break; }
+                                    bool occ = axis == LineAxis.Row ? board[index, j] : board[j, index];
+                                    if (occ) continue;
+                                    othersAllOne = false; break;
                                 }
                                 if (othersAllOne)
                                     runs.Add(new LineRun(axis, index, zeroStart, zeroLen));
@@ -117,29 +125,21 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     }
                 }
             }
-
-            if (cfg.scanRows)
-                for (int r = 0; r < row; r++) ScanLine(LineAxis.Row, r);
-            if (cfg.scanCols)
-                for (int c = 0; c < col; c++) ScanLine(LineAxis.Col, c);
-
-            return runs;
         }
 
-        private static IEnumerable<ShapeData> EnumerateShapesForRun(LineRun run, IReadOnlyList<ShapeData> allShapes, LineFirstCorrectionConfig cfg)
+        private IEnumerable<ShapeData> EnumerateShapesForRun(LineRun run, IReadOnlyList<ShapeData> allShapes)
         {
             int runLength = run.Length;
 
-            for (int i = 0; i < allShapes.Count; i++)
+            foreach (var allShape in allShapes)
             {
-                var allShape = allShapes[i];
                 if (allShape == null) continue;
                 if (allShape.activeBlockCount < runLength) continue;
                 yield return allShape;
             }
         }
 
-        private static bool TryFitInRun(LineRun run, ShapeData shape, bool[,] virtualBoard, out FitInfo fit, LineFirstCorrectionConfig cfg)
+        private bool TryFitInRun(LineRun run, ShapeData shape, bool[,] virtualBoard, out FitInfo fit)
         {
             var gm = GridManager.Instance;
             var squares = gm.gridSquares;
@@ -247,17 +247,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             foreach (var run in runs)
             {
-                foreach (var shape in EnumerateShapesForRun(run, shapes, cfg))
+                foreach (var shape in EnumerateShapesForRun(run, shapes))
                 {
                     if (shape == null) continue;
                     if (excludedByPenalty != null && excludedByPenalty.Contains(shape.Id)) continue;
                     if (excludedByDupes   != null && excludedByDupes.Contains(shape.Id)) continue;
 
-                    if (TryFitInRun(run, shape, virtualBoard, out var fit, cfg))
-                    {
-                        pairs.Add(new CorrectionCandidate(run, shape, fit));
-                        if (pairs.Count >= cfg.pairBudget) break;
-                    }
+                    if (!TryFitInRun(run, shape, virtualBoard, out var fit)) continue;
+                    pairs.Add(new CorrectionCandidate(run, shape, fit));
+                    if (pairs.Count >= cfg.pairBudget) break;
                 }
                 if (pairs.Count >= cfg.pairBudget) break;
             }
@@ -300,11 +298,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return true;
         }
 
-        private bool TryGuaranteePlaceableWave(
-            List<ShapeData> wave,
-            out int replacedIndex,
-            out ShapeData newShape,
-            out FitInfo newFit)
+        private bool TryGuaranteePlaceableWave(List<ShapeData> wave, out int replacedIndex, out ShapeData newShape, out FitInfo newFit)
         {
             replacedIndex = -1;
             newShape = null;
@@ -313,12 +307,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (wave == null || wave.Count == 0) return false;
 
             bool anyPlaceable = false;
-            for (int i = 0; i < wave.Count; i++)
+            foreach (var t in wave)
             {
-                if (wave[i] != null && CanPlaceShapeData(wave[i]))
-                {
-                    anyPlaceable = true; break;
-                }
+                if (t == null || !CanPlaceShapeData(t)) continue;
+                anyPlaceable = true; break;
             }
             if (anyPlaceable) return false;
 

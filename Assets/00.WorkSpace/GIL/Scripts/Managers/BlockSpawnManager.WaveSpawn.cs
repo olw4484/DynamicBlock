@@ -18,7 +18,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 중복 제한, 반복 구성 방지 계산용 카운터
             var perShapeCount = new Dictionary<string, int>();
             // a 지수
-            float aForGate = ComputeAForGate();
+            var aForGate = ComputeAForGate();
             
             bool[,] waveBoard = reserveCellsDuringWave ? SnapshotBoard() : null;
             
@@ -63,22 +63,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     chosen = pick;
                     
                     // 예약 모드면 최종 커밋용 Fit 확보 (step3에서 이미 갖고 오거나, 폴백이면 새로 탐색)
-                    if (reserveCellsDuringWave)
+                    if (!reserveCellsDuringWave) continue;
+                    if (pickedOnReserveBoard)
                     {
-                        if (pickedOnReserveBoard)
-                        {
-                            fitToCommit = fitFromStep3;
-                        }
-                        else
-                        {
-                            // 폴백으로 뽑힌 경우, 현재 예약 보드 기준으로 실제 배치 위치를 찾아야 함
-                            if (!TryFindFitFromRandomStart(waveBoard, chosen, out fitToCommit))
-                            {
-                                // 예약 보드에선 배치 불가 → 실패로 간주하고 다음 후보를 계속 탐색
-                                chosen = null;
-                                excludedByPenalty.Add(pick.Id);
-                            }
-                        }
+                        fitToCommit = fitFromStep3;
+                    }
+                    else
+                    {
+                        // 폴백으로 뽑힌 경우, 현재 예약 보드 기준으로 실제 배치 위치를 찾아야 함
+                        if (TryFindFitFromRandomStart(waveBoard, chosen, out fitToCommit)) continue;
+                        // 예약 보드에선 배치 불가 → 실패로 간주하고 다음 후보를 계속 탐색
+                        chosen = null;
+                        excludedByPenalty.Add(pick.Id);
                     }
                 }
                 // 소형 패널티는 무시하지만, 중복 한도 제외는 반드시 시킴
@@ -97,11 +93,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 perShapeCount.TryGetValue(chosenId, out int cnt);
                 cnt++;
                 perShapeCount[chosenId] = cnt;
-                if (cnt >= maxDuplicatesPerWave)
-                {
-                    Debug.Log($"{maxDuplicatesPerWave}이상 중복됨, 다음 선택에서 제외");
-                    excludedByDupes.Add(chosenId); // 다음 선택에서 제외.
-                }
+                if (cnt < maxDuplicatesPerWave) continue;
+                Debug.Log($"{maxDuplicatesPerWave}이상 중복됨, 다음 선택에서 제외");
+                excludedByDupes.Add(chosenId); // 다음 선택에서 제외.
             }
             
             // 여기서 3연속 방지 검사/치환
@@ -114,9 +108,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                 // 교체 후보: 중복 한도 및 현재 카운트 고려, '더 큰 타일 수' 우선
                 ShapeData candidate = null; int bestTiles = int.MinValue;
-                for (int i = 0; i < shapeData.Count; i++)
+                foreach (var s in shapeData)
                 {
-                    var s = shapeData[i];
                     if (s == null) continue;
 
                     // 같은 ID로 교체하면 구성 안 바뀌므로 제외
@@ -128,11 +121,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                     // (선택) 소형 페널티는 이 단계에서 무시 — “반복 깨기”가 우선
                     int tiles = s.activeBlockCount;
-                    if (tiles > bestTiles)
-                    {
-                        bestTiles = tiles;
-                        candidate = s;
-                    }
+                    if (tiles <= bestTiles) continue;
+                    bestTiles = tiles;
+                    candidate = s;
                 }
 
                 if (candidate != null)
@@ -164,9 +155,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
             
             bool anyPlaceable = false;
-            for (int i = 0; i < result.Count; i++)
+            foreach (var t in result)
             {
-                if (result[i] != null && CanPlaceShapeData(result[i])) { anyPlaceable = true; break; }
+                if (t != null && CanPlaceShapeData(t)) { anyPlaceable = true; break; }
             }
             if (!anyPlaceable)
             {

@@ -7,7 +7,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     {
         private float ComputeAForGate()
         {
-            int score = 0;
+            var score = 0;
             if (ScoreManager.Instance != null) score = ScoreManager.Instance.Score;
 
             // a = 0.3 + 0.1 * floor(score/2000), 최대 1.0
@@ -20,9 +20,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (tileCount > 3) return 100f; // 작은 블록만 게이트
 
             // a를 0~1로 정규화 후 선형보간
-            float t = Mathf.InverseLerp(aMin, aMax, a);
+            var t = Mathf.InverseLerp(aMin, aMax, a);
 
-            for (int i = 0; i < smallBlockGates.Length; i++)
+            for (var i = 0; i < smallBlockGates.Length; i++)
             {
                 if (smallBlockGates[i].tiles == tileCount)
                 {
@@ -42,20 +42,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (!useSmallBlockSuccessGate) return true;
             
-            int n = s.activeBlockCount;
+            var n = s.activeBlockCount;
             if (n > 3) return true;
             
-            float p = EvalSmallBlockSuccessPercent(n, a) * 0.01f;
-            bool isSuccess = Random.value < p;
-#if UNITY_EDITOR            
-            if (isSuccess)
-            {
-                Debug.LogWarning($"{p}의 확률, {a}의 계수 a로 {s.Id} 생성 성공!");
-            }
-            else
-            {
-                Debug.LogWarning($"{p}의 확률, {a}의 계수로 {s.Id} 생성 실패!");
-            }
+            var p = EvalSmallBlockSuccessPercent(n, a) * 0.01f;
+            var isSuccess = Random.value < p;
+#if UNITY_EDITOR
+            Debug.LogWarning(isSuccess ? $"{p}의 확률, {a}의 계수 a로 {s.Id} 생성 성공!" : $"{p}의 확률, {a}의 계수로 {s.Id} 생성 실패!");
 #endif            
             return isSuccess;
         }

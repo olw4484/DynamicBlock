@@ -35,7 +35,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             new() { tiles=1, percentAtAMin=30, percentAtAMax=10 },
             new() { tiles=2, percentAtAMin=50, percentAtAMax=20 },
-            new() { tiles=3, percentAtAMin=70, percentAtAMax=30 },
+            new() { tiles=3, percentAtAMin=70, percentAtAMax=30 }
         };
         // 정수 누적표를 만들 때 소수값 손실을 줄이기 위한 스케일
         
@@ -45,11 +45,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private float _lastAForWeights = -999f;
         
 // a 범위 (문서 기준 0.3~1.0)
-
-        private int[] _cumulativeWeights;
-        private int[] _inverseCumulativeWeights;
-        private int _totalWeight;
-        private int _inverseTotalWeight;
 
         public void SetDependencies(EventQueue bus) { _bus = bus; }
 

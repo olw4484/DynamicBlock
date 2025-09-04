@@ -24,7 +24,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             for (int i = 0; i < shapeData.Count; i++)
             {
-                var s = shapeData[i];
+                ShapeData s = shapeData[i];
                 int tiles = Mathf.Max(0, s.activeBlockCount);
                 float w = tiles > 0 ? Mathf.Pow(tiles, a) : 0f;
 
@@ -56,19 +56,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         private ShapeData GetRandomShapeByWeight()
         {
-            if (useDynamicWeightByTilePowA)
-            {
-                // a 값이 바뀌었거나, 테이블이 비었으면 재생성
-                float a = ComputeAForGate(); // 이전 단계에서 만든 a 계산 함수 재사용
-                if (!Mathf.Approximately(a, _lastAForWeights) || _dynCumulativeWeights == null)
-                    BuildDynamicWeightTable(a);
+            if (!useDynamicWeightByTilePowA) return shapeData[Random.Range(0, shapeData.Count)];
+            // a 값이 바뀌었거나, 테이블이 비었으면 재생성
+            float a = ComputeAForGate(); // 이전 단계에서 만든 a 계산 함수 재사용
+            if (!Mathf.Approximately(a, _lastAForWeights) || _dynCumulativeWeights == null)
+                BuildDynamicWeightTable(a);
 
-                int idx = PickIndexByDynamicWeights();
-                if (idx >= 0) return shapeData[idx];
-            }
-
-            // 폴백(혹시 동적 가중치가 0이거나 비정상일 때)
-            return shapeData[Random.Range(0, shapeData.Count)];
+            int idx = PickIndexByDynamicWeights();
+            return idx >= 0 ? shapeData[idx] :
+                // 폴백(혹시 동적 가중치가 0이거나 비정상일 때)
+                shapeData[Random.Range(0, shapeData.Count)];
         }
 
         /// <summary>
@@ -90,9 +87,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
 
             // 폴백: 균등 추출로라도 하나 반환 (모두 제외면 null)
-            for (int i = 0; i < shapeData.Count; i++)
+            foreach (var s in shapeData)
             {
-                var s = shapeData[i];
                 if ((excludedByPenalty != null && excludedByPenalty.Contains(s.Id)) ||
                     (excludedByDupes   != null && excludedByDupes.Contains(s.Id))) continue;
                 return s;

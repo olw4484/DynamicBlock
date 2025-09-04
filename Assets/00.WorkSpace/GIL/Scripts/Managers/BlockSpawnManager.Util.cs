@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.Shapes;
-using _00.WorkSpace.GIL.Scripts.Grids;
 using UnityEngine;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
@@ -41,7 +40,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return true;
         }
         
-        private static (int minX, int maxX, int minY, int maxY) GetShapeBounds(ShapeData shape)
+        private (int minX, int maxX, int minY, int maxY) GetShapeBounds(ShapeData shape)
         {
             int minX = int.MaxValue, minY = int.MaxValue;
             int maxX = int.MinValue, maxY = int.MinValue;
@@ -58,16 +57,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
             }
 
-            if (maxX < 0)
-            {
-                minX = minY = 0;
-                maxX = maxY = 0;
-            }
+            if (maxX >= 0) return (minX, maxX, minY, maxY);
+            minX = minY = 0;
+            maxX = maxY = 0;
 
             return (minX, maxX, minY, maxY);
         }
         
-        private static void ForEachOffsetFromRandomStart(int boardRows, int boardCols, int shapeRows, int shapeCols, System.Action<int,int> body)
+        private void ForEachOffsetFromRandomStart(int boardRows, int boardCols, int shapeRows, int shapeCols, System.Action<int,int> body)
         {
             int oyMax = boardRows - shapeRows;
             int oxMax = boardCols - shapeCols;
@@ -80,12 +77,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int dy = 0; dy <= oyMax; dy++)
             {
                 int oy = startOy + dy;
-                if (oy > oyMax) oy -= (oyMax + 1);
+                if (oy > oyMax) oy -= oyMax + 1;
 
                 for (int dx = 0; dx <= oxMax; dx++)
                 {
                     int ox = startOx + dx;
-                    if (ox > oxMax) ox -= (oxMax + 1);
+                    if (ox > oxMax) ox -= oxMax + 1;
 
                     body(oy, ox);
                 }
@@ -109,23 +106,23 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void ResolveCompletedLinesInPlace(bool[,] board)
         {
             var gm = GridManager.Instance;
-            int R = gm.rows, C = gm.cols;
+            int rows = gm.rows, cols = gm.cols;
 
             // 가득 찬 행/열 수집
             List<int> fullRows = null;
-            for (int r = 0; r < R; r++)
+            for (int r = 0; r < rows; r++)
             {
                 bool full = true;
-                for (int c = 0; c < C; c++)
+                for (int c = 0; c < cols; c++)
                     if (!board[r, c]) { full = false; break; }
                 if (full) (fullRows ??= new List<int>()).Add(r);
             }
 
             List<int> fullCols = null;
-            for (int c = 0; c < C; c++)
+            for (int c = 0; c < cols; c++)
             {
                 bool full = true;
-                for (int r = 0; r < R; r++)
+                for (int r = 0; r < rows; r++)
                     if (!board[r, c]) { full = false; break; }
                 if (full) (fullCols ??= new List<int>()).Add(c);
             }
@@ -133,13 +130,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 동시 제거
             if (fullRows != null)
                 foreach (int r in fullRows)
-                    for (int c = 0; c < C; c++)
+                    for (int c = 0; c < cols; c++)
                         board[r, c] = false;
 
-            if (fullCols != null)
+            if (fullCols == null) return;
+            {
                 foreach (int c in fullCols)
-                    for (int r = 0; r < R; r++)
+                    for (int r = 0; r < rows; r++)
                         board[r, c] = false;
+            }
         }
     }
 }

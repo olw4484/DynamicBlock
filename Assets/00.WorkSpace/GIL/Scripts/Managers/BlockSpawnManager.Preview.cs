@@ -18,7 +18,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             var gm = GridManager.Instance;
             var squares = gm.gridSquares;
-            var states = gm.gridStates;
             
             // 경계 상자
             var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
@@ -33,7 +32,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 if (okFound) return;
 
                 bool ok = true;
-                list = list ?? new List<GridSquare>(8);
+                list ??= new List<GridSquare>(8);
                 list.Clear();
 
                 for (int y = 0; y < shRows && ok; y++)
@@ -49,15 +48,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     list.Add(squares[oy + y, ox + x]);
                 }
 
-                if (ok)
+                if (!ok) return;
+                foundFit = new FitInfo
                 {
-                    foundFit = new FitInfo
-                    {
-                        Offset = new Vector2Int(ox, oy),
-                        CoveredSquares = new List<GridSquare>(list) // 복사본
-                    };
-                    okFound = true;
-                }
+                    Offset = new Vector2Int(ox, oy),
+                    CoveredSquares = new List<GridSquare>(list) // 복사본
+                };
+                okFound = true;
             });
             fit = foundFit;
             return okFound;
@@ -74,18 +71,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             chosen = null; chosenFit = default;
             var candidates = new List<(ShapeData s, FitInfo fit, float w)>();
         
-            for (int i = 0; i < shapeData.Count; i++)
+            foreach (var s in shapeData)
             {
-                var s = shapeData[i];
                 if (s == null) continue;
                 if (excludedByPenalty != null && excludedByPenalty.Contains(s.Id)) continue;
                 if (excludedByDupes   != null && excludedByDupes.Contains(s.Id)) continue;
-        
-                if (TryFindFitFromRandomStart(board, s, out var fit))
-                {
-                    float w = Mathf.Pow(Mathf.Max(1, s.activeBlockCount), a);
-                    candidates.Add((s, fit, w));
-                }
+
+                if (!TryFindFitFromRandomStart(board, s, out var fit)) continue;
+                float w = Mathf.Pow(Mathf.Max(1, s.activeBlockCount), a);
+                candidates.Add((s, fit, w));
             }
             if (candidates.Count == 0) return false;
         
@@ -96,20 +90,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 if (r < c.w) { chosen = c.s; chosenFit = c.fit; return true; }
                 r -= c.w;
             }
-            var last = candidates[candidates.Count - 1];
+            var last = candidates[^1];
             chosen = last.s; chosenFit = last.fit; return true;
         }
         
-        private void MarkFitOccupied(bool[,] board, ShapeData shape, FitInfo fit)
-        {
-            var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
-            int rows = maxY - minY + 1, cols = maxX - minX + 1;
-            for (int y = 0; y < rows; y++)
-            for (int x = 0; x < cols; x++)
-                if (shape.rows[minY + y].columns[minX + x])
-                    board[fit.Offset.y + y, fit.Offset.x + x] = true;
-        }
-
         /// <summary>
         /// 웨이브 전체에 대해 겹치지 않는 위치를 계산하고 Hover로 표시.
         /// 같은 셀 중복 하이라이트를 막기 위해 가상보드에 순차 점유 마킹.
@@ -118,10 +102,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             ClearPreview();
 
-            var gm = GridManager.Instance;
-            var rows = gm.rows; 
-            var cols = gm.cols;
-            var squares = gm.gridSquares;
+            GridManager gm = GridManager.Instance;
+            int rows = gm.rows; 
+            int cols = gm.cols;
+            GridSquare[,] squares = gm.gridSquares;
 
             // 가상 보드: 현재 점유 상태를 복사하고, 미리보기로 선점한 칸은 true로 마킹
             var virtualBoard = new bool[rows, cols];
@@ -132,18 +116,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int i = 0; i < wave.Count; i++)
             {
                 if (wave[i] == null) continue;
-                if (TryFindOneFit(wave[i], virtualBoard, out var fit))
-                {
-                    // 스프라이트는 선택 사항: null이면 그리드의 기본 hover이미지로 표시됨
-                    var sprite = (spritesOrNull != null && i < spritesOrNull.Count) ? spritesOrNull[i] : null;
-                    ApplyPreview(fit, sprite);
+                if (!TryFindOneFit(wave[i], virtualBoard, out var fit)) continue;
+                // 스프라이트는 선택 사항: null이면 그리드의 기본 hover이미지로 표시됨
+                var sprite = spritesOrNull != null && i < spritesOrNull.Count ? spritesOrNull[i] : null;
+                ApplyPreview(fit, sprite);
                     
-                    if (fit.CoveredSquares == null) continue;
+                if (fit.CoveredSquares == null) continue;
                     
-                    // 가상보드 점유 마킹(다음 블록 프리뷰가 겹치지 않게)
-                    foreach (var sq in fit.CoveredSquares)
-                        virtualBoard[sq.RowIndex, sq.ColIndex] = true;
-                }
+                // 가상보드 점유 마킹(다음 블록 프리뷰가 겹치지 않게)
+                foreach (var sq in fit.CoveredSquares)
+                    virtualBoard[sq.RowIndex, sq.ColIndex] = true;
             }
         }
 
