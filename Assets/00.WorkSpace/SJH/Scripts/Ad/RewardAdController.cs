@@ -6,7 +6,6 @@ public class RewardAdController
 {
 	/*
 	 * 보상 테스트 광고 : "ca-app-pub-3940256099942544/5224354917"
-	 * 보상 광고 : "ca-app-pub-4554669209191050/7651445993"
 	 */
 
 	private const string _rewardAdId = "ca-app-pub-3940256099942544/5224354917";

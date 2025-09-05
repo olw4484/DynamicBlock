@@ -4,7 +4,6 @@ using Firebase.Extensions;
 using Firebase.Analytics;
 using TMPro;
 using UnityEngine.UI;
-using System.Collections;
 
 public class AnalyticsManager : MonoBehaviour
 {
@@ -36,7 +35,6 @@ public class AnalyticsManager : MonoBehaviour
 				FirebaseApp = FirebaseApp.DefaultInstance;
 				Debug.Log("파이어베이스 초기화 성공");
 				FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventLogin);
-				FirebaseAnalytics.LogEvent("TestEvent");
 			}
 			else
 			{

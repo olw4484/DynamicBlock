@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Localization;
@@ -14,7 +13,7 @@ public enum GameLanguage
 
 public class LanguageChanger : MonoBehaviour
 {
-	public static LanguageChanger Instance { get; private set; }
+	//public static LanguageChanger Instance { get; private set; }
 
 	[SerializeField] private TMP_Text _text;
 	[SerializeField] private LocalizeStringEvent _testText;
@@ -48,7 +47,8 @@ public class LanguageChanger : MonoBehaviour
 		else
 		{
 			// 세이브 없으면 OS 언어 사용
-			Locale sys = locales.GetLocale(Application.systemLanguage);
+			Locale sys = locales.GetLocale(GetSystemLanguageCode(locales));
+			Debug.LogWarning(sys);
 			if (sys == null) sys = LocalizationSettings.ProjectLocale;
 			targetIndex = Mathf.Max(0, locales.Locales.IndexOf(sys)); // 세이브데이터 없으면 -1
 		}
@@ -64,7 +64,7 @@ public class LanguageChanger : MonoBehaviour
 
 		_testText.RefreshString();
 
-		Instance = this;
+		//Instance = this;
 		
 		//var fontChangers = FindObjectsOfType<FontChanger>(true);
 		//foreach (var fc in fontChangers)
@@ -108,4 +108,14 @@ public class LanguageChanger : MonoBehaviour
 	//		default: return _englishFont;
 	//	}
 	//}
+
+	string GetSystemLanguageCode(ILocalesProvider locales)
+	{
+		var code = new LocaleIdentifier(Application.systemLanguage).Code;
+		switch (code)
+		{
+			case "ko": return "ko-KR";
+			default: return code;
+		}
+	}
 }
