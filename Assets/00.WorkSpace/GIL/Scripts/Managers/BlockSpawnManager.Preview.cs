@@ -1,0 +1,171 @@
+using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Grids;
+using _00.WorkSpace.GIL.Scripts.Shapes;
+using UnityEngine;
+
+namespace _00.WorkSpace.GIL.Scripts.Managers
+{
+    public partial class BlockSpawnManager
+    {
+        /// <summary>
+        /// 현 보드(실제 상태 기준)에서 shape를 놓을 수 있는 모든 위치 중
+        /// '겹치지 않는' 하나를 찾아 반환 (좌상단 우선). 못 찾으면 false.
+        /// </summary>
+        public bool TryFindOneFit(ShapeData shape, bool[,] virtualBoard, out FitInfo fit)
+        {
+            fit = default;
+            FitInfo foundFit = default;
+            
+            var gm = GridManager.Instance;
+            var squares = gm.gridSquares;
+            
+            // 경계 상자
+            var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
+            int shRows = maxY - minY + 1;
+            int shCols = maxX - minX + 1;
+            
+            bool okFound = false;
+            List<GridSquare> list = null;
+            
+            ForEachOffsetFromRandomStart(gm.rows, gm.cols, shRows, shCols, (oy, ox) =>
+            {
+                if (okFound) return;
+
+                bool ok = true;
+                list ??= new List<GridSquare>(8);
+                list.Clear();
+
+                for (int y = 0; y < shRows && ok; y++)
+                for (int x = 0; x < shCols; x++)
+                {
+                    if (!shape.rows[y + minY].columns[x + minX]) continue;
+
+                    bool occupied = virtualBoard != null
+                        ? virtualBoard[oy + y, ox + x]
+                        : squares[oy + y, ox + x].IsOccupied;
+
+                    if (occupied) { ok = false; break; }
+                    list.Add(squares[oy + y, ox + x]);
+                }
+
+                if (!ok) return;
+                foundFit = new FitInfo
+                {
+                    Offset = new Vector2Int(ox, oy),
+                    CoveredSquares = new List<GridSquare>(list) // 복사본
+                };
+                okFound = true;
+            });
+            fit = foundFit;
+            return okFound;
+        }
+
+        private bool TryPickWeightedAmongPlaceableFromRandom(
+            bool[,] board,
+            HashSet<string> excludedByPenalty,
+            HashSet<string> excludedByDupes,
+            float a,
+            out ShapeData chosen,
+            out FitInfo chosenFit)
+        {
+            chosen = null; chosenFit = default;
+            var candidates = new List<(ShapeData s, FitInfo fit, float w)>();
+        
+            foreach (var s in shapeData)
+            {
+                if (s == null) continue;
+                if (excludedByPenalty != null && excludedByPenalty.Contains(s.Id)) continue;
+                if (excludedByDupes   != null && excludedByDupes.Contains(s.Id)) continue;
+
+                if (!TryFindFitFromRandomStart(board, s, out var fit)) continue;
+                float w = Mathf.Pow(Mathf.Max(1, s.activeBlockCount), a);
+                candidates.Add((s, fit, w));
+            }
+            if (candidates.Count == 0) return false;
+        
+            float total = 0f; foreach (var c in candidates) total += c.w;
+            float r = Random.value * total;
+            foreach (var c in candidates)
+            {
+                if (r < c.w) { chosen = c.s; chosenFit = c.fit; return true; }
+                r -= c.w;
+            }
+            var last = candidates[^1];
+            chosen = last.s; chosenFit = last.fit; return true;
+        }
+        
+        /// <summary>
+        /// 웨이브 전체에 대해 겹치지 않는 위치를 계산하고 Hover로 표시.
+        /// 같은 셀 중복 하이라이트를 막기 위해 가상보드에 순차 점유 마킹.
+        /// </summary>
+        public void PreviewWaveNonOverlapping(List<ShapeData> wave, List<Sprite> spritesOrNull)
+        {
+            ClearPreview();
+
+            GridManager gm = GridManager.Instance;
+            int rows = gm.rows; 
+            int cols = gm.cols;
+            GridSquare[,] squares = gm.gridSquares;
+
+            // 가상 보드: 현재 점유 상태를 복사하고, 미리보기로 선점한 칸은 true로 마킹
+            var virtualBoard = new bool[rows, cols];
+            for (int row = 0; row < rows; row++)
+                for (int col = 0; col < cols; col++)
+                    virtualBoard[row, col] = squares[row, col].IsOccupied;
+
+            for (int i = 0; i < wave.Count; i++)
+            {
+                if (wave[i] == null) continue;
+                if (!TryFindOneFit(wave[i], virtualBoard, out var fit)) continue;
+                // 스프라이트는 선택 사항: null이면 그리드의 기본 hover이미지로 표시됨
+                var sprite = spritesOrNull != null && i < spritesOrNull.Count ? spritesOrNull[i] : null;
+                ApplyPreview(fit, sprite);
+                    
+                if (fit.CoveredSquares == null) continue;
+                    
+                // 가상보드 점유 마킹(다음 블록 프리뷰가 겹치지 않게)
+                foreach (var sq in fit.CoveredSquares)
+                    virtualBoard[sq.RowIndex, sq.ColIndex] = true;
+            }
+        }
+
+        /// <summary>
+        /// 지정된 배치의 셀들을 Hover 상태로 표시(점유 갱신 X)
+        /// </summary>
+        private void ApplyPreview(FitInfo fit, Sprite spriteOrNull)
+        {
+            if (fit.CoveredSquares == null || fit.CoveredSquares.Count == 0)
+            {
+                Debug.LogError("fit 설정이 안되어있다.");
+                return;
+            }
+            
+            foreach (var sq in fit.CoveredSquares)
+            {
+                if (sq == null) 
+                    continue;
+                if (spriteOrNull != null) 
+                    sq.SetImage(spriteOrNull);
+                if (!sq.IsOccupied) 
+                    sq.SetState(GridState.Hover); // Hover 이미지를 켬
+            }
+        }
+
+        /// <summary>
+        /// 현재 보드에서 점유되지 않은 셀들의 Hover를 모두 해제
+        /// </summary>
+        public void ClearPreview()
+        {
+            var gm = GridManager.Instance;
+            var squares = gm.gridSquares;
+            for (int r = 0; r < gm.rows; r++)
+            {
+                for (int c = 0; c < gm.cols; c++)
+                {
+                    if (!squares[r, c].IsOccupied)
+                        squares[r, c].SetState(GridState.Normal);
+                }
+            }
+        }
+    }
+}

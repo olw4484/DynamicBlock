@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d62d8aba34ddfc40babc3026a06656f, type: 3}
+  m_Name: 38.5_block_2_left
+  m_EditorClassIdentifier: 
+  Id: 
+  rows:
+  - columns: 0000000000
+  - columns: 0001010100
+  - columns: 0001000000
+  - columns: 0001000000
+  - columns: 0000000000
+  scoreForSpawn: 1
+  chanceForSpawn: 3
