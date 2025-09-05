@@ -12,32 +12,60 @@ using UnityEngine;
 public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
-
-    [Header("BGM Clips")]
-    public AudioClip BGM_Main;
-    public AudioClip BGM_Adventure;
-
-    [Header("Line Clear SE (1~6줄)")]
-    public AudioClip[] SE_LineClear = new AudioClip[6];
-
-    [Header("Block SE")]
-    public AudioClip SE_BlockSelect;
-    public AudioClip SE_BlockPlace;
-
-    [Header("Stage SE")]
-    public AudioClip SE_Adven_StageEnter;
-
-    [Header("Button SE")]
-    public AudioClip SE_Button;
-
     [Header("Audio Settings")]
     [SerializeField] private int sePoolSize = 10; // 동시에 재생 가능한 SE 수
     [Range(0f, 1f)] public float BGMVolume = 1f;
     [Range(0f, 1f)] public float SEVolume = 1f;
+    
+    [Header("1001 Click Button")]
+    public AudioClip SE_Button;
+
+    [Header("1002 Classic Start")]
+    public AudioClip SE_Classic_StageEnter;
+
+    [Header("1003 ")]
+
+    [Header("1004 Classic Game Over")]
+    public AudioClip SE_Classic_GameOver;
+
+    [Header("1005 Classic New record")]
+    public AudioClip SE_Classic_NewRecord;
+
+    [Header("1006 Adven Start")]
+    public AudioClip SE_Adven_StageEnter;
+
+    [Header("1007 Adven Fail")]
+    public AudioClip SE_Adven_Fail;
+
+    [Header("1008 Adven Clear")]
+    public AudioClip SE_Adven_Clear;
+
+    [Header("1009 Pick Block")]
+    public AudioClip SE_BlockSelect;
+
+    [Header("1010 Place Block")]
+    public AudioClip SE_BlockPlace;
+
+    [Header("1011~1018 Clear Combo (1~8 over)")]
+    public AudioClip[] SE_ClearCombo = new AudioClip[8];
+
+    [Header("1019 Continue Time Check")]
+    public AudioClip SE_ContinueTimeCheck;
+
+    [Header("1020~1023 Line Clear SE (1~6Line)")]
+    public AudioClip[] SE_LineClear = new AudioClip[6];
+
+    [Header("1024 Clear All Block")]
+    public AudioClip SE_ClearAllBlock;
+    
+    [Header("BGM Clips")]
+    public AudioClip BGM_Main;
+    public AudioClip BGM_Adventure;
 
     private AudioSource bgmSource;
     private List<AudioSource> sePool = new List<AudioSource>();
 
+    // 초기화
     private void Awake()
     {
         // 싱글톤 보장
@@ -154,10 +182,34 @@ public class AudioManager : MonoBehaviour
         if (lineCount > SE_LineClear.Length) lineCount = SE_LineClear.Length;
         PlaySE(SE_LineClear[lineCount - 1]);
     }
-
+    // 클리어 콤보 SE 재생 (1~8콤보)
+    public void PlayClearComboSE(int comboCount)
+    {
+        if (comboCount <= 0) return;
+        if (comboCount > SE_ClearCombo.Length) comboCount = SE_ClearCombo.Length;
+        PlaySE(SE_ClearCombo[comboCount - 1], vibrate: true);
+    }
+    // 기타 게임 이벤트용 SE 재생 헬퍼
+    public void PlayClassicStageEnterSE() => PlaySE(SE_Classic_StageEnter);
+    // Game Over SE
+    public void PlayClassicGameOverSE() => PlaySE(SE_Classic_GameOver, vibrate: true);
+    // New Record SE
+    public void PlayClassicNewRecordSE() => PlaySE(SE_Classic_NewRecord, vibrate: true);
+    // Adventure Fail SE
+    public void PlayAdvenFailSE() => PlaySE(SE_Adven_Fail, vibrate: true);
+    // Adventure Clear SE
+    public void PlayAdvenClearSE() => PlaySE(SE_Adven_Clear, vibrate: true);
+    // Clear All Block SE
+    public void PlayClearAllBlockSE() => PlaySE(SE_ClearAllBlock, vibrate: true);
+    // Continue Time Check SE
+    public void PlayContinueTimeCheckSE() => PlaySE(SE_ContinueTimeCheck);
+    // Block Select SE
     public void PlayBlockSelectSE() => PlaySE(SE_BlockSelect);
+    // Block Place SE
     public void PlayBlockPlaceSE() => PlaySE(SE_BlockPlace, vibrate: true);
+    // Adventure Stage Enter SE
     public void PlayStageEnterSE() => PlaySE(SE_Adven_StageEnter);
+    // Button Click SE
     public void PlayButtonClickSE() => PlaySE(SE_Button, vibrate: true);
     #endregion
 }
