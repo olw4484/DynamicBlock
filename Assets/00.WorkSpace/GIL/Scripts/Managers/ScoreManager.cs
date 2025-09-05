@@ -70,6 +70,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void SetCombo(int value)
         {
             Combo = Mathf.Max(0, value);
+
+            if (Combo > 0)
+                Sfx.Combo(Combo); // 헬퍼가 1~8로 클램프
+
             PublishCombo();
         }
 

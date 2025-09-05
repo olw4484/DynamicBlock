@@ -11,8 +11,8 @@ public sealed class LineClearFxTable : ScriptableObject
         [Range(1, 6)] public int lines;
         public Color rowColor = Color.cyan;
         public Color colColor = Color.magenta;
-        public int rowSfxId = (int)SfxId.RowClear;
-        public int colSfxId = (int)SfxId.ColClear;
+        public int rowSfxId = (int)SfxId.LineClear1;
+        public int colSfxId = (int)SfxId.LineClear1;
     }
 
     public Entry[] entries;

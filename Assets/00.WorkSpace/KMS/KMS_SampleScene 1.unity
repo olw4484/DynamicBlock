@@ -18278,6 +18278,10 @@ PrefabInstance:
       propertyPath: gridParent
       value: 
       objectReference: {fileID: 4289798565079145175}
+    - target: {fileID: 783529534833246912, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
+      propertyPath: destroyParticle
+      value: 
+      objectReference: {fileID: 4883431078802176644, guid: aa3cdc57cda59f5469c8fef9a0ba7580, type: 3}
     - target: {fileID: 6316385883739004828, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: _hudBestText
       value: 
