@@ -9,7 +9,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private string MakeWaveHistory(List<ShapeData> wave)
         {
             var ids = new List<string>(wave.Count);
-            for (int i = 0; i < wave.Count; i++) ids.Add(wave[i]?.Id ?? "");
+            foreach (var t in wave)
+                ids.Add(t?.Id ?? "");
+
             ids.Sort();
             return string.Join("|", ids);
         }
@@ -28,10 +30,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void RegisterWaveHistory(string wave)
         {
             _lastWaves.Enqueue(wave);
-            while (_lastWaves.Count > (maxSameWaveStreak - 1))
+            while (_lastWaves.Count > maxSameWaveStreak - 1)
                 _lastWaves.Dequeue();
         }
-        
-        public void ResetWaveHistory() => _lastWaves.Clear();
     }
 }

@@ -5,49 +5,52 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 {
     public partial class BlockSpawnManager
     {
-        private void BuildCumulativeTable()
+        private float ComputeAForGate()
         {
-            _cumulativeWeights = new int[shapeData.Count];
-            _totalWeight = 0;
+            var score = 0;
+            if (ScoreManager.Instance != null) score = ScoreManager.Instance.Score;
 
-            for (int i = 0; i < shapeData.Count; i++)
-            {
-                _totalWeight += shapeData[i].chanceForSpawn;
-                _cumulativeWeights[i] = _totalWeight;
-            }
-
-            Debug.Log($"가중치 계산 완료: {_totalWeight}");
+            // a = 0.3 + 0.1 * floor(score/2000), 최대 1.0
+            aExponent = 0.3f + 0.1f * Mathf.Floor(score / 2000f);
+            return Mathf.Clamp(aExponent, aMin, aMax);
         }
 
-        private void BuildInverseCumulativeTable()
+        private float EvalSmallBlockSuccessPercent(int tileCount, float a)
         {
-            _inverseCumulativeWeights = new int[shapeData.Count];
-            _inverseTotalWeight = 0;
+            if (tileCount > 3) return 100f; // 작은 블록만 게이트
 
-            for (int i = 0; i < shapeData.Count; i++)
+            // a를 0~1로 정규화 후 선형보간
+            var t = Mathf.InverseLerp(aMin, aMax, a);
+
+            for (var i = 0; i < smallBlockGates.Length; i++)
             {
-                _inverseTotalWeight += (_totalWeight - shapeData[i].chanceForSpawn);
-                _inverseCumulativeWeights[i] = _inverseTotalWeight;
-            }
-
-            Debug.Log($"역가중치 계산 완료: {_inverseTotalWeight}");
-        }    
-        
-        private ShapeData GetRandomShapeByWeight()
-        {
-            if (shapeData == null || shapeData.Count == 0) return null;
-            if (_cumulativeWeights == null || _cumulativeWeights.Length != shapeData.Count) BuildCumulativeTable();
-
-            int r = Random.Range(0, Mathf.Max(1, _totalWeight));
-            for (int i = 0; i < _cumulativeWeights.Length; i++)
-            {
-                if (r < _cumulativeWeights[i])
+                if (smallBlockGates[i].tiles == tileCount)
                 {
-                    return shapeData[i];
+                    return Mathf.Lerp(
+                        smallBlockGates[i].percentAtAMin,
+                        smallBlockGates[i].percentAtAMax,
+                        t
+                    );
                 }
             }
+
+            // 설정이 비어있으면 통과
+            return 100f;
+        }
+
+        private bool PassSmallBlockGate(ShapeData s, float a)
+        {
+            if (!useSmallBlockSuccessGate) return true;
             
-            return shapeData[^1];
+            var n = s.activeBlockCount;
+            if (n > 3) return true;
+            
+            var p = EvalSmallBlockSuccessPercent(n, a) * 0.01f;
+            var isSuccess = Random.value < p;
+#if UNITY_EDITOR
+            Debug.LogWarning(isSuccess ? $"{p}의 확률, {a}의 계수 a로 {s.Id} 생성 성공!" : $"{p}의 확률, {a}의 계수로 {s.Id} 생성 실패!");
+#endif            
+            return isSuccess;
         }
     }
 }

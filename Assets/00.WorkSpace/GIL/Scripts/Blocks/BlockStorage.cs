@@ -106,13 +106,15 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (wave == null || wave.Count == 0)
             {
                 Debug.LogError("[Storage] Wave is null/empty. Rebuilding weights and retry.");
-                spawner.BuildWeightTable();
+                //spawner.BuildWeightTable();
                 wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
                 if (wave == null || wave.Count == 0) return;
             }
 
             var previewSprites = new List<Sprite>(blockSpawnPosList.Count);
-
+            
+            for (int k = 0; k < blockSpawnPosList.Count; k++) previewSprites.Add(null);
+            
             for (int i = 0; i < blockSpawnPosList.Count; i++)
             {
                 var shape = (i < wave.Count) ? wave[i] : null;
@@ -129,7 +131,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 // 이미지 세팅
                 var sprite = shapeImageSprites[GetRandomImageIndex()];
                 block.shapePrefab.GetComponent<Image>().sprite = sprite;
-
+                previewSprites[i] = sprite;
+                
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
             }
@@ -245,7 +248,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
 
-            BlockSpawnManager.Instance.BuildWeightTable();
             // 생성은 GridReady에서 재개
         }
 
