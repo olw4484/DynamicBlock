@@ -348,6 +348,66 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 273027691}
   m_CullTransparentMesh: 1
+--- !u!1 &315274153
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 315274155}
+  - component: {fileID: 315274154}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &315274154
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 315274153}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bcb8774b93daf64da94535ac9df7cf0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  BGM_Main: {fileID: 0}
+  BGM_Adventure: {fileID: 0}
+  SE_LineClear:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  SE_BlockSelect: {fileID: 0}
+  SE_BlockPlace: {fileID: 0}
+  SE_Adven_StageEnter: {fileID: 0}
+  SE_Button: {fileID: 0}
+  sePoolSize: 10
+  BGMVolume: 1
+  SEVolume: 1
+--- !u!4 &315274155
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 315274153}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 512.0815, y: 427.81937, z: -4.4312205}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &619401751
 GameObject:
   m_ObjectHideFlags: 0
@@ -1206,6 +1266,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bgmClip: {fileID: 8300000, guid: 7360297fbd4ef2a4cb8a7ea0bc99e9da, type: 3}
   sfxClip: {fileID: 8300000, guid: cf2bad9c33985c0458deddb2616d1f57, type: 3}
+  bgmSource: {fileID: 0}
+  sfxSource: {fileID: 0}
 --- !u!4 &1720990775
 Transform:
   m_ObjectHideFlags: 0
@@ -1563,3 +1625,4 @@ SceneRoots:
   - {fileID: 1099449466}
   - {fileID: 1720990775}
   - {fileID: 619401755}
+  - {fileID: 315274155}
