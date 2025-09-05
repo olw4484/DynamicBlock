@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Localization;
@@ -13,9 +14,16 @@ public enum GameLanguage
 
 public class LanguageChanger : MonoBehaviour
 {
+	public static LanguageChanger Instance { get; private set; }
+
 	[SerializeField] private TMP_Text _text;
 	[SerializeField] private LocalizeStringEvent _testText;
 	[SerializeField] private TMP_Dropdown _languageDropDown;
+
+	public event Action<Locale> OnLocaleChanged;
+
+	[SerializeField] private TMP_FontAsset _koreanFont;
+	[SerializeField] private TMP_FontAsset _englishFont;
 
 	void Awake()
 	{
@@ -48,13 +56,25 @@ public class LanguageChanger : MonoBehaviour
 		SaveLoadManager.Instance.GameData.LanguageIndex = targetIndex;
 		SaveLoadManager.Instance.SaveData();
 
-		LocalizationSettings.SelectedLocale = locales.Locales[targetIndex];
+		var locale = LocalizationSettings.SelectedLocale = locales.Locales[targetIndex];
 		_languageDropDown.SetValueWithoutNotify(targetIndex);
 
 		_languageDropDown.onValueChanged.AddListener(OnValueChanged);
 		_testText.OnUpdateString.AddListener(OnUpdateString);
 
 		_testText.RefreshString();
+
+		Instance = this;
+
+		var fontChangers = FindObjectsOfType<FontChanger>(true);
+		foreach (var fc in fontChangers)
+		{
+			OnLocaleChanged += fc.UpdateFont;
+			fc.UpdateFont(locale);
+		}
+
+		OnLocaleChanged?.Invoke(locale);
+		Debug.Log("LanguageChanger 초기화 완료");
 	}
 
 	public void OnValueChanged(int value)
@@ -66,11 +86,23 @@ public class LanguageChanger : MonoBehaviour
 		LocalizationSettings.SelectedLocale = locale;
 		SaveLoadManager.Instance.GameData.LanguageIndex = value;
 		SaveLoadManager.Instance.SaveData();
+
+		OnLocaleChanged?.Invoke(locale);
 	}
 
 	public void OnUpdateString(string text)
 	{
 		Debug.Log(text);
 		_text.text = text;
+	}
+
+	public TMP_FontAsset GetFontForLocale(Locale locale)
+	{
+		switch (locale.Identifier.Code)
+		{
+			case "ko-KR": return _koreanFont;
+			case "en": return _englishFont;
+			default: return _englishFont;
+		}
 	}
 }
