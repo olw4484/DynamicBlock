@@ -388,6 +388,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: LJJ_SafeAreaPanel
       objectReference: {fileID: 0}
+    - target: {fileID: 6715964241374109060, guid: 5f2b0f8b0ef19184fbb9a5cd512d1039, type: 3}
+      propertyPath: m_Camera
+      value: 
+      objectReference: {fileID: 364098734}
+    - target: {fileID: 6715964241374109060, guid: 5f2b0f8b0ef19184fbb9a5cd512d1039, type: 3}
+      propertyPath: m_RenderMode
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6917754799421504165, guid: 5f2b0f8b0ef19184fbb9a5cd512d1039, type: 3}
       propertyPath: m_Pivot.x
       value: 0
