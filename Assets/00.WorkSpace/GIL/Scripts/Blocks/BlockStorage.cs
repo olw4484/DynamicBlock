@@ -14,22 +14,23 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
     {
         #region Variables & Properties
 
-        [Header("Block Prefab & Data")]
+        [Header("Block Prefab & Data")] 
         [SerializeField] private GameObject blockPrefab;
         [SerializeField] private List<Sprite> shapeImageSprites;
-        
-        [Header("Spawn Positions")]
+        [SerializeField] private string imageDictory;
 
-        [SerializeField] private List<Transform> blockSpawnPosList;
+        [Header("Spawn Positions")] [SerializeField]
+        private List<Transform> blockSpawnPosList;
+
         [SerializeField] private Transform shapesPanel;
 
-        [Header("Block Placement Helper")] 
-        [SerializeField] private bool previewMode = true;
-        
+        [Header("Block Placement Helper")] [SerializeField]
+        private bool previewMode = true;
+
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
-        
+
         // 게임 오버 1회만 발동 가드
         bool _gameOverFired;
         System.Action<ContinueGranted> _onContinue;
@@ -39,17 +40,30 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         #endregion
 
+        #region Block Image Load
+
+        private void LoadImageData()
+        {
+            shapeImageSprites = new List<Sprite>(Resources.LoadAll<Sprite>(imageDictory));
+        }
+        #endregion
+        
         #region Unity Callbacks
 
+        void Awake()
+        {
+            LoadImageData();
+        }
+        
         void Start() { TryBindBus(); }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.W))
-            {
-                DebugCurrentBlocks();
-            }
-        }
+        // private void Update()
+        // {
+        //     if (Input.GetKeyDown(KeyCode.W))
+        //     {
+        //         DebugCurrentBlocks();
+        //     }
+        // }
 
         void OnEnable()
         {
