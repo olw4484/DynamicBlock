@@ -12,6 +12,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [Header("Score Text")]
         [SerializeField] private TMP_Text scoreText;
         [SerializeField] private TMP_Text comboText;
+
+        [SerializeField] public int baseScroe = 30;
         private int _score = 0;
         public int Score => _score;
         public int Combo { get; private set; }
@@ -68,6 +70,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void SetCombo(int value)
         {
             Combo = Mathf.Max(0, value);
+
+            if (Combo > 0)
+                Sfx.Combo(Combo); // 헬퍼가 1~8로 클램프
+
             PublishCombo();
         }
 
@@ -77,7 +83,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (clearedLines < 0) clearedLines = 0;
 
             int comboAtStart = Combo;
-            int baseScore = (comboAtStart + 1) * 10;
+            int baseScore = (comboAtStart + 1) * baseScroe; // 베이스 점수
 
             if (clearedLines == 0)
             {

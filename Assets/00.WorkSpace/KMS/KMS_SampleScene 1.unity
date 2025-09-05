@@ -3974,13 +3974,13 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1993247598345961731}
-  m_LocalRotation: {x: -0.040560342, y: -0, z: -0, w: 0.9991771}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4160388818019365738}
-  m_LocalEulerAnglesHint: {x: -4.649, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
@@ -9353,6 +9353,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scoreText: {fileID: 8512694077633161488}
   comboText: {fileID: 0}
+  baseScroe: 30
 --- !u!222 &3424572285698687923
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -18277,6 +18278,10 @@ PrefabInstance:
       propertyPath: gridParent
       value: 
       objectReference: {fileID: 4289798565079145175}
+    - target: {fileID: 783529534833246912, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
+      propertyPath: destroyParticle
+      value: 
+      objectReference: {fileID: 4883431078802176644, guid: aa3cdc57cda59f5469c8fef9a0ba7580, type: 3}
     - target: {fileID: 6316385883739004828, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: _hudBestText
       value: 

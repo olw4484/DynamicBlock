@@ -19,6 +19,8 @@ public sealed class RestartOnClick : MonoBehaviour
         if (_cool > 0f || !Game.IsBound) return;
         _cool = cooldown;
 
+            Sfx.Button();
+
         Time.timeScale = 1f;
 
         foreach (var k in closePanels)
