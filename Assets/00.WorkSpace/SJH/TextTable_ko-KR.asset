@@ -19,7 +19,7 @@ MonoBehaviour:
     m_Items: []
   m_TableData:
   - m_Id: 5729673216
-    m_Localized: Test Korean
+    m_Localized: "\uD14C\uC2A4\uD2B8"
     m_Metadata:
       m_Items: []
   references:

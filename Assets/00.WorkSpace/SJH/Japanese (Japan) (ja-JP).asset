@@ -9,19 +9,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
-  m_Name: TextTable_en
+  m_Script: {fileID: 11500000, guid: 1bb1838fe8befb0429646b938e757ff3, type: 3}
+  m_Name: Japanese (Japan) (ja-JP)
   m_EditorClassIdentifier: 
-  m_LocaleId:
-    m_Code: en
-  m_SharedData: {fileID: 11400000, guid: 84e2a0ed060bf04449dc1210851b96b5, type: 2}
+  m_Identifier:
+    m_Code: ja-JP
   m_Metadata:
     m_Items: []
-  m_TableData:
-  - m_Id: 5729673216
-    m_Localized: Test
-    m_Metadata:
-      m_Items: []
+  m_LocaleName: Japanese (Japan) (ja-JP)
+  m_CustomFormatCultureCode: 
+  m_UseCustomFormatter: 0
+  m_SortOrder: 2
   references:
     version: 2
     RefIds: []

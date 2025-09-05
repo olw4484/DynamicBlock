@@ -20,10 +20,10 @@ public class LanguageChanger : MonoBehaviour
 	[SerializeField] private LocalizeStringEvent _testText;
 	[SerializeField] private TMP_Dropdown _languageDropDown;
 
-	public event Action<Locale> OnLocaleChanged;
+	//public event Action<Locale> OnLocaleChanged;
 
-	[SerializeField] private TMP_FontAsset _koreanFont;
-	[SerializeField] private TMP_FontAsset _englishFont;
+	//[SerializeField] private TMP_FontAsset _koreanFont;
+	//[SerializeField] private TMP_FontAsset _englishFont;
 
 	void Awake()
 	{
@@ -65,29 +65,32 @@ public class LanguageChanger : MonoBehaviour
 		_testText.RefreshString();
 
 		Instance = this;
+		
+		//var fontChangers = FindObjectsOfType<FontChanger>(true);
+		//foreach (var fc in fontChangers)
+		//{
+		//	OnLocaleChanged += fc.UpdateFont;
+		//	fc.UpdateFont(locale);
+		//}
 
-		var fontChangers = FindObjectsOfType<FontChanger>(true);
-		foreach (var fc in fontChangers)
-		{
-			OnLocaleChanged += fc.UpdateFont;
-			fc.UpdateFont(locale);
-		}
-
-		OnLocaleChanged?.Invoke(locale);
+		//OnLocaleChanged?.Invoke(locale);
 		Debug.Log("LanguageChanger 초기화 완료");
 	}
 
 	public void OnValueChanged(int value)
 	{
 		Debug.Log(value);
-		// 0	ko-KR
-		// 1	en
+		// 0	en
+		// 1	ko-KR
+		// 2	ja-JP
+		// 3	es
+		// 4	zh
 		var locale = LocalizationSettings.AvailableLocales.Locales[value];
 		LocalizationSettings.SelectedLocale = locale;
 		SaveLoadManager.Instance.GameData.LanguageIndex = value;
 		SaveLoadManager.Instance.SaveData();
 
-		OnLocaleChanged?.Invoke(locale);
+		//OnLocaleChanged?.Invoke(locale);
 	}
 
 	public void OnUpdateString(string text)
@@ -96,13 +99,13 @@ public class LanguageChanger : MonoBehaviour
 		_text.text = text;
 	}
 
-	public TMP_FontAsset GetFontForLocale(Locale locale)
-	{
-		switch (locale.Identifier.Code)
-		{
-			case "ko-KR": return _koreanFont;
-			case "en": return _englishFont;
-			default: return _englishFont;
-		}
-	}
+	//public TMP_FontAsset GetFontForLocale(Locale locale)
+	//{
+	//	switch (locale.Identifier.Code)
+	//	{
+	//		case "ko-KR": return _koreanFont;
+	//		case "en": return _englishFont;
+	//		default: return _englishFont;
+	//	}
+	//}
 }

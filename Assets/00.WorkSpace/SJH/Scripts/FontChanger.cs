@@ -9,6 +9,6 @@ public class FontChanger : MonoBehaviour
 	public void UpdateFont(Locale locale)
 	{
 		if (_text == null) _text = GetComponent<TMP_Text>();
-		_text.font = LanguageChanger.Instance.GetFontForLocale(locale);
+		//_text.font = LanguageChanger.Instance.GetFontForLocale(locale);
 	}
 }
