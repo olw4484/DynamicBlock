@@ -77,7 +77,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (clearedLines < 0) clearedLines = 0;
 
             int comboAtStart = Combo;
-            int baseScore = (comboAtStart + 1) * 10;
+            int baseScore = (comboAtStart + 1) * 30;
 
             if (clearedLines == 0)
             {
