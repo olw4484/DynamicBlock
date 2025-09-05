@@ -9353,6 +9353,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scoreText: {fileID: 8512694077633161488}
   comboText: {fileID: 0}
+  baseScroe: 30
 --- !u!222 &3424572285698687923
 CanvasRenderer:
   m_ObjectHideFlags: 0
