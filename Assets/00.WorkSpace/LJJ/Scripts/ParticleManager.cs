@@ -1,16 +1,17 @@
 using System.Collections.Generic;
 using System.Drawing;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class ParticleManager : MonoBehaviour
 {
     [Header("Pool Settings")]
-    public GameObject rowParticle;
-    public GameObject colParticle;
-    public int poolSize = 5;
+    public GameObject destroyParticle;
+    public GameObject perimeterParticle;
+    public int poolSize = 6;
 
-    private Queue<ParticleSystem> rowPool = new Queue<ParticleSystem>();
-    private Queue<ParticleSystem> colPool = new Queue<ParticleSystem>();
+    private Queue<ParticleSystem> destroyPool = new Queue<ParticleSystem>();
+    private Queue<ParticleSystem> perimeterPool = new Queue<ParticleSystem>();
 
     [Header("Particle Setting")]
     private Vector2 startPosition = Vector2.zero;
@@ -40,31 +41,59 @@ public class ParticleManager : MonoBehaviour
     {
         if (!fxRoot) { Debug.LogError("[PM] fxRoot is null. Assign FX_GridRoot."); return; }
 
-        for (int i = 0; i < poolSize; i++)
+        if (perimeterParticle != null && destroyParticle != null)
         {
-            var r = Instantiate(rowParticle, fxRoot);
-            var c = Instantiate(colParticle, fxRoot);
-            r.SetActive(false); c.SetActive(false);
-
-            int fxLayer = LayerMask.NameToLayer("FX");
-            if (fxLayer >= 0)
+            for (int i = 0; i < poolSize; i++)
             {
-                LayerUtil.SetLayerRecursive(rowParticle, fxLayer); // rowObj 프리팹 인스턴스
-                LayerUtil.SetLayerRecursive(colParticle, fxLayer);
-            }
-            else
-            {
-                Debug.LogWarning("[ParticleManager] 'FX' layer not found. Check Project Settings > Tags and Layers.");
-            }
+                var d = Instantiate(destroyParticle, fxRoot);
+                var p = Instantiate(perimeterParticle, fxRoot);
+                d.SetActive(false); p.SetActive(false);
 
-            GameObject obj = Instantiate(rowParticle, gridParent);
-            GameObject obj2 = Instantiate(colParticle, gridParent);
-            obj.SetActive(false);
-            obj2.SetActive(false);
-            ParticleSystem ps = obj.GetComponent<ParticleSystem>();
-            ParticleSystem ps2 = obj2.GetComponent<ParticleSystem>();
-            rowPool.Enqueue(ps);
-            colPool.Enqueue(ps2);
+                int fxLayer = LayerMask.NameToLayer("FX");
+                if (fxLayer >= 0)
+                {
+                    LayerUtil.SetLayerRecursive(destroyParticle, fxLayer); // rowObj 프리팹 인스턴스
+                    LayerUtil.SetLayerRecursive(perimeterParticle, fxLayer);
+                }
+                else
+                {
+                    Debug.LogWarning("[ParticleManager] 'FX' layer not found. Check Project Settings > Tags and Layers.");
+                }
+
+                GameObject obj = Instantiate(destroyParticle, gridParent);
+                GameObject obj2 = Instantiate(perimeterParticle, gridParent);
+                obj.SetActive(false);
+                obj2.SetActive(false);
+                ParticleSystem ps = obj.GetComponent<ParticleSystem>();
+                ParticleSystem ps2 = obj2.GetComponent<ParticleSystem>();
+                destroyPool.Enqueue(ps);
+                perimeterPool.Enqueue(ps2);
+
+            }
+        }
+        else if(perimeterParticle == null && destroyParticle != null)
+        {
+            for (int i = 0; i < poolSize; i++)
+            {
+                var d = Instantiate(destroyParticle, fxRoot);
+                d.SetActive(false); 
+
+                int fxLayer = LayerMask.NameToLayer("FX");
+                if (fxLayer >= 0)
+                {
+                    LayerUtil.SetLayerRecursive(destroyParticle, fxLayer); // rowObj 프리팹 인스턴스
+                }
+                else
+                {
+                    Debug.LogWarning("[ParticleManager] 'FX' layer not found. Check Project Settings > Tags and Layers.");
+                }
+
+                GameObject obj = Instantiate(destroyParticle, gridParent);
+                obj.SetActive(false);
+                ParticleSystem ps = obj.GetComponent<ParticleSystem>();
+                destroyPool.Enqueue(ps);
+
+            }
         }
     }
 
@@ -82,13 +111,13 @@ public class ParticleManager : MonoBehaviour
     // 가로 파티클 재생
     public void PlayRowParticle(int index, UnityEngine.Color color)
     {
-        if (rowPool.Count == 0)
+        if (destroyPool.Count == 0)
         {
             Debug.LogWarning("Particle pool exhausted! Consider increasing pool size.");
             return;
         }
 
-        ParticleSystem ps = rowPool.Dequeue();
+        ParticleSystem ps = destroyPool.Dequeue();
         
         //ps.transform.localScale = new Vector3(6f, 6f, 1f); // 필요에 따라 크기 조정
 
@@ -99,24 +128,25 @@ public class ParticleManager : MonoBehaviour
         ps.gameObject.SetActive(true);
         ps.Clear();
         ps.transform.localPosition = RowIndexToWorld(index);
-        ps.transform.localScale = new Vector3(100f, 50f, 1f);
+        ps.transform.localScale = new Vector3(5f, 5f, 1f);
+        ps.transform.rotation = Quaternion.Euler(0f, 0f, 90f); // 90도 회전
 
-        Debug.Log($"ps.transform.position: {ps.transform.position}");
+        Debug.Log($"Row Particle position: {ps.transform.localPosition}");
         ps.Play();
 
-        StartCoroutine(ReturnToRowPool(ps, main.duration));
+        StartCoroutine(ReturnToDestroyPool(ps, main.duration));
     }
 
     // 세로 파티클 재생
     public void PlayColParticle(int index, UnityEngine.Color color)
     {
-        if (colPool.Count == 0)
+        if (destroyPool.Count == 0)
         {
             Debug.LogWarning("Particle pool exhausted! Consider increasing pool size.");
             return;
         }
 
-        ParticleSystem ps = colPool.Dequeue();
+        ParticleSystem ps = destroyPool.Dequeue();
         
         //ps.transform.localScale = new Vector3(5f, 5f, 1f); // 필요에 따라 크기 조정
 
@@ -127,12 +157,69 @@ public class ParticleManager : MonoBehaviour
         ps.gameObject.SetActive(true);
         ps.Clear();
         ps.transform.localPosition = ColIndexToWorld(index);
-        ps.transform.localScale = new Vector3(100f, 50f, 1f);
+        ps.transform.localScale = new Vector3(5f, 5f, 1f);
 
-        Debug.Log($"Col Particle position: {ps.transform.position}");
+        Debug.Log($"Col Particle position: {ps.transform.localPosition}");
         ps.Play();
 
-        StartCoroutine(ReturnToColPool(ps, main.duration));
+        StartCoroutine(ReturnToDestroyPool(ps, main.duration));
+    }
+
+    // 라인 테두리 가로 파티클 재생
+    public void PlayRowPerimeterParticle(int index, UnityEngine.Color color)
+    {
+        if (destroyPool.Count == 0)
+        {
+            Debug.LogWarning("Particle pool exhausted! Consider increasing pool size.");
+            return;
+        }
+
+        ParticleSystem ps = destroyPool.Dequeue();
+
+        //ps.transform.localScale = new Vector3(6f, 6f, 1f); // 필요에 따라 크기 조정
+
+        // 색상 설정 (예: ParticleSystem의 Main 모듈 사용)
+        var main = ps.main;
+        main.startColor = color;
+
+        ps.gameObject.SetActive(true);
+        ps.Clear();
+        ps.transform.localPosition = RowIndexToWorld(index);
+        ps.transform.localScale = new Vector3(5f, 5f, 1f);
+        ps.transform.rotation = Quaternion.Euler(0f, 0f, 90f); // 90도 회전
+
+        Debug.Log($"Row Particle position: {ps.transform.localPosition}");
+        ps.Play();
+
+        StartCoroutine(ReturnToPerimeterPool(ps, main.duration));
+    }
+
+    // 라인 테두리 세로 파티클 재생
+    public void PlayColPerimeterParticle(int index, UnityEngine.Color color)
+    {
+        if (perimeterPool.Count == 0)
+        {
+            Debug.LogWarning("Particle pool exhausted! Consider increasing pool size.");
+            return;
+        }
+
+        ParticleSystem ps = perimeterPool.Dequeue();
+
+        //ps.transform.localScale = new Vector3(5f, 5f, 1f); // 필요에 따라 크기 조정
+
+        // 색상 설정 (예: ParticleSystem의 Main 모듈 사용)
+        var main = ps.main;
+        main.startColor = color;
+
+        ps.gameObject.SetActive(true);
+        ps.Clear();
+        ps.transform.localPosition = ColIndexToWorld(index);
+        ps.transform.localScale = new Vector3(5f, 5f, 1f);
+
+        Debug.Log($"Col Particle position: {ps.transform.localPosition}");
+        ps.Play();
+
+        StartCoroutine(ReturnToPerimeterPool(ps, main.duration));
     }
 
     public Vector3 RowIndexToWorld(int rowIndex)
@@ -164,21 +251,23 @@ public class ParticleManager : MonoBehaviour
 
 
     // 세로 Return to pool
-    private System.Collections.IEnumerator ReturnToRowPool(ParticleSystem ps, float delay)
+    private System.Collections.IEnumerator ReturnToDestroyPool(ParticleSystem ps, float delay)
     {
         yield return new WaitForSeconds(delay);
         ps.Stop();
+        ps.transform.rotation = Quaternion.identity; // 회전 초기화
         ps.gameObject.SetActive(false);
-        rowPool.Enqueue(ps);
+        destroyPool.Enqueue(ps);
     }
 
     // 가로 Return to pool
-    private System.Collections.IEnumerator ReturnToColPool(ParticleSystem ps, float delay)
+    private System.Collections.IEnumerator ReturnToPerimeterPool(ParticleSystem ps, float delay)
     {
         yield return new WaitForSeconds(delay);
         ps.Stop();
+        ps.transform.rotation = Quaternion.identity; // 회전 초기화
         ps.gameObject.SetActive(false);
-        colPool.Enqueue(ps);
+        destroyPool.Enqueue(ps);
     }
 
     private Vector3 UiLocalToFxLocal(Vector3 uiLocal)
