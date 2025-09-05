@@ -19,6 +19,11 @@ public static class Game
     public static SceneFlowManager Scene { get; private set; }
     public static ISaveService Save { get; private set; }
 
+    public static AudioFxFacade AudioFx { get; private set; }
+    public static BlockFxFacade BlockFx { get; private set; }
+    public static EffectLane EffectLane { get; private set; }
+    public static SoundLane SoundLane { get; private set; }
+
     public static bool IsBound { get; private set; }
 
     public struct BindOptions
@@ -39,6 +44,19 @@ public static class Game
         public (string type, int order)[] OrderList;
     }
 
+    public static void BindSceneFacades(
+    AudioFxFacade audioFx,
+    BlockFxFacade blockFx,
+    EffectLane effectLane,
+    SoundLane soundLane)
+    {
+        AudioFx = audioFx;
+        BlockFx = blockFx;
+        EffectLane = effectLane;
+        SoundLane = soundLane;
+        Debug.Log("[Game] Scene facades/lanes bound.");
+    }
+
     public static BindReport Bind(ManagerGroup group, BindOptions? opt = null)
     {
         var options = opt ?? new BindOptions
@@ -52,7 +70,7 @@ public static class Game
         // 1) 먼저 "로컬 변수"로 Resolve (검사 통과 시에만 정적 필드에 대입)
         var bus = group.Resolve<EventQueue>();
         var gm = group.Resolve<GameManager>();
-        var audio = group.Resolve<IAudioService>();                 // ★ 인터페이스 Resolve
+        var audio = group.Resolve<IAudioService>();                 // 인터페이스 Resolve
         var ui = options.IncludeUI ? group.Resolve<UIManager>() : null;
         var scene = options.IncludeScene ? group.Resolve<SceneFlowManager>() : null;
         var save = group.Resolve<ISaveService>();
@@ -119,5 +137,6 @@ public static class Game
     private static void ResetStatics()
     {
         Bus = null; GM = null; Audio = null; UI = null; Scene = null; IsBound = false;
+        AudioFx = null; BlockFx = null; EffectLane = null; SoundLane = null;
     }
 }

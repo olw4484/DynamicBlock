@@ -7,10 +7,21 @@ using UnityEngine;
 // Desc    : 사운드 외부 API 계약
 // ================================
 
-public interface IAudioService
+public interface IAudioService : IManager
 {
-    void PlayBGM(AudioClip clip, bool loop = true, float volume = 1f);
-    void StopBGM(float fadeSec = 0.25f);
-    void PlaySE(AudioClip clip, float volume = 1f);
-    void SetVolume(float bgmVolume, float seVolume); // 0~1
+    // BGM
+    void PlayBgm(AudioClip clip);
+    void StopBgm();
+    void SetBgmVolume(float v);
+
+    // SE (Generic)
+    void PlaySe(AudioClip clip, bool vibrate = false);
+    void SetSeVolume(float v);
+
+    // Domain Helpers (퍼즐 게임 전용)
+    void PlayLineClear(int lineCount); // 1~6줄
+    void PlayBlockSelect();
+    void PlayBlockPlace();
+    void PlayStageEnter();
+    void PlayButtonClick();
 }
