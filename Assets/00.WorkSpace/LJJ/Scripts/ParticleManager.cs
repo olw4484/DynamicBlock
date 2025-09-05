@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class ParticleManager : MonoBehaviour
@@ -40,31 +41,59 @@ public class ParticleManager : MonoBehaviour
     {
         if (!fxRoot) { Debug.LogError("[PM] fxRoot is null. Assign FX_GridRoot."); return; }
 
-        for (int i = 0; i < poolSize; i++)
+        if (perimeterParticle != null && destroyParticle != null)
         {
-            var d = Instantiate(destroyParticle, fxRoot);
-            var p = Instantiate(perimeterParticle, fxRoot);
-            d.SetActive(false); p.SetActive(false);
-
-            int fxLayer = LayerMask.NameToLayer("FX");
-            if (fxLayer >= 0)
+            for (int i = 0; i < poolSize; i++)
             {
-                LayerUtil.SetLayerRecursive(destroyParticle, fxLayer); // rowObj 프리팹 인스턴스
-                LayerUtil.SetLayerRecursive(perimeterParticle, fxLayer);
-            }
-            else
-            {
-                Debug.LogWarning("[ParticleManager] 'FX' layer not found. Check Project Settings > Tags and Layers.");
-            }
+                var d = Instantiate(destroyParticle, fxRoot);
+                var p = Instantiate(perimeterParticle, fxRoot);
+                d.SetActive(false); p.SetActive(false);
 
-            GameObject obj = Instantiate(destroyParticle, gridParent);
-            GameObject obj2 = Instantiate(perimeterParticle, gridParent);
-            obj.SetActive(false);
-            obj2.SetActive(false);
-            ParticleSystem ps = obj.GetComponent<ParticleSystem>();
-            ParticleSystem ps2 = obj2.GetComponent<ParticleSystem>();
-            destroyPool.Enqueue(ps);
-            perimeterPool.Enqueue(ps2);
+                int fxLayer = LayerMask.NameToLayer("FX");
+                if (fxLayer >= 0)
+                {
+                    LayerUtil.SetLayerRecursive(destroyParticle, fxLayer); // rowObj 프리팹 인스턴스
+                    LayerUtil.SetLayerRecursive(perimeterParticle, fxLayer);
+                }
+                else
+                {
+                    Debug.LogWarning("[ParticleManager] 'FX' layer not found. Check Project Settings > Tags and Layers.");
+                }
+
+                GameObject obj = Instantiate(destroyParticle, gridParent);
+                GameObject obj2 = Instantiate(perimeterParticle, gridParent);
+                obj.SetActive(false);
+                obj2.SetActive(false);
+                ParticleSystem ps = obj.GetComponent<ParticleSystem>();
+                ParticleSystem ps2 = obj2.GetComponent<ParticleSystem>();
+                destroyPool.Enqueue(ps);
+                perimeterPool.Enqueue(ps2);
+
+            }
+        }
+        else if(perimeterParticle == null && destroyParticle != null)
+        {
+            for (int i = 0; i < poolSize; i++)
+            {
+                var d = Instantiate(destroyParticle, fxRoot);
+                d.SetActive(false); 
+
+                int fxLayer = LayerMask.NameToLayer("FX");
+                if (fxLayer >= 0)
+                {
+                    LayerUtil.SetLayerRecursive(destroyParticle, fxLayer); // rowObj 프리팹 인스턴스
+                }
+                else
+                {
+                    Debug.LogWarning("[ParticleManager] 'FX' layer not found. Check Project Settings > Tags and Layers.");
+                }
+
+                GameObject obj = Instantiate(destroyParticle, gridParent);
+                obj.SetActive(false);
+                ParticleSystem ps = obj.GetComponent<ParticleSystem>();
+                destroyPool.Enqueue(ps);
+
+            }
         }
     }
 
