@@ -12,106 +12,120 @@ public class RewardAdController
 	private RewardedAd _loadedAd;
 	private Action<Reward> _rewardAction;
 
-	public void Init()
-	{
-		if (_loadedAd != null) DestroyAd();
+    public bool IsReady { get; private set; }
+    public event Action Rewarded;
+    public event Action Closed;
+    public event Action Failed;
 
-		Debug.Log("리워드 광고 로딩 시작");
-		var adRequest = new AdRequest();
+    private Action _externalOnReward;
 
-		RewardedAd.Load(_rewardAdId, adRequest, (RewardedAd ad, LoadAdError error) =>
-		{
-			if (error != null)
-			{
-				Debug.LogError($"리워드 광고 로딩 실패 : [{error.ToString()}]");
-				_loadedAd = null;
-				return;
-			}
-			if (ad == null)
-			{
-				Debug.LogError($"로딩할 리워드 광고 없음");
-				return;
-			}
+    public void Init()
+    {
+        DestroyAd();
+        IsReady = false;
 
-			Debug.Log("리워드 광고 로딩 성공");
-			_loadedAd = ad;
+        Debug.Log("리워드 광고 로딩 시작");
+        RewardedAd.Load(_rewardAdId, new AdRequest(), (ad, error) =>
+        {
+            if (error != null || ad == null)
+            {
+                Debug.LogError($"리워드 광고 로딩 실패 : [{error}]");
+                IsReady = false;
+                return;
+            }
 
-			EventConnect();
-		});
-	}
-	public void DestroyAd()
-	{
-		if (_loadedAd == null) return;
+            Debug.Log("리워드 광고 로딩 성공");
+            _loadedAd = ad;
+            IsReady = true;
+            EventConnect(_loadedAd);
+        });
+    }
+    public void DestroyAd()
+    {
+        if (_loadedAd == null) return;
 
-		Debug.Log("리워드 광고 제거");
-		_loadedAd.Destroy();
-		_loadedAd = null;
-	}
-	public void ShowAd()
-	{
-		if (_loadedAd != null && _loadedAd.CanShowAd())
-		{
-			_loadedAd.Show(_rewardAction);
-			_loadedAd = null;
-		}
-		else
-		{
-			Init();
-			ShowAd();
-		}
-	}
-	public void EventConnect()
-	{
-		if (_loadedAd == null)
-		{
-			Init();
-			return;
-		}
-		Debug.Log("리워드 광고 이벤트 추가");
+        Debug.Log("리워드 광고 제거");
+        _loadedAd.Destroy();
+        _loadedAd = null;
+        IsReady = false;
+    }
+    public void ShowAd(Action onReward = null)
+    {
+        if (_loadedAd == null || !_loadedAd.CanShowAd() || !IsReady)
+        {
+            Debug.Log("리워드 준비 안 됨 → 로드 시도");
+            Init();
+            return;
+        }
 
-		// 광고 수익 발생했을 때
-		_loadedAd.OnAdPaid += (AdValue adValue) =>
-		{
-			Debug.Log($"리워드 광고 수익 {adValue.CurrencyCode} / {adValue.Value}");
-		};
+        _externalOnReward = onReward;
+        IsReady = false;
 
-		// 유저가 광고를 봤을 때
-		_loadedAd.OnAdImpressionRecorded += () =>
-		{
-			Debug.Log("리워드 광고 봄");
-		};
+        _loadedAd.Show(reward =>
+        {
+            Debug.Log($"리워드 획득 : Type [{reward.Type}] / Amount [{reward.Amount}]");
+            Rewarded?.Invoke();
+            _externalOnReward?.Invoke();      // 외부 보상 콜백
+        });
+    }
+    void EventConnect(RewardedAd ad)
+    {
+        if (ad == null) return;
 
-		// 유저가 광고를 클릭했을 때
-		_loadedAd.OnAdClicked += () =>
-		{
-			Debug.Log("리워드 광고 클릭");
-		};
+        ad.OnAdPaid += (AdValue v) => Debug.Log($"리워드 광고 수익 {v.CurrencyCode}/{v.Value}");
+        ad.OnAdImpressionRecorded += () => Debug.Log("리워드 광고 봄");
+        ad.OnAdClicked += () => Debug.Log("리워드 광고 클릭");
 
-		// 리워드 광고가 활성화됐을 때
-		_loadedAd.OnAdFullScreenContentOpened += () =>
-		{
-			// TODO : 게임 사이클 정지
-			Debug.Log("리워드 광고 활성화");
-		};
+        ad.OnAdFullScreenContentOpened += () =>
+        {
+            Debug.Log("리워드 광고 활성화");
+        };
 
-		// 리워드 광고 닫았을 때
-		_loadedAd.OnAdFullScreenContentClosed += () =>
-		{
-			// TODO : 보상 지급
-			Debug.Log("리워드 광고 닫음");
-			Init();
-		};
+        ad.OnAdFullScreenContentClosed += () =>
+        {
+            Debug.Log("리워드 광고 닫음");
+            IsReady = false;
+            Closed?.Invoke();
+            _externalOnReward = null; // 한 번 쓰고 정리
+            Init(); // 다음 로드
+        };
 
-		// 전면 광고 에러
-		_loadedAd.OnAdFullScreenContentFailed += (AdError error) =>
-		{
-			Debug.LogError($"리워드 광고 에러 : [{error}]");
-		};
+        ad.OnAdFullScreenContentFailed += (AdError e) =>
+        {
+            Debug.LogError($"리워드 광고 에러 : [{e}]");
+            IsReady = false;
+            Failed?.Invoke();
+            _externalOnReward = null;
+            Init();
+        };
+    }
+    public void ShowAdSimple() => ShowAd();
 
-		// TODO : 리워드 광고 후 실행할 액션
-		_rewardAction += (reward) =>
-		{
-			Debug.Log($"리워드 획득 : Type [{reward.Type}] / Amount [{reward.Amount}]");
-		};
-	}
+    void WireEvents(RewardedAd ad)
+    {
+        ad.OnAdPaid += (AdValue v) => Debug.Log($"리워드 광고 수익 {v.CurrencyCode}/{v.Value}");
+        ad.OnAdImpressionRecorded += () => Debug.Log("리워드 광고 봄");
+        ad.OnAdClicked += () => Debug.Log("리워드 광고 클릭");
+
+        ad.OnAdFullScreenContentOpened += () =>
+        {
+            Debug.Log("리워드 광고 활성화");
+        };
+
+        ad.OnAdFullScreenContentClosed += () =>
+        {
+            Debug.Log("리워드 광고 닫음");
+            _externalOnReward = null;
+            Closed?.Invoke();
+            Init();
+        };
+
+        ad.OnAdFullScreenContentFailed += (AdError e) =>
+        {
+            Debug.LogError($"리워드 광고 에러 : [{e}]");
+            _externalOnReward = null;
+            Failed?.Invoke();
+            Init();
+        };
+    }
 }

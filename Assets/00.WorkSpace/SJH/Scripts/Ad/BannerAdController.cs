@@ -12,7 +12,9 @@ public class BannerAdController
 	private bool _isShow = false;
 	private bool _isLoaded = false;
 
-	public void Init()
+    public bool IsVisible => _isShow;
+
+    public void Init()
 	{
 		if (_loadedAd != null) _loadedAd.Destroy();
 
@@ -23,10 +25,12 @@ public class BannerAdController
 		//_loadedBanner = new BannerView(_bannerAdId, AdSize.Banner, 0, 100);
 		_loadedAd = new BannerView(_bannerAdId, AdSize.Banner, AdPosition.Bottom);
 
-		Debug.Log("배너 광고 초기화 성공");
+        Debug.Log("배너 광고 초기화 성공");
 
 		EventConnect();
-	}
+
+        _loadedAd.LoadAd(new AdRequest());
+    }
 	public void AdToggle()
 	{
 		if (_loadedAd == null) Init();
@@ -34,17 +38,14 @@ public class BannerAdController
 		if (_isShow) HideAd();
 		else ShowAd();
 	}
-	public void ShowAd()
-	{
-		if (_loadedAd != null)
-		{
-			if (!_isLoaded) _loadedAd.LoadAd(new AdRequest());
-			Debug.Log("배너 광고 On");
-			_loadedAd.Show();
-			_isShow = true;
-		}
-	}
-	public void HideAd()
+    public void ShowAd()
+    {
+        if (_loadedAd == null) { Init(); return; }
+        if (!_isLoaded) _loadedAd.LoadAd(new AdRequest());
+        _loadedAd.Show();
+        _isShow = true;
+    }
+    public void HideAd()
 	{
 		if (_loadedAd != null)
 		{

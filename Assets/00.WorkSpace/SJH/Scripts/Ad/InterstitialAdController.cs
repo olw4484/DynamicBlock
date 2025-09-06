@@ -1,4 +1,5 @@
 ﻿using GoogleMobileAds.Api;
+using System;
 using UnityEngine;
 
 public class InterstitialAdController
@@ -10,7 +11,11 @@ public class InterstitialAdController
 	private const string _interstitialAdId = "ca-app-pub-3940256099942544/1033173712";
 	private InterstitialAd _loadedAd;
 
-	public void Init()
+    public bool IsReady { get; private set; }
+    public event Action Closed;
+    public event Action Failed;
+
+    public void Init()
 	{
 		// 초기화 과정에서 광고 한번은 로드하기
 		if (_loadedAd != null) DestroyAd();
@@ -33,10 +38,10 @@ public class InterstitialAdController
 			}
 
 			Debug.Log("전면 광고 로딩 성공");
-			_loadedAd = ad;
-
-			EventConnect();
-		});
+            _loadedAd = ad;
+            IsReady = true;
+            EventConnect(_loadedAd);
+        });
 	}
 	public void ShowAd()
 	{
@@ -48,63 +53,44 @@ public class InterstitialAdController
 		else
 		{
 			Init();
-			ShowAd();
 		}
 	}
-	public void DestroyAd()
-	{
-		if (_loadedAd == null) return;
+    public void DestroyAd()
+    {
+        if (_loadedAd == null) return;
 
-		Debug.Log("전면 광고 제거");
-		_loadedAd.Destroy();
-		_loadedAd = null;
-	}
-	public void EventConnect()
-	{
-		if (_loadedAd == null)
-		{
-			Init();
-			return;
-		}
-		Debug.Log("전면 광고 이벤트 추가");
+        Debug.Log("전면 광고 제거");
+        _loadedAd.Destroy();
+        _loadedAd = null;
+        IsReady = false;
+    }
+    void EventConnect(InterstitialAd ad)
+    {
+        if (ad == null) return;
 
-		// 광고 수익 발생했을 때
-		_loadedAd.OnAdPaid += (AdValue adValue) =>
-		{
-			Debug.Log($"전면 광고 수익 {adValue.CurrencyCode} / {adValue.Value}");
-		};
+        ad.OnAdPaid += (AdValue v) => Debug.Log($"전면 광고 수익 {v.CurrencyCode}/{v.Value}");
+        ad.OnAdImpressionRecorded += () => Debug.Log("전면 광고 봄");
+        ad.OnAdClicked += () => Debug.Log("전면 광고 클릭");
 
-		// 유저가 광고를 봤을 때
-		_loadedAd.OnAdImpressionRecorded += () =>
-		{
-			Debug.Log("전면 광고 봄");
-		};
+        ad.OnAdFullScreenContentOpened += () =>
+        {
+            Debug.Log("전면 광고 활성화");
+        };
 
-		// 유저가 광고를 클릭했을 때
-		_loadedAd.OnAdClicked += () =>
-		{
-			Debug.Log("전면 광고 클릭");
-		};
+        ad.OnAdFullScreenContentClosed += () =>
+        {
+            Debug.Log("전면 광고 닫음");
+            IsReady = false;
+            Closed?.Invoke();
+            Init(); // 다음 로드
+        };
 
-		// 전면 광고가 활성화됐을 때
-		_loadedAd.OnAdFullScreenContentOpened += () =>
-		{
-			// TODO : 게임 사이클 정지
-			Debug.Log("전면 광고 활성화");
-		};
-
-		// 전면 광고 닫았을 때
-		_loadedAd.OnAdFullScreenContentClosed += () =>
-		{
-			// TODO : 보상 지급
-			Debug.Log("전면 광고 닫음");
-			Init();
-		};
-
-		// 전면 광고 에러
-		_loadedAd.OnAdFullScreenContentFailed += (AdError error) =>
-		{
-			Debug.LogError($"전면 광고 에러 : [{error}]");
-		};
-	}
+        ad.OnAdFullScreenContentFailed += (AdError e) =>
+        {
+            Debug.LogError($"전면 광고 에러 : [{e}]");
+            IsReady = false;
+            Failed?.Invoke();
+            Init();
+        };
+    }
 }

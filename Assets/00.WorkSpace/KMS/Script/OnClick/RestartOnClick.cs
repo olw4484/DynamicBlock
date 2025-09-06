@@ -19,32 +19,18 @@ public sealed class RestartOnClick : MonoBehaviour
         if (_cool > 0f || !Game.IsBound) return;
         _cool = cooldown;
 
-            Sfx.Button();
-
-        Time.timeScale = 1f;
-
-        foreach (var k in closePanels)
-            Game.Bus.Publish(new PanelToggle(k, false));
+        Sfx.Button();
 
         switch (mode)
         {
             case RestartMode.SoftReset:
-                Game.Bus.ClearSticky<GameOver>();
-                Game.Bus.PublishImmediate(new GameResetting());
-                if (!string.IsNullOrEmpty(openPanelAfter))
-                    Game.Bus.Publish(new PanelToggle(openPanelAfter, true));
-                Game.Bus.PublishImmediate(new GameResetRequest());
-                Game.Bus.PublishImmediate(new GameResetDone());
+                RestartFlow.SoftReset(openPanelAfter, closePanels);
                 break;
-
             case RestartMode.ReloadSceneViaEvent:
-                Game.Bus.ClearSticky<GameOver>();
-                Game.Bus.Publish(new SceneChangeRequest(gameplayScene));
+                RestartFlow.ReloadViaEvent(gameplayScene);
                 break;
-
             case RestartMode.ReloadSceneDirect:
-                Game.Bus.ClearSticky<GameOver>();
-                Game.Scene.LoadScene(gameplayScene);
+                RestartFlow.ReloadDirect(gameplayScene);
                 break;
         }
     }
