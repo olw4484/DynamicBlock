@@ -15,14 +15,15 @@ public static class Game
     public static EventQueue Bus { get; private set; }
     public static GameManager GM { get; private set; }
     public static IAudioService Audio { get; private set; }
-    public static UIManager UI { get; private set; } // (¿É¼Ç)
+    public static UIManager UI { get; private set; }
     public static SceneFlowManager Scene { get; private set; }
     public static ISaveService Save { get; private set; }
-
     public static AudioFxFacade AudioFx { get; private set; }
     public static BlockFxFacade BlockFx { get; private set; }
     public static EffectLane EffectLane { get; private set; }
     public static SoundLane SoundLane { get; private set; }
+    public static IAdService Ads { get; private set; }
+
 
     public static bool IsBound { get; private set; }
 
@@ -137,6 +138,6 @@ public static class Game
     private static void ResetStatics()
     {
         Bus = null; GM = null; Audio = null; UI = null; Scene = null; IsBound = false;
-        AudioFx = null; BlockFx = null; EffectLane = null; SoundLane = null;
+        AudioFx = null; BlockFx = null; EffectLane = null; SoundLane = null; Ads = null;
     }
 }
