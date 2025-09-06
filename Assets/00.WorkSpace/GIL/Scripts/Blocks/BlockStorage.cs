@@ -25,7 +25,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         [Header("Block Placement Helper")] 
         [SerializeField] private bool previewMode = true;
-        
+
+        [Header("AD")]
+        [SerializeField] private float interstitialDelayAfterGameOver = 1f;
+        private bool _adQueuedForThisGameOver;
+
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
@@ -184,7 +188,39 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             Game.Bus.PublishSticky(new GameOver(score, reason));
             Time.timeScale = 0f;
+
+            // 1) 예약
+            //TryQueueInterstitialAfterGameOver();
         }
+
+        //void TryQueueInterstitialAfterGameOver()
+        //{
+        //    if (_adQueuedForThisGameOver) return;
+        //    _adQueuedForThisGameOver = true;
+        //    StartCoroutine(Co_ShowInterstitialAfterGameOver());
+        //}
+        //
+        //IEnumerator Co_ShowInterstitialAfterGameOver()
+        //{
+        //    // 2) 게임이 멈춰도 동작하는 Realtime 딜레이
+        //    yield return new WaitForSecondsRealtime(interstitialDelayAfterGameOver);
+        //
+        //    // 3) 전면 광고 시도 (Null/LIVE 무관하게 파사드만 호출)
+        //    if (Game.IsBound && Game.Ads != null && Game.Ads.IsInterstitialReady())
+        //    {
+        //        Game.Ads.ShowInterstitial(onClosed: () =>
+        //        {
+        //            // 닫힌 뒤 다음 로드를 준비
+        //            Game.Ads.Refresh();
+        //            // GameOver는 이미 pause 상태이므로 timeScale 재개 X
+        //        });
+        //    }
+        //    else
+        //    {
+        //        // 준비 안 됐으면 로드만 재시도
+        //        Game.Ads?.Refresh();
+        //    }
+        //}
 
         public void OnBlockPlaced(Block placedBlock)
         {
