@@ -10,18 +10,31 @@ public static class RestartFlow
 
         Time.timeScale = 1f;
 
-        // 닫을 패널(기본: Options, GameOver)
+        // 0) Main까지 확실히 닫기
+        Game.Bus.Publish(new PanelToggle("Main", false));
+        Game.Bus.ClearSticky<PanelToggle>();
+
+        // 1) 기타 패널 닫기
         if (closePanels == null || closePanels.Length == 0)
             closePanels = new[] { "Options", "GameOver" };
         foreach (var k in closePanels)
             Game.Bus.Publish(new PanelToggle(k, false));
 
+        // 2) 리셋 이벤트
         Game.Bus.ClearSticky<GameOver>();
         Game.Bus.PublishImmediate(new GameResetting());
-        if (!string.IsNullOrEmpty(openPanelAfter))
-            Game.Bus.Publish(new PanelToggle(openPanelAfter, true));
         Game.Bus.PublishImmediate(new GameResetRequest());
         Game.Bus.PublishImmediate(new GameResetDone());
+
+        // 3) 다음 프레임 끝에 Game 켜서 최종 승자 만들기
+        CoroutineHost.Run(EnsureOpenNextFrame(openPanelAfter));
+    }
+
+    static IEnumerator EnsureOpenNextFrame(string key)
+    {
+        yield return new WaitForEndOfFrame ();
+        Game.Bus.Publish(new PanelToggle(key, true));
+        Game.UI?.ForceMainUIClean();
     }
 
     public static void ReloadViaEvent(string gameplayScene)
