@@ -146,8 +146,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 var row = Row();
                 scoT = new Toggle();
                 var lbl = new Label("Score") {style = { width = 50, unityFontStyleAndWeight = FontStyle.Bold }};
-                row.Add(scoT);
-                row.Add(lbl); 
                 panel.Add(row);
 
                 // 토글 ON일 때만 보일 상세(오른쪽에 붙이기)
@@ -170,9 +168,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 scoreDetailRow.Add(scoreField);
 
                 SpaceH(row, 6);
-                row.Add(lbl);
-                SpaceH(row, 8);
                 row.Add(scoT);
+                SpaceH(row, 8);
+                row.Add(lbl);
                 SpaceH(row, 6);
                 row.Add(scoreDetailRow);
 
@@ -195,16 +193,21 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 fruitTable = new VisualElement(); // 기존 fruitTable 변수 재사용 (섹션 컨테이너)
                 SpaceV(fruitTable, 4);
 
-                var tilesWrap = RowWrap(); // 가로 배치 + 줄바꿈
+                var tilesWrap = Row();                          
                 tilesWrap.style.marginLeft = 8;
+                tilesWrap.style.flexShrink = 0;                 
+                tilesWrap.style.overflow   = Overflow.Hidden;   
                 fruitTable.Add(tilesWrap);
-
+                
                 EnsureFruitArrays();
 
                 for (int i = 0; i < FRUIT_COUNT; i++)
                 {
                     // 타일 컨테이너(네모)
                     var tile = new VisualElement();
+                    tile.style.flexWrap   = Wrap.NoWrap;      
+                    tile.style.flexShrink = 0;                
+                    tile.style.overflow   = Overflow.Hidden;   
                     tile.style.width  = 70;
                     tile.style.minHeight = 70;
                     Pad(tile, 8);
@@ -278,14 +281,19 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
             var palette = new VisualElement();
             palette.style.backgroundColor = new Color(1, 1, 1, 0.4f);
-            palette.style.alignItems = Align.Center;
+            palette.style.alignItems = Align.FlexStart;
             Pad(palette, 6);
 
-            int blockSize = 60;
+            int blockSize = 50;
+            int blockOffset = 5;
             var line2 = Row();
+            line2.style.flexWrap   = Wrap.NoWrap;       
+            line2.style.flexShrink = 0;                 
+            line2.style.overflow   = Overflow.Hidden;   
             for (int i = 0; i < FRUIT_COUNT; i++)
             {
-                var button = new Button(() => { }) { style =
+                int index = i;
+                var button = new Button() { style =
                 {
                     width = blockSize, 
                     height = blockSize, 
@@ -296,16 +304,30 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 button.text = string.Empty;
 
                 var image = new Image { scaleMode = ScaleMode.ScaleToFit };
-                image.style.width = blockSize;
-                image.style.height = blockSize;
+                image.style.width = blockSize - blockOffset;
+                image.style.height = blockSize - blockOffset;
                 image.sprite = _data.blockImages?[i];
                 button.Add(image);
+                
+                button.clicked += () => SetBrushSprite(_data.blockImages?[index], button);
+
+                // 기본 테두리(원복용 기준)
+                Highlight(button, false);
+
+                // 이미 선택된 브러시가 있다면, 재생성 시 하이라이트 복구
+                if (_brushSprite != null && _brushSprite == _data.blockImages?[index])
+                    Highlight(button, true);
+                
                 line2.Add(button);
             }
             var line3 = Row();
+            line2.style.flexWrap   = Wrap.NoWrap;       
+            line2.style.flexShrink = 0;                 
+            line2.style.overflow   = Overflow.Hidden;  
             for (int i = 0; i < FRUIT_COUNT; i++)
             {
-                var button = new Button(() => { }) { style =
+                int index = i;
+                var button = new Button() { style =
                 {
                     width = blockSize, 
                     height = blockSize,
@@ -316,15 +338,24 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 button.text = string.Empty;
 
                 var image = new Image { scaleMode = ScaleMode.ScaleToFit };
-                image.style.width = blockSize;
-                image.style.height = blockSize;
+                image.style.width = blockSize - blockOffset;
+                image.style.height = blockSize - blockOffset;
                 image.sprite = _data.blockWithFruitIcons?[i];
                 button.Add(image);
+                
+                button.clicked += () => SetBrushSprite(_data.blockWithFruitIcons?[index], button);
+
+                Highlight(button, false);
+                if (_brushSprite != null && _brushSprite == _data.blockWithFruitIcons?[index])
+                    Highlight(button, true);
+                
                 line3.Add(button);
             }
             palette.Add(line2);
             palette.Add(line3);
             panel.Add(palette);
+            SpaceV(panel, 8f);
+            panel.Add(new Label("Paint Grid") {style = { fontSize = 20 , unityFontStyleAndWeight = FontStyle.Bold}});
 
             // ---- 라디오 토글처럼 동작하도록 초기화 + 콜백 ----
             tutT.SetValueWithoutNotify(_data.goalKind == MapGoalKind.Tutorial);
@@ -396,10 +427,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private VisualElement BuildGridPane()
         {
             var wrap = new VisualElement { name = "grid-wrap" };
-            wrap.style.flexGrow = 1;
+            wrap.style.flexGrow   = 0;              
+            wrap.style.flexShrink = 0;              
             Border(wrap, new Color(0,0,0,0.25f)); // 이미 있는 헬퍼
             Pad(wrap, 6);
-
             var grid = new VisualElement { name = "grid" };
             wrap.Add(grid);
 
@@ -418,10 +449,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             void BuildGrid()
             {
                 grid.Clear();
-
+                grid.style.alignItems = Align.FlexStart;
                 int rows = Mathf.Max(1, _data.rows);
                 int cols = Mathf.Max(1, _data.cols);
-                const int cell = 22; // 셀 한 변 픽셀 수 (원하면 24~28로 키워도 됨)
+                const int cell = 40; // 셀 한 변 픽셀 수 
 
                 for (int r = 0; r < rows; r++)
                 {
@@ -433,9 +464,29 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                         var ve = new VisualElement();
                         ve.style.width  = cell;
                         ve.style.height = cell;
-                        ve.style.backgroundColor = new Color(0, 0, 0, 0.08f); // 연한 회색
-                        BorderThin(ve, new Color(0, 0, 0, 0.2f));            // 테두리
+                        ve.style.backgroundColor = new Color(0, 0, 0, 0.08f);
+                        BorderThin(ve, new Color(0, 0, 0, 0.2f));
                         ve.style.marginRight = (c == cols - 1) ? 0 : 2;
+
+                        // 셀 내부 이미지 (처음엔 비어 있음)
+                        var img = new Image { scaleMode = ScaleMode.ScaleToFit };
+                        img.style.width  = cell - 2;
+                        img.style.height = cell - 2;
+                        ve.Add(img);
+
+                        // 클릭하면 현재 브러시 스프라이트로 변경 (지우개는 null)
+                        ve.RegisterCallback<ClickEvent>(_ =>
+                        {
+                            // _brushSprite == null 이면 지우개 동작
+                            if (_brushSprite == null || img.sprite == _brushSprite)
+                            {
+                                img.sprite = null;           // 지우기
+                            }
+                            else
+                            {
+                                img.sprite = _brushSprite;   // 현재 선택한 블록으로 칠하기
+                            }
+                        });
 
                         line.Add(ve);
                     }
@@ -444,8 +495,46 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 }
             }
         }
+        
+        private Sprite _brushSprite; // 현재 선택된 블록의 스프라이트(지우개는 null)
+        private Button _selectedPaletteButton;
+        
+        private void SetBrushSprite(Sprite sprite, Button sourceBtn)
+        {
+            // 이전 선택 원복
+            Highlight(_selectedPaletteButton, false);
 
+            _brushSprite = sprite;
+            _selectedPaletteButton = sourceBtn;
 
+            // 새 선택 강조
+            Highlight(_selectedPaletteButton, true);
+        }
+        
+        private void Highlight(Button btn, bool on)
+        {
+            if (btn == null) return;
+
+            var normal = new Color(0, 0, 0, 0.25f);
+            var active = new Color(0.21f, 0.52f, 0.96f, 1f); // 파란 테두리
+
+            var bw = on ? 3 : 1;
+            var bc = on ? active : normal;
+
+            btn.style.borderLeftWidth   = bw;
+            btn.style.borderRightWidth  = bw;
+            btn.style.borderTopWidth    = bw;
+            btn.style.borderBottomWidth = bw;
+
+            btn.style.borderLeftColor   = bc;
+            btn.style.borderRightColor  = bc;
+            btn.style.borderTopColor    = bc;
+            btn.style.borderBottomColor = bc;
+
+            // 살짝 배경 강조 (원하면 제거)
+            btn.style.backgroundColor = on ? new Color(1, 1, 1, 0.10f) : new Color(0, 0, 0, 0);
+        }
+        
         // ---- 스타일 & UI 생성 ----
         private static Button Button(string text, Action onClick)
         {
@@ -466,7 +555,17 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             r.style.flexWrap = Wrap.Wrap;
             return r;
         }
+        /// <summary>
+        /// 세로로 일정 높이 여백 부여
+        /// </summary>
+        /// <param name="parent">추가할 위치</param>
+        /// <param name="h">세로 높이</param>
         private static void SpaceV(VisualElement parent, float h) => parent.Add(new VisualElement { style = { height = h } });
+        /// <summary>
+        /// 가로로 일정 너비 여백 부여
+        /// </summary>
+        /// <param name="parent">추가할 위치</param>
+        /// <param name="w">가로 너비</param>
         private static void SpaceH(VisualElement parent, float w) => parent.Add(new VisualElement { style = { width = w } });
         private static void Pad(VisualElement ve, float all)
         {

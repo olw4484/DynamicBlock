@@ -51,8 +51,8 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(this);
 #endif
-            if (fruitEnabled == null || fruitEnabled.Length != 6) fruitEnabled = new bool[6];
-            if (fruitGoals   == null || fruitGoals.Length   != 6) fruitGoals   = new int[6];
+            if (fruitEnabled == null || fruitEnabled.Length != 5) fruitEnabled = new bool[5];
+            if (fruitGoals   == null || fruitGoals.Length   != 5) fruitGoals   = new int[5];
         }
     }
 }
