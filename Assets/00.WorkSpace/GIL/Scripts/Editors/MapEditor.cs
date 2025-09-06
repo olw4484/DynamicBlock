@@ -17,7 +17,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private MapData _data;
         private int _brush; // 현재 브러시 ID
         private const int FRUIT_COUNT = 5;
-        
+
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
@@ -54,7 +54,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             root.Add(container);
 
             var right = BuildSettingPane();   // 목표/팔레트 등
-            var left  = BuildGridPane();    // 맵 칠하기
+            var left  = BuildGridPane();      // 맵 칠하기
 
             container.Add(right);
             SpaceV(container, 8);
@@ -114,9 +114,12 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     _data.fruitGoals = arr;
                 }
             }
-            
-            panel.Add(new Label("Select Game Mode") { style = { fontSize = 20, unityFontStyleAndWeight = FontStyle.Bold } });
-            
+
+            var selectModeLbl = new Label("Select Game Mode");
+            selectModeLbl.style.fontSize = 20;
+            selectModeLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+            panel.Add(selectModeLbl);
+
             void SetGoal(MapGoalKind kind)
             {
                 if (isUpdating) return;
@@ -132,11 +135,15 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             {
                 var row = Row();
                 tutT = new Toggle(); // 라벨 없는 체크박스
-                var lbl = new Label("Tutorial") {style = { width = 50,unityFontStyleAndWeight = FontStyle.Bold }};
-                SpaceH(row, 6); 
+
+                var lbl = new Label("Tutorial");
+                lbl.style.width = 50;
+                lbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+                SpaceH(row, 6);
                 row.Add(tutT);
-                SpaceH(row, 8); 
-                row.Add(lbl); 
+                SpaceH(row, 8);
+                row.Add(lbl);
                 panel.Add(row);
                 SpaceV(panel, 6);
             }
@@ -145,18 +152,25 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             {
                 var row = Row();
                 scoT = new Toggle();
-                var lbl = new Label("Score") {style = { width = 50, unityFontStyleAndWeight = FontStyle.Bold }};
+
+                var lbl = new Label("Score");
+                lbl.style.width = 50;
+                lbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
                 panel.Add(row);
 
                 // 토글 ON일 때만 보일 상세(오른쪽에 붙이기)
                 scoreDetailRow = Row();
                 scoreDetailRow.style.alignItems = Align.Center;
-                scoreDetailRow.style.flexGrow = 1;                         // 남은 가로영역 차지
+                scoreDetailRow.style.flexGrow = 1;
                 scoreDetailRow.style.display = _data.goalKind == MapGoalKind.Score ? DisplayStyle.Flex : DisplayStyle.None;
 
-                var scoreLabel = new Label("Target Score") { style = { marginLeft = 12 }};
+                var scoreLabel = new Label("Target Score");
+                scoreLabel.style.marginLeft = 12;
 
-                var scoreField = new IntegerField("") { value = _data.scoreGoal, style = { width = 75 } };
+                var scoreField = new IntegerField("");
+                scoreField.value = _data.scoreGoal;
+                scoreField.style.width = 75;
                 scoreField.label = string.Empty;
                 scoreField.labelElement.style.display = DisplayStyle.None;
 
@@ -182,101 +196,159 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             {
                 var row = Row();
                 fruT = new Toggle();
-                var lbl = new Label("Fruit") {style = { width = 50, unityFontStyleAndWeight = FontStyle.Bold }};
-                SpaceH(row, 6); 
+
+                var lbl = new Label("Fruit");
+                lbl.style.width = 50;
+                lbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+                SpaceH(row, 6);
                 row.Add(fruT);
-                SpaceH(row, 8); 
-                row.Add(lbl); 
+                SpaceH(row, 8);
+                row.Add(lbl);
                 panel.Add(row);
 
                 // 활성화 시에만 보일: 타일 리스트
-                fruitTable = new VisualElement(); // 기존 fruitTable 변수 재사용 (섹션 컨테이너)
+                fruitTable = new VisualElement();
                 SpaceV(fruitTable, 4);
 
-                var tilesWrap = Row();                          
+                var tilesWrap = Row();
                 tilesWrap.style.marginLeft = 8;
-                tilesWrap.style.flexShrink = 0;                 
-                tilesWrap.style.overflow   = Overflow.Hidden;   
+                tilesWrap.style.flexShrink = 0;
+                tilesWrap.style.overflow = Overflow.Hidden;
                 fruitTable.Add(tilesWrap);
-                
+
                 EnsureFruitArrays();
 
                 for (int i = 0; i < FRUIT_COUNT; i++)
                 {
-                    // 타일 컨테이너(네모)
-                    var tile = new VisualElement();
-                    tile.style.flexWrap   = Wrap.NoWrap;      
-                    tile.style.flexShrink = 0;                
-                    tile.style.overflow   = Overflow.Hidden;   
-                    tile.style.width  = 70;
+                    int idx = i;
+
+                    // 타일 = 버튼
+                    var tile = new Button();
+                    tile.text = string.Empty;
+                    tile.style.flexWrap = Wrap.NoWrap;
+                    tile.style.flexShrink = 0;
+                    tile.style.overflow = Overflow.Hidden;
+                    tile.style.width = 70;
                     tile.style.minHeight = 70;
                     Pad(tile, 8);
-                    Border(tile, new Color(0,0,0,0.25f));
-                    tile.style.alignItems = Align.Center;     // 세로 정렬 시 자식 가로 중앙
-                    tile.style.flexDirection = FlexDirection.Column; // 세로로 쌓기
-                    tile.style.marginRight = 8;
+                    Border(tile, new Color(0, 0, 0, 0.25f));
+                    tile.style.alignItems = Align.Center;
+                    tile.style.justifyContent = Justify.Center;
+                    tile.style.flexDirection = FlexDirection.Column;
+                    tile.style.marginRight = (i == FRUIT_COUNT - 1) ? 0 : 8;
                     tile.style.marginBottom = 8;
-                    // 둥그렇게 만들기
-                    tile.style.borderTopLeftRadius = 6; 
+                    tile.style.borderTopLeftRadius = 6;
                     tile.style.borderTopRightRadius = 6;
-                    tile.style.borderBottomLeftRadius = 6; 
+                    tile.style.borderBottomLeftRadius = 6;
                     tile.style.borderBottomRightRadius = 6;
 
-                    var fruitIcon = new Image { scaleMode = ScaleMode.ScaleToFit };
-                    fruitIcon.style.width  = 36;
-                    fruitIcon.style.height = 36;
-                    Sprite spr = null;
-                    if (_data.fruitImages != null && i < _data.fruitImages.Length)
-                        spr = _data.fruitImages[i];
-                    fruitIcon.sprite = spr;
+                    // 아이콘
+                    var icon = new Image { scaleMode = ScaleMode.ScaleToFit };
+                    icon.style.width = 36;
+                    icon.style.height = 36;
+                    if (_data.fruitImages != null && idx < _data.fruitImages.Length)
+                        icon.sprite = _data.fruitImages[idx];
+                    tile.Add(icon);
                     SpaceV(tile, 4);
 
-                    var fruitToggle = new Toggle();
-                    fruitToggle.SetValueWithoutNotify(_data.fruitEnabled[i]);
+                    // === 목표 갯수 + 스핀버튼 ===
+                    var countWrap = Row();
+                    countWrap.style.alignItems = Align.Center;
 
-                    var fruitCount = new IntegerField() { style = { width = 50 } };
-                    fruitCount.SetValueWithoutNotify(_data.fruitGoals[i]);
-                    fruitCount.SetEnabled(_data.fruitEnabled[i]); // 활성일 때만 입력 가능
+                    var fruitCount = new IntegerField();
+                    fruitCount.style.width = 30;
+                    fruitCount.isDelayed = true;
+                    fruitCount.SetValueWithoutNotify(_data.fruitGoals[idx]);
 
-                    int idx = i;
-                    fruitToggle.RegisterValueChangedCallback(e =>
+                    // 스핀 버튼(위/아래)
+                    var spin = new VisualElement();
+                    spin.style.flexDirection = FlexDirection.Column;
+                    spin.style.marginLeft = 4;
+
+                    var upBtn = new Button { text = "▲" };
+                    upBtn.style.width = 18; upBtn.style.height = 14;
+                    upBtn.style.paddingLeft = upBtn.style.paddingRight =
+                    upBtn.style.paddingTop = upBtn.style.paddingBottom = 0;
+
+                    var dnBtn = new Button { text = "▼" };
+                    dnBtn.style.width = 18; dnBtn.style.height = 14;
+                    dnBtn.style.paddingLeft = dnBtn.style.paddingRight =
+                    dnBtn.style.paddingTop = dnBtn.style.paddingBottom = 0;
+
+                    void Bump(int delta)
+                    {
+                        Undo.RecordObject(_data, "Change Fruit Goal");
+                        EnsureFruitArrays();
+                        var v = Mathf.Max(0, fruitCount.value + delta);
+                        fruitCount.SetValueWithoutNotify(v);
+                        _data.fruitGoals[idx] = v;
+                        EditorUtility.SetDirty(_data);
+                    }
+
+                    upBtn.clicked += () => Bump(+1);
+                    dnBtn.clicked += () => Bump(-1);
+
+                    // 타일 토글로 이벤트 전파 막기
+                    upBtn.RegisterCallback<ClickEvent>(e => e.StopPropagation());
+                    dnBtn.RegisterCallback<ClickEvent>(e => e.StopPropagation());
+                    fruitCount.RegisterCallback<ClickEvent>(e => e.StopPropagation());
+
+                    // (선택) 휠로 증감
+                    fruitCount.RegisterCallback<WheelEvent>(e =>
+                    {
+                        if (!_data.fruitEnabled[idx]) return;
+                        Bump(e.delta.y > 0 ? -1 : +1);
+                        e.StopPropagation();
+                    });
+
+                    spin.Add(upBtn);
+                    spin.Add(dnBtn);
+                    countWrap.Add(fruitCount);
+                    countWrap.Add(spin);
+
+                    // 활성 상태 반영
+                    bool enabledNow = _data.fruitEnabled[idx];
+                    fruitCount.SetEnabled(enabledNow);
+                    upBtn.SetEnabled(enabledNow);
+                    dnBtn.SetEnabled(enabledNow);
+
+                    tile.Add(countWrap);
+
+                    // 타일 클릭 = 활성/비활성 토글
+                    tile.clicked += () =>
                     {
                         Undo.RecordObject(_data, "Toggle Fruit Enable");
                         EnsureFruitArrays();
-                        _data.fruitEnabled[idx] = e.newValue;
+                        _data.fruitEnabled[idx] = !_data.fruitEnabled[idx];
                         EditorUtility.SetDirty(_data);
 
-                        fruitCount.SetEnabled(e.newValue); // 즉시 반영
-                        ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitToggles, fruitCounts);
-                    });
+                        bool on = _data.fruitEnabled[idx];
+                        fruitCount.SetEnabled(on);
+                        upBtn.SetEnabled(on);
+                        dnBtn.SetEnabled(on);
+                        SetFruitTileVisual(tile, on);
+                    };
 
-                    fruitCount.RegisterValueChangedCallback(e =>
-                    {
-                        Undo.RecordObject(_data, "Edit Fruit Goal");
-                        EnsureFruitArrays();
-                        _data.fruitGoals[idx] = Mathf.Max(0, e.newValue);
-                        EditorUtility.SetDirty(_data);
-                    });
+                    // 처음 비주얼
+                    SetFruitTileVisual(tile, _data.fruitEnabled[idx]);
 
-                    fruitToggles[i] = fruitToggle;
-                    fruitCounts[i]  = fruitCount;
-
-                    // 타일에 추가(세로 중앙 정렬)
-                    tile.Add(fruitIcon);
-                    SpaceV(tile, 4);
-                    tile.Add(fruitToggle);
-                    SpaceV(tile, 4);
-                    tile.Add(fruitCount);
+                    // ApplyGoalUI에서 on/off 제어용 참조
+                    fruitCounts[idx] = fruitCount;
 
                     tilesWrap.Add(tile);
                 }
 
+
                 panel.Add(fruitTable);
-                SpaceV(panel, 10);
+                SpaceV(panel, 7);
             }
 
             // ========== 블록 선택 ==========
-            panel.Add(new Label("Select Block") { style = { fontSize = 20, unityFontStyleAndWeight = FontStyle.Bold } });
+            var selectBlockLbl = new Label("Select Block");
+            selectBlockLbl.style.fontSize = 20;
+            selectBlockLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+            panel.Add(selectBlockLbl);
             SpaceV(panel, 4);
 
             var palette = new VisualElement();
@@ -286,20 +358,21 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
             int blockSize = 50;
             int blockOffset = 5;
+
             var line2 = Row();
-            line2.style.flexWrap   = Wrap.NoWrap;       
-            line2.style.flexShrink = 0;                 
-            line2.style.overflow   = Overflow.Hidden;   
+            line2.style.flexWrap = Wrap.NoWrap;
+            line2.style.flexShrink = 0;
+            line2.style.overflow = Overflow.Hidden;
+
             for (int i = 0; i < FRUIT_COUNT; i++)
             {
                 int index = i;
-                var button = new Button() { style =
-                {
-                    width = blockSize, 
-                    height = blockSize, 
-                    alignItems = Align.Center,
-                    justifyContent = Justify.Center
-                }};
+
+                var button = new Button();
+                button.style.width = blockSize;
+                button.style.height = blockSize;
+                button.style.alignItems = Align.Center;
+                button.style.justifyContent = Justify.Center;
                 Pad(button, 0f);
                 button.text = string.Empty;
 
@@ -308,7 +381,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 image.style.height = blockSize - blockOffset;
                 image.sprite = _data.blockImages?[i];
                 button.Add(image);
-                
+
                 button.clicked += () => SetBrushSprite(_data.blockImages?[index], button);
 
                 // 기본 테두리(원복용 기준)
@@ -317,23 +390,24 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 // 이미 선택된 브러시가 있다면, 재생성 시 하이라이트 복구
                 if (_brushSprite != null && _brushSprite == _data.blockImages?[index])
                     Highlight(button, true);
-                
+
                 line2.Add(button);
             }
+
             var line3 = Row();
-            line2.style.flexWrap   = Wrap.NoWrap;       
-            line2.style.flexShrink = 0;                 
-            line2.style.overflow   = Overflow.Hidden;  
+            line3.style.flexWrap = Wrap.NoWrap;      // <-- 오타 수정(line2 -> line3)
+            line3.style.flexShrink = 0;
+            line3.style.overflow = Overflow.Hidden;
+
             for (int i = 0; i < FRUIT_COUNT; i++)
             {
                 int index = i;
-                var button = new Button() { style =
-                {
-                    width = blockSize, 
-                    height = blockSize,
-                    alignItems = Align.Center,
-                    justifyContent = Justify.Center
-                }};
+
+                var button = new Button();
+                button.style.width = blockSize;
+                button.style.height = blockSize;
+                button.style.alignItems = Align.Center;
+                button.style.justifyContent = Justify.Center;
                 Pad(button, 0f);
                 button.text = string.Empty;
 
@@ -342,20 +416,24 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 image.style.height = blockSize - blockOffset;
                 image.sprite = _data.blockWithFruitIcons?[i];
                 button.Add(image);
-                
+
                 button.clicked += () => SetBrushSprite(_data.blockWithFruitIcons?[index], button);
 
                 Highlight(button, false);
                 if (_brushSprite != null && _brushSprite == _data.blockWithFruitIcons?[index])
                     Highlight(button, true);
-                
+
                 line3.Add(button);
             }
             palette.Add(line2);
             palette.Add(line3);
             panel.Add(palette);
             SpaceV(panel, 8f);
-            panel.Add(new Label("Paint Grid") {style = { fontSize = 20 , unityFontStyleAndWeight = FontStyle.Bold}});
+
+            var paintGridLbl = new Label("Paint Grid");
+            paintGridLbl.style.fontSize = 20;
+            paintGridLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+            panel.Add(paintGridLbl);
 
             // ---- 라디오 토글처럼 동작하도록 초기화 + 콜백 ----
             tutT.SetValueWithoutNotify(_data.goalKind == MapGoalKind.Tutorial);
@@ -385,7 +463,29 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitToggles, fruitCounts);
             return panel;
         }
+        
+        private static void SetFruitTileVisual(Button tile, bool enabled)
+        {
+            if (tile == null) return;
 
+            var cBorder = enabled ? new Color(0.21f, 0.52f, 0.96f, 1f) : new Color(0, 0, 0, 0.25f);
+            var bw = enabled ? 3 : 1;
+
+            tile.style.borderLeftWidth   = bw;
+            tile.style.borderRightWidth  = bw;
+            tile.style.borderTopWidth    = bw;
+            tile.style.borderBottomWidth = bw;
+
+            tile.style.borderLeftColor   = cBorder;
+            tile.style.borderRightColor  = cBorder;
+            tile.style.borderTopColor    = cBorder;
+            tile.style.borderBottomColor = cBorder;
+
+            tile.style.backgroundColor = enabled ? new Color(1, 1, 1, 0.10f) : new Color(0, 0, 0, 0);
+            tile.style.opacity = enabled ? 1f : 0.6f; // 비활성 느낌
+        }
+
+        
         private static void ApplyGoalUI(
             MapData data,
             Toggle tutT, Toggle scoT, Toggle fruT,
@@ -411,26 +511,27 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 fruitTable.style.display = isFruit ? DisplayStyle.Flex : DisplayStyle.None;
 
             // 과일 표 내부 활성/비활성
-            int n = (fruitToggles?.Length ?? 1) - 1;
-            for (int i = 1; i <= n; i++)
+            int n = Math.Min(data.fruitEnabled?.Length ?? 0, fruitCounts?.Length ?? 0);
+            for (int i = 0; i < n; i++)
             {
-                var toggle = fruitToggles?[i];
-                var intFields = fruitCounts[i];
-                // Fruit 모드일 때만 편집 가능
-                toggle?.SetEnabled(isFruit && !isTut);
-                intFields?.SetEnabled(isFruit && !isTut && i < data.fruitEnabled.Length && data.fruitEnabled[i]);
+                var intField = fruitCounts[i];
+                intField?.SetEnabled(
+                    data.goalKind == MapGoalKind.Fruit &&
+                    i < data.fruitEnabled.Length &&
+                    data.fruitEnabled[i]
+                );
             }
         }
-
 
         // ===== 왼쪽 패널: 맵 칠하기 공간 (단순 그리드) =====
         private VisualElement BuildGridPane()
         {
             var wrap = new VisualElement { name = "grid-wrap" };
-            wrap.style.flexGrow   = 0;              
-            wrap.style.flexShrink = 0;              
-            Border(wrap, new Color(0,0,0,0.25f)); // 이미 있는 헬퍼
+            wrap.style.flexGrow = 0;
+            wrap.style.flexShrink = 0;
+            Border(wrap, new Color(0, 0, 0, 0.25f)); // 이미 있는 헬퍼
             Pad(wrap, 6);
+
             var grid = new VisualElement { name = "grid" };
             wrap.Add(grid);
 
@@ -452,7 +553,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 grid.style.alignItems = Align.FlexStart;
                 int rows = Mathf.Max(1, _data.rows);
                 int cols = Mathf.Max(1, _data.cols);
-                const int cell = 40; // 셀 한 변 픽셀 수 
+                const int cell = 40; // 셀 한 변 픽셀 수
 
                 for (int r = 0; r < rows; r++)
                 {
@@ -462,7 +563,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     for (int c = 0; c < cols; c++)
                     {
                         var ve = new VisualElement();
-                        ve.style.width  = cell;
+                        ve.style.width = cell;
                         ve.style.height = cell;
                         ve.style.backgroundColor = new Color(0, 0, 0, 0.08f);
                         BorderThin(ve, new Color(0, 0, 0, 0.2f));
@@ -470,7 +571,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
                         // 셀 내부 이미지 (처음엔 비어 있음)
                         var img = new Image { scaleMode = ScaleMode.ScaleToFit };
-                        img.style.width  = cell - 2;
+                        img.style.width = cell - 2;
                         img.style.height = cell - 2;
                         ve.Add(img);
 
@@ -495,10 +596,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 }
             }
         }
-        
+
         private Sprite _brushSprite; // 현재 선택된 블록의 스프라이트(지우개는 null)
         private Button _selectedPaletteButton;
-        
+
         private void SetBrushSprite(Sprite sprite, Button sourceBtn)
         {
             // 이전 선택 원복
@@ -510,7 +611,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             // 새 선택 강조
             Highlight(_selectedPaletteButton, true);
         }
-        
+
         private void Highlight(Button btn, bool on)
         {
             if (btn == null) return;
@@ -521,20 +622,20 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var bw = on ? 3 : 1;
             var bc = on ? active : normal;
 
-            btn.style.borderLeftWidth   = bw;
-            btn.style.borderRightWidth  = bw;
-            btn.style.borderTopWidth    = bw;
+            btn.style.borderLeftWidth = bw;
+            btn.style.borderRightWidth = bw;
+            btn.style.borderTopWidth = bw;
             btn.style.borderBottomWidth = bw;
 
-            btn.style.borderLeftColor   = bc;
-            btn.style.borderRightColor  = bc;
-            btn.style.borderTopColor    = bc;
+            btn.style.borderLeftColor = bc;
+            btn.style.borderRightColor = bc;
+            btn.style.borderTopColor = bc;
             btn.style.borderBottomColor = bc;
 
             // 살짝 배경 강조 (원하면 제거)
             btn.style.backgroundColor = on ? new Color(1, 1, 1, 0.10f) : new Color(0, 0, 0, 0);
         }
-        
+
         // ---- 스타일 & UI 생성 ----
         private static Button Button(string text, Action onClick)
         {
@@ -570,13 +671,13 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private static void Pad(VisualElement ve, float all)
         {
             ve.style.paddingLeft = all; ve.style.paddingRight = all;
-            ve.style.paddingTop  = all; ve.style.paddingBottom = all;
+            ve.style.paddingTop = all; ve.style.paddingBottom = all;
         }
         private static void Border(VisualElement ve, Color c)
         {
-            ve.style.borderLeftWidth   = 1; ve.style.borderLeftColor   = c;
-            ve.style.borderRightWidth  = 1; ve.style.borderRightColor  = c;
-            ve.style.borderTopWidth    = 1; ve.style.borderTopColor    = c;
+            ve.style.borderLeftWidth = 1; ve.style.borderLeftColor = c;
+            ve.style.borderRightWidth = 1; ve.style.borderRightColor = c;
+            ve.style.borderTopWidth = 1; ve.style.borderTopColor = c;
             ve.style.borderBottomWidth = 1; ve.style.borderBottomColor = c;
         }
         private static void BorderThin(VisualElement ve, Color c) => Border(ve, c);
