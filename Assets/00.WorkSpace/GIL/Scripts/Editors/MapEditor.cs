@@ -1,11 +1,9 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -16,11 +14,33 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
     {
         private MapData _data;
         private int _brush; // 현재 브러시 ID
-        private const int FRUIT_COUNT = 5;
+        private const int FruitCount = 5;
 
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
+
+            // 아이콘 로드/사이즈 보정
+            MapEditorFunctions.EnsureIcons(_data);
+
+#if UNITY_EDITOR
+            // 파일명 기준으로 id/index 동기화(메뉴 생성 직후 케이스 대응)
+            var path = AssetDatabase.GetAssetPath(_data);
+            if (!string.IsNullOrEmpty(path))
+            {
+                var name = Path.GetFileNameWithoutExtension(path);
+                const string prefix = "Stage_";
+                if (name.StartsWith(prefix) && int.TryParse(name.Substring(prefix.Length), out var idx))
+                {
+                    if (_data.id != name || _data.mapIndex != idx)
+                    {
+                        _data.id = name;
+                        _data.mapIndex = idx;
+                        EditorUtility.SetDirty(_data);
+                    }
+                }
+            }
+#endif
             return BuildUI();
         }
 
@@ -35,17 +55,27 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             idField.style.unityTextAlign = TextAnchor.MiddleCenter;
             idField.style.fontSize = 25;
             idField.style.unityFontStyleAndWeight = FontStyle.Bold;
-            idField.RegisterValueChangedCallback(e => { });
+            idField.RegisterValueChangedCallback(e =>
+            {
+                MapEditorFunctions.MarkDirty(_data, "Rename Stage");
+                _data.id = e.newValue;
+            });
             root.Add(idField);
             SpaceV(root, 6);
 
             // 네비게이션 바
             var nav = Row();
-            nav.Add(Button("<", () => { }));
-            nav.Add(Button(">", () => { }));
-            nav.Add(Button("Add", AddNew));
-            nav.Add(Button("Save", Save));
-            nav.Add(Button("Delete", Delete));
+            nav.Add(Button("<", () => { MapEditorFunctions.NavigateClamped(_data, -1); }));
+            nav.Add(Button(">", () => { MapEditorFunctions.NavigateClamped(_data, +1); }));
+            nav.Add(Button("Add", () => { MapEditorFunctions.AddAfterCurrent(_data); }));
+            nav.Add(Button("Save", () => { MapEditorFunctions.Save(_data); }));
+            nav.Add(Button("Delete", () =>
+            {
+                if (EditorUtility.DisplayDialog("Delete Stage", $"Delete '{_data?.id}'?\n(This cannot be undone)", "Delete", "Cancel"))
+                {
+                    MapEditorFunctions.DeleteCurrent(_data);
+                }
+            }));
             root.Add(nav);
             SpaceV(root, 6);
 
@@ -61,21 +91,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             container.Add(left);
 
             return root;
-
-            void Save()
-            {
-                EditorUtility.SetDirty(_data);
-                AssetDatabase.SaveAssets();
-            }
-
-            void AddNew() { }
-
-            void Delete()
-            {
-                if (EditorUtility.DisplayDialog("Delete Stage",
-                    $"Delete '{_data.id}'?\n(This cannot be undone)", "Delete", "Cancel"))
-                { }
-            }
         }
 
         private VisualElement BuildSettingPane()
@@ -90,30 +105,11 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             VisualElement scoreDetailRow = null;
             VisualElement fruitTable     = null;
 
-            // 과일 토글/카운트 배열
-            var fruitToggles = new Toggle[FRUIT_COUNT + 1];       // 1..N
-            var fruitCounts  = new IntegerField[FRUIT_COUNT + 1]; // 1..N
+            // 과일 카운트 참조(ApplyGoalUI에서 on/off)
+            var fruitCounts  = new IntegerField[FruitCount + 1];
 
             // 중복 갱신 방지 플래그
             bool isUpdating = false;
-
-            void EnsureFruitArrays()
-            {
-                if (_data.fruitEnabled == null || _data.fruitEnabled.Length < FRUIT_COUNT + 1)
-                {
-                    var arr = new bool[FRUIT_COUNT + 1];
-                    if (_data.fruitEnabled != null)
-                        Array.Copy(_data.fruitEnabled, arr, Math.Min(_data.fruitEnabled.Length, arr.Length));
-                    _data.fruitEnabled = arr;
-                }
-                if (_data.fruitGoals == null || _data.fruitGoals.Length < FRUIT_COUNT + 1)
-                {
-                    var arr = new int[FRUIT_COUNT + 1];
-                    if (_data.fruitGoals != null)
-                        Array.Copy(_data.fruitGoals, arr, Math.Min(_data.fruitGoals.Length, arr.Length));
-                    _data.fruitGoals = arr;
-                }
-            }
 
             var selectModeLbl = new Label("Select Game Mode");
             selectModeLbl.style.fontSize = 20;
@@ -127,7 +123,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 Undo.RecordObject(_data, "Change Goal");
                 _data.goalKind = kind;
                 EditorUtility.SetDirty(_data);
-                ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitToggles, fruitCounts);
+                ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitCounts);
                 isUpdating = false;
             }
 
@@ -175,7 +171,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 scoreField.labelElement.style.display = DisplayStyle.None;
 
                 scoreField.RegisterValueChangedCallback(e =>
-                { });
+                {
+                    MapEditorFunctions.MarkDirty(_data, "Edit Score Goal");
+                    _data.scoreGoal = Mathf.Max(0, e.newValue);
+                });
 
                 scoreDetailRow.Add(scoreLabel);
                 SpaceH(scoreDetailRow, 6);
@@ -217,9 +216,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 tilesWrap.style.overflow = Overflow.Hidden;
                 fruitTable.Add(tilesWrap);
 
-                EnsureFruitArrays();
+                MapEditorFunctions.EnsureFruitArrays(_data);
 
-                for (int i = 0; i < FRUIT_COUNT; i++)
+                for (int i = 0; i < FruitCount; i++)
                 {
                     int idx = i;
 
@@ -236,7 +235,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     tile.style.alignItems = Align.Center;
                     tile.style.justifyContent = Justify.Center;
                     tile.style.flexDirection = FlexDirection.Column;
-                    tile.style.marginRight = (i == FRUIT_COUNT - 1) ? 0 : 8;
+                    tile.style.marginRight = (i == FruitCount - 1) ? 0 : 8;
                     tile.style.marginBottom = 8;
                     tile.style.borderTopLeftRadius = 6;
                     tile.style.borderTopRightRadius = 6;
@@ -276,29 +275,27 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     dnBtn.style.paddingLeft = dnBtn.style.paddingRight =
                     dnBtn.style.paddingTop = dnBtn.style.paddingBottom = 0;
 
-                    void Bump(int delta)
-                    {
-                        Undo.RecordObject(_data, "Change Fruit Goal");
-                        EnsureFruitArrays();
-                        var v = Mathf.Max(0, fruitCount.value + delta);
-                        fruitCount.SetValueWithoutNotify(v);
-                        _data.fruitGoals[idx] = v;
-                        EditorUtility.SetDirty(_data);
-                    }
+                    void SyncField() => fruitCount.SetValueWithoutNotify(_data.fruitGoals[idx]);
 
-                    upBtn.clicked += () => Bump(+1);
-                    dnBtn.clicked += () => Bump(-1);
+                    upBtn.clicked += () => { MapEditorFunctions.BumpFruitGoal(_data, idx, +1); SyncField(); };
+                    dnBtn.clicked += () => { MapEditorFunctions.BumpFruitGoal(_data, idx, -1); SyncField(); };
 
                     // 타일 토글로 이벤트 전파 막기
                     upBtn.RegisterCallback<ClickEvent>(e => e.StopPropagation());
                     dnBtn.RegisterCallback<ClickEvent>(e => e.StopPropagation());
                     fruitCount.RegisterCallback<ClickEvent>(e => e.StopPropagation());
 
-                    // (선택) 휠로 증감
+                    // (선택) 직접 입력/휠 증감
+                    fruitCount.RegisterValueChangedCallback(e =>
+                    {
+                        MapEditorFunctions.SetFruitGoal(_data, idx, e.newValue);
+                        SyncField();
+                    });
                     fruitCount.RegisterCallback<WheelEvent>(e =>
                     {
                         if (!_data.fruitEnabled[idx]) return;
-                        Bump(e.delta.y > 0 ? -1 : +1);
+                        MapEditorFunctions.BumpFruitGoal(_data, idx, e.delta.y > 0 ? -1 : +1);
+                        SyncField();
                         e.StopPropagation();
                     });
 
@@ -318,11 +315,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     // 타일 클릭 = 활성/비활성 토글
                     tile.clicked += () =>
                     {
-                        Undo.RecordObject(_data, "Toggle Fruit Enable");
-                        EnsureFruitArrays();
-                        _data.fruitEnabled[idx] = !_data.fruitEnabled[idx];
-                        EditorUtility.SetDirty(_data);
-
+                        MapEditorFunctions.ToggleFruitEnable(_data, idx);
                         bool on = _data.fruitEnabled[idx];
                         fruitCount.SetEnabled(on);
                         upBtn.SetEnabled(on);
@@ -338,7 +331,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
                     tilesWrap.Add(tile);
                 }
-
 
                 panel.Add(fruitTable);
                 SpaceV(panel, 7);
@@ -364,7 +356,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             line2.style.flexShrink = 0;
             line2.style.overflow = Overflow.Hidden;
 
-            for (int i = 0; i < FRUIT_COUNT; i++)
+            for (int i = 0; i < FruitCount; i++)
             {
                 int index = i;
 
@@ -395,11 +387,11 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             }
 
             var line3 = Row();
-            line3.style.flexWrap = Wrap.NoWrap;      // <-- 오타 수정(line2 -> line3)
+            line3.style.flexWrap = Wrap.NoWrap;
             line3.style.flexShrink = 0;
             line3.style.overflow = Overflow.Hidden;
 
-            for (int i = 0; i < FRUIT_COUNT; i++)
+            for (int i = 0; i < FruitCount; i++)
             {
                 int index = i;
 
@@ -460,10 +452,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             });
 
             // ---- 최초 1회 상태 적용 ----
-            ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitToggles, fruitCounts);
+            ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitCounts);
             return panel;
         }
-        
+
         private static void SetFruitTileVisual(Button tile, bool enabled)
         {
             if (tile == null) return;
@@ -485,13 +477,11 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             tile.style.opacity = enabled ? 1f : 0.6f; // 비활성 느낌
         }
 
-        
         private static void ApplyGoalUI(
             MapData data,
             Toggle tutT, Toggle scoT, Toggle fruT,
             VisualElement scoreDetailRow,
             VisualElement fruitTable,
-            Toggle[] fruitToggles,
             IntegerField[] fruitCounts)
         {
             bool isTut   = data.goalKind == MapGoalKind.Tutorial;
@@ -524,25 +514,28 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         }
 
         // ===== 왼쪽 패널: 맵 칠하기 공간 (단순 그리드) =====
+        // 추후에 윈도우 패널화할 때 사용할 예정
         private VisualElement BuildGridPane()
         {
             var wrap = new VisualElement { name = "grid-wrap" };
             wrap.style.flexGrow = 0;
             wrap.style.flexShrink = 0;
-            Border(wrap, new Color(0, 0, 0, 0.25f)); // 이미 있는 헬퍼
+            Border(wrap, new Color(0, 0, 0, 0.25f));
             Pad(wrap, 6);
 
             var grid = new VisualElement { name = "grid" };
             wrap.Add(grid);
-
-            // (선택) 아래 여백
             SpaceV(wrap, 6);
 
-            // (선택) 리빌드 버튼
+            // 클리어 버튼
             var tools = Row();
+            tools.Add(Button("Clear", () =>
+            {
+                MapEditorFunctions.ClearLayout(_data);
+                BuildGrid(); // UI 새로 그림
+            }));
             wrap.Add(tools);
 
-            // 처음 한 번 생성
             BuildGrid();
             return wrap;
 
@@ -569,24 +562,15 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                         BorderThin(ve, new Color(0, 0, 0, 0.2f));
                         ve.style.marginRight = (c == cols - 1) ? 0 : 2;
 
-                        // 셀 내부 이미지 (처음엔 비어 있음)
                         var img = new Image { scaleMode = ScaleMode.ScaleToFit };
                         img.style.width = cell - 2;
                         img.style.height = cell - 2;
                         ve.Add(img);
 
-                        // 클릭하면 현재 브러시 스프라이트로 변경 (지우개는 null)
+                        // 칠하기(토글)
                         ve.RegisterCallback<ClickEvent>(_ =>
                         {
-                            // _brushSprite == null 이면 지우개 동작
-                            if (_brushSprite == null || img.sprite == _brushSprite)
-                            {
-                                img.sprite = null;           // 지우기
-                            }
-                            else
-                            {
-                                img.sprite = _brushSprite;   // 현재 선택한 블록으로 칠하기
-                            }
+                            img.sprite = MapEditorFunctions.PaintToggle(_brushSprite, img.sprite);
                         });
 
                         line.Add(ve);
@@ -602,13 +586,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
         private void SetBrushSprite(Sprite sprite, Button sourceBtn)
         {
-            // 이전 선택 원복
             Highlight(_selectedPaletteButton, false);
-
             _brushSprite = sprite;
             _selectedPaletteButton = sourceBtn;
-
-            // 새 선택 강조
             Highlight(_selectedPaletteButton, true);
         }
 
@@ -632,7 +612,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             btn.style.borderTopColor = bc;
             btn.style.borderBottomColor = bc;
 
-            // 살짝 배경 강조 (원하면 제거)
             btn.style.backgroundColor = on ? new Color(1, 1, 1, 0.10f) : new Color(0, 0, 0, 0);
         }
 
@@ -656,29 +635,19 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             r.style.flexWrap = Wrap.Wrap;
             return r;
         }
-        /// <summary>
-        /// 세로로 일정 높이 여백 부여
-        /// </summary>
-        /// <param name="parent">추가할 위치</param>
-        /// <param name="h">세로 높이</param>
         private static void SpaceV(VisualElement parent, float h) => parent.Add(new VisualElement { style = { height = h } });
-        /// <summary>
-        /// 가로로 일정 너비 여백 부여
-        /// </summary>
-        /// <param name="parent">추가할 위치</param>
-        /// <param name="w">가로 너비</param>
         private static void SpaceH(VisualElement parent, float w) => parent.Add(new VisualElement { style = { width = w } });
         private static void Pad(VisualElement ve, float all)
         {
             ve.style.paddingLeft = all; ve.style.paddingRight = all;
-            ve.style.paddingTop = all; ve.style.paddingBottom = all;
+            ve.style.paddingTop = all;  ve.style.paddingBottom = all;
         }
         private static void Border(VisualElement ve, Color c)
         {
-            ve.style.borderLeftWidth = 1; ve.style.borderLeftColor = c;
+            ve.style.borderLeftWidth = 1;  ve.style.borderLeftColor = c;
             ve.style.borderRightWidth = 1; ve.style.borderRightColor = c;
-            ve.style.borderTopWidth = 1; ve.style.borderTopColor = c;
-            ve.style.borderBottomWidth = 1; ve.style.borderBottomColor = c;
+            ve.style.borderTopWidth = 1;   ve.style.borderTopColor = c;
+            ve.style.borderBottomWidth = 1;ve.style.borderBottomColor = c;
         }
         private static void BorderThin(VisualElement ve, Color c) => Border(ve, c);
     }

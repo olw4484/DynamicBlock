@@ -4,14 +4,14 @@ using UnityEngine;
 namespace _00.WorkSpace.GIL.Scripts.Maps
 {
     public enum MapGoalKind { Tutorial, Score, Fruit }
-    [CreateAssetMenu(fileName = "Map", menuName = "Maps/Map Data", order = 1)]
+    [CreateAssetMenu(fileName = "Stage_0", menuName = "Map Data", order = 1)]
     public class MapData : ScriptableObject
     {
         [Header("ID")] 
-        // 맵 이름($"Stage{mapIndex}") 이렇게 저장
+        // 맵 이름($"Stage_{mapIndex}") 이렇게 저장
         // mapIndex는 추후에 ShapeEditor처럼 맵들을 순회할 때 사용할 예정
-        public string id = "Stage1";
-        public int mapIndex = 1;
+        public string id = "";
+        public int mapIndex = 0;
         
         [Header("Board Size")]
         [Min(1)] public int rows = 8;
@@ -33,6 +33,19 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
         public int Get(int r, int c) => layout[r * cols + c];
         public void Set(int r, int c, int v) { layout[r * cols + c] = v; }
         
+        private void OnEnable()
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                if (fruitImages == null || fruitImages.Length == 0)  fruitImages = Resources.LoadAll<Sprite>("FruitIcons");
+                if (blockImages == null || blockImages.Length == 0)  blockImages = Resources.LoadAll<Sprite>("BlockImages");
+                if (blockWithFruitIcons == null || blockWithFruitIcons.Length == 0)
+                    blockWithFruitIcons = Resources.LoadAll<Sprite>("BlockWithFruitImages");
+            }
+#endif
+        }
+        
         private void OnValidate()
         {
             int total = rows * cols;
@@ -41,16 +54,30 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
             fruitImages = Resources.LoadAll<Sprite>("FruitIcons");
             blockImages = Resources.LoadAll<Sprite>("BlockImages");
             blockWithFruitIcons = Resources.LoadAll<Sprite>("BlockWithFruitImages");
-            // rows/cols 변경 시 layout 크기 맞추기
-            // 8x8로 고정, 하지만 확장성을 고려해 추가
-            if (layout.Count == total) return;
-            if (layout.Count < total)
-                layout.AddRange(new int[total - layout.Count]);
-            else
-                layout.RemoveRange(total, layout.Count - total);
+
+            if (layout.Count < total)      layout.AddRange(new int[total - layout.Count]);
+            else if (layout.Count > total) layout.RemoveRange(total, layout.Count - total);
+
 #if UNITY_EDITOR
+            var path = UnityEditor.AssetDatabase.GetAssetPath(this);
+            if (!string.IsNullOrEmpty(path))
+            {
+                var name = System.IO.Path.GetFileNameWithoutExtension(path);
+                const string prefix = "Stage_";
+                if (name.StartsWith(prefix) && int.TryParse(name.Substring(prefix.Length), out var idx))
+                {
+                    if (id != name || mapIndex != idx)
+                    {
+                        id = name;
+                        mapIndex = idx;
+                        UnityEditor.EditorUtility.SetDirty(this);
+                    }
+                }
+            }
+
             UnityEditor.EditorUtility.SetDirty(this);
 #endif
+
             if (fruitEnabled == null || fruitEnabled.Length != 5) fruitEnabled = new bool[5];
             if (fruitGoals   == null || fruitGoals.Length   != 5) fruitGoals   = new int[5];
         }
