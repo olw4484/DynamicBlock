@@ -17,7 +17,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         [Header("Block Prefab & Data")] 
         [SerializeField] private GameObject blockPrefab;
         [SerializeField] private List<Sprite> shapeImageSprites;
-        [SerializeField] private string imageDictory;
+        [SerializeField] private string imageDictory = "BlockImages";
 
         [Header("Spawn Positions")] [SerializeField]
         private List<Transform> blockSpawnPosList;
