@@ -28,8 +28,7 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
             if (GridManager.Instance != null)
                 GridManager.Instance.InitializeGridSquares(gridSquares, rows, columns);
             
-            if(MapManager.Instance != null)
-                MapManager.Instance.SetMapDataToGrid();
+            if(MapManager.Instance != null) MapManager.Instance.SetMapDataToGrid();
         }
 
         public void CreateGrid()

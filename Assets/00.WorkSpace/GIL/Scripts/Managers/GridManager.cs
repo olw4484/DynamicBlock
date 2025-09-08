@@ -39,11 +39,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Debug.Log("GridManager: Awake");
         }
 
-        // private void Update()
-        // {
-        //     if (Input.GetKeyDown(KeyCode.Q))
-        //         PrintGridStates();
-        // }
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Q))
+                PrintGridInfo();
+        }
 
         void OnEnable() { StartCoroutine(GameBindingUtil.WaitAndRun(() => TryBindBus())); }
         void Start() { TryBindBus(); } // 중복 호출 안전
@@ -130,13 +130,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             gridSquares[row, col].SetOccupied(occupied);
         }
 
+        private void PrintGridInfo()
+        {
+            PrintGridSquares();
+            PrintGridStates();
+            PrintGridOccupiedInfo();
+        }
+        
         /// <summary>
         /// gridStates 출력 (X = 비어있음, 0 = 블럭 있음)
         /// </summary>
         public void PrintGridStates()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("==== gridStates ====\n");
+            sb.Append("==== Grid States ====\n");
 
             for (int r = 0; r < rows; r++)
             {
@@ -147,15 +154,49 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
                 sb.AppendLine();
             }
+            
+            Debug.Log(sb.ToString());
+        }
+        
+        public void PrintGridSquares()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("==== Grid Squares ====\n");
+
+            for (int r = 0; r < rows; r++)
+            {
+                sb.Append($"Line_{r + 1} :\t");
+                for (int c = 0; c < cols; c++)
+                {
+                    sb.Append($"{gridSquares[r, c].state}\t");
+                }
+                sb.AppendLine();
+            }
 
             Debug.Log(sb.ToString());
         }
 
+        public void PrintGridOccupiedInfo()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("==== Grid Occupied Info ====\n");
+
+            for (int r = 0; r < rows; r++)
+            {
+                sb.Append($"Line_{r + 1} :\t");
+                for (int c = 0; c < cols; c++)
+                {
+                    sb.Append($"{gridSquares[r, c].IsOccupied}\t");
+                }
+                sb.AppendLine();
+            }
+
+            Debug.Log(sb.ToString());
+        }
+        
         public bool CanPlaceShape(List<Transform> shapeBlocks)
         {
             ClearHoverPreview();
-
-
             // 블록 이미지/점유 처리
             Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>().sprite;
 
