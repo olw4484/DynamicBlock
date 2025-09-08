@@ -1,4 +1,5 @@
 ﻿using GoogleMobileAds.Api;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -17,6 +18,12 @@ public class AdManager : MonoBehaviour
     [SerializeField] private Button _rewardBtn; // 리워드
 
     bool _rewardLocked; // 광고 진행 중 버튼 잠금
+
+    [SerializeField] private Button _classicBtn;    // 클래식 시작 버튼
+    [SerializeField] private int _rewardTimer = 90; // 90
+    [SerializeField] private int _interstitialTimer = 120; // 120
+    public DateTime NextRewardTime;
+    public DateTime NextInterstitialTime;
 
     void Awake()
     {
@@ -40,6 +47,13 @@ public class AdManager : MonoBehaviour
             WireUI();
             StartCoroutine(Co_UpdateRewardButton());
         });
+
+        // 클래식 시작버튼 이벤트 연결
+        NextInterstitialTime = DateTime.UtcNow.AddSeconds(_interstitialTimer);
+        _classicBtn.onClick.AddListener(() =>
+        {
+            NextRewardTime = DateTime.UtcNow.AddSeconds(_rewardTimer);
+		});
     }
 
     void WireUI()

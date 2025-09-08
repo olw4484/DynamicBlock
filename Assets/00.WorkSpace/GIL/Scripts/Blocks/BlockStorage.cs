@@ -14,13 +14,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
     {
         #region Variables & Properties
 
-        [Header("Block Prefab & Data")]
+        [Header("Block Prefab & Data")] 
         [SerializeField] private GameObject blockPrefab;
         [SerializeField] private List<Sprite> shapeImageSprites;
-        
-        [Header("Spawn Positions")]
+        [SerializeField] private string imageDictory = "BlockImages";
 
-        [SerializeField] private List<Transform> blockSpawnPosList;
+        [Header("Spawn Positions")] [SerializeField]
+        private List<Transform> blockSpawnPosList;
+
         [SerializeField] private Transform shapesPanel;
 
         [Header("Block Placement Helper")] 
@@ -33,7 +34,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
-        
+
         // 게임 오버 1회만 발동 가드
         bool _gameOverFired;
         System.Action<ContinueGranted> _onContinue;
@@ -43,17 +44,30 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         #endregion
 
+        #region Block Image Load
+
+        private void LoadImageData()
+        {
+            shapeImageSprites = new List<Sprite>(Resources.LoadAll<Sprite>(imageDictory));
+        }
+        #endregion
+        
         #region Unity Callbacks
 
+        void Awake()
+        {
+            LoadImageData();
+        }
+        
         void Start() { TryBindBus(); }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.W))
-            {
-                DebugCurrentBlocks();
-            }
-        }
+        // private void Update()
+        // {
+        //     if (Input.GetKeyDown(KeyCode.W))
+        //     {
+        //         DebugCurrentBlocks();
+        //     }
+        // }
 
         void OnEnable()
         {
@@ -132,11 +146,20 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 var block = go.GetComponent<Block>();
                 if (block == null) { Debug.LogError("[Storage] Block component missing"); Destroy(go); continue; }
 
-                // 이미지 세팅
-                var sprite = shapeImageSprites[GetRandomImageIndex()];
+                Sprite sprite = null;
+                
+                if (MapManager.Instance.GameMode == GameMode.Tutorial)
+                {
+                    sprite = shapeImageSprites[0];
+                    MapManager.Instance.GameMode = GameMode.Classic;
+                }
+                else
+                {
+                    // 이미지 세팅
+                    sprite = shapeImageSprites[GetRandomImageIndex()];
+                }
                 block.shapePrefab.GetComponent<Image>().sprite = sprite;
                 previewSprites[i] = sprite;
-                
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
             }

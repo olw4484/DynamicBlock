@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace _00.WorkSpace.GIL.Scripts.Shapes
 {
-    [CreateAssetMenu(fileName = "Shape", menuName = "New Shape", order = 1)]
+    [CreateAssetMenu(fileName = "Shape", menuName = "New Shape", order = 2)]
     public class ShapeData : ScriptableObject
     {
         [Header("ID & Grid")]

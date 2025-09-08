@@ -12,6 +12,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public List<ShapeData> GenerateBasicWave(int count)
         {
             var result = new List<ShapeData>(count);
+            var mM = MapManager.Instance;
+            // 튜토리얼일 경우 고정 블록 소환
+            if (mM.GameMode == GameMode.Tutorial)
+            {
+                result.Add(null);
+                result.Add(shapeData[31]);
+                result.Add(null);
+                return result;
+            }
+            
             // 이번 웨이브에서 "소환 실패한 블록" 은 이후 검색에서 제외
             var excludedByPenalty = new HashSet<string>();
             var excludedByDupes = new HashSet<string>();
