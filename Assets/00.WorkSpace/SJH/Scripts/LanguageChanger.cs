@@ -13,16 +13,9 @@ public enum GameLanguage
 
 public class LanguageChanger : MonoBehaviour
 {
-	//public static LanguageChanger Instance { get; private set; }
-
-	[SerializeField] private TMP_Text _text;
-	[SerializeField] private LocalizeStringEvent _testText;
+	//[SerializeField] private TMP_Text _text;
+	//[SerializeField] private LocalizeStringEvent _testText;
 	[SerializeField] private TMP_Dropdown _languageDropDown;
-
-	//public event Action<Locale> OnLocaleChanged;
-
-	//[SerializeField] private TMP_FontAsset _koreanFont;
-	//[SerializeField] private TMP_FontAsset _englishFont;
 
 	void Awake()
 	{
@@ -32,7 +25,6 @@ public class LanguageChanger : MonoBehaviour
 	IEnumerator InitRoutine()
 	{
 		bool hasSaveData = SaveLoadManager.Instance.LoadData();
-
 		yield return LocalizationSettings.InitializationOperation;
 
 		var locales = LocalizationSettings.AvailableLocales;
@@ -60,20 +52,10 @@ public class LanguageChanger : MonoBehaviour
 		_languageDropDown.SetValueWithoutNotify(targetIndex);
 
 		_languageDropDown.onValueChanged.AddListener(OnValueChanged);
-		_testText.OnUpdateString.AddListener(OnUpdateString);
+		//_testText.OnUpdateString.AddListener(OnUpdateString);
 
-		_testText.RefreshString();
+		//_testText.RefreshString();
 
-		//Instance = this;
-		
-		//var fontChangers = FindObjectsOfType<FontChanger>(true);
-		//foreach (var fc in fontChangers)
-		//{
-		//	OnLocaleChanged += fc.UpdateFont;
-		//	fc.UpdateFont(locale);
-		//}
-
-		//OnLocaleChanged?.Invoke(locale);
 		Debug.Log("LanguageChanger 초기화 완료");
 	}
 
@@ -93,20 +75,10 @@ public class LanguageChanger : MonoBehaviour
 		//OnLocaleChanged?.Invoke(locale);
 	}
 
-	public void OnUpdateString(string text)
-	{
-		Debug.Log(text);
-		_text.text = text;
-	}
-
-	//public TMP_FontAsset GetFontForLocale(Locale locale)
+	//public void OnUpdateString(string text)
 	//{
-	//	switch (locale.Identifier.Code)
-	//	{
-	//		case "ko-KR": return _koreanFont;
-	//		case "en": return _englishFont;
-	//		default: return _englishFont;
-	//	}
+	//	Debug.Log(text);
+	//	_text.text = text;
 	//}
 
 	string GetSystemLanguageCode(ILocalesProvider locales)
