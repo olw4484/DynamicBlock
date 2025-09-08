@@ -2,14 +2,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.Localization;
-using UnityEngine.Localization.Components;
 using UnityEngine.Localization.Settings;
-
-public enum GameLanguage
-{
-	Korean,
-	English,
-}
 
 public class LanguageChanger : MonoBehaviour
 {

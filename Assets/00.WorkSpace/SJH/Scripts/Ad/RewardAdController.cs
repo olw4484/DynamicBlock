@@ -51,6 +51,13 @@ public class RewardAdController
     }
     public void ShowAd(Action onReward = null)
     {
+        // 시간 예외처리
+        if (AdManager.Instance.NextRewardTime > DateTime.UtcNow)
+        {
+            Debug.Log("시간이 지나지 않아 광고 재생을 스킵");
+			return;
+		}
+
         if (_loadedAd == null || !_loadedAd.CanShowAd() || !IsReady)
         {
             Debug.Log("리워드 준비 안 됨 → 로드 시도");
