@@ -190,7 +190,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 106, y: 109}
+  m_SizeDelta: {x: 109.4, y: 112.75}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &4056496381054863285
 MonoBehaviour:
@@ -209,7 +209,7 @@ MonoBehaviour:
   normalImage: {fileID: 8849200496238306233}
   hoverImage: {fileID: 2884694999259341618}
   activeImage: {fileID: 396465746230335142}
-  fruitImage: {fileID: 0}
+  fruitImage: {fileID: 2376343815136433914}
 --- !u!61 &9095807433715496601
 BoxCollider2D:
   m_ObjectHideFlags: 0
