@@ -85,6 +85,7 @@ public class GameBootstrap : MonoBehaviour
 
         Game.BindSceneFacades(audioFx, blockFx, effectLane, soundLane);
 
+        soundLane?.SetDependencies(audio);
         // ±×¸®µå ½ºÄµ
         var squares = new List<GridSquare>();
         gridRoot.GetComponentsInChildren(includeInactive: true, result: squares);

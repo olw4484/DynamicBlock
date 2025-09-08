@@ -9,19 +9,21 @@ using UnityEngine;
 
 public interface IAudioService : IManager
 {
-    // BGM
     void PlayBgm(AudioClip clip);
     void StopBgm();
     void SetBgmVolume(float v);
-
-    // SE (Generic)
     void PlaySe(AudioClip clip, bool vibrate = false);
     void SetSeVolume(float v);
-
-    // Domain Helpers (퍼즐 게임 전용)
-    void PlayLineClear(int lineCount); // 1~6줄
+    void PlayLineClear(int lineCount);
+    void PlayClearCombo(int n);
+    void PlayClearAllBlock();
     void PlayBlockSelect();
     void PlayBlockPlace();
     void PlayStageEnter();
     void PlayButtonClick();
+    void PlayClassicGameOver();
+    void PlayClassicNewRecord();
+    void PlayAdvenFail();
+    void PlayAdvenClear();
+    void PlayContinueTimeCheck();
 }

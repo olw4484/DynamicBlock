@@ -12,8 +12,8 @@ public sealed class BlockFxFacade : MonoBehaviour
     [Header("IDs")]
     [SerializeField] private int rowClearFxId = 2000;
     [SerializeField] private int colClearFxId = 2001;
-    [SerializeField] private int rowClearSfxId = (int)SfxId.RowClear;
-    [SerializeField] private int colClearSfxId = (int)SfxId.ColClear;
+    [SerializeField] public int rowClearSfxId = (int)SfxId.LineClear1;
+    [SerializeField] public int colClearSfxId = (int)SfxId.LineClear1;
 
     [Header("Optional")]
     [SerializeField] private FxTheme theme; 

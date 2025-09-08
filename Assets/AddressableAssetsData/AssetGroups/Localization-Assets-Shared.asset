@@ -17,8 +17,8 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 4485cc2512764214c946f34a1bb89216
   m_SerializeEntries:
-  - m_GUID: 84e2a0ed060bf04449dc1210851b96b5
-    m_Address: Assets/00.WorkSpace/SJH/TextTable Shared Data.asset
+  - m_GUID: a4ec44d663daab746bf83eaacbfb995a
+    m_Address: Assets/00.WorkSpace/SJH/LanguageTable Shared Data.asset
     m_ReadOnly: 1
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
