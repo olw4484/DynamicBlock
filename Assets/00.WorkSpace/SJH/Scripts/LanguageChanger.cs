@@ -13,8 +13,6 @@ public enum GameLanguage
 
 public class LanguageChanger : MonoBehaviour
 {
-	//[SerializeField] private TMP_Text _text;
-	//[SerializeField] private LocalizeStringEvent _testText;
 	[SerializeField] private TMP_Dropdown _languageDropDown;
 
 	void Awake()
@@ -50,11 +48,7 @@ public class LanguageChanger : MonoBehaviour
 
 		var locale = LocalizationSettings.SelectedLocale = locales.Locales[targetIndex];
 		_languageDropDown.SetValueWithoutNotify(targetIndex);
-
 		_languageDropDown.onValueChanged.AddListener(OnValueChanged);
-		//_testText.OnUpdateString.AddListener(OnUpdateString);
-
-		//_testText.RefreshString();
 
 		Debug.Log("LanguageChanger 초기화 완료");
 	}
@@ -74,12 +68,6 @@ public class LanguageChanger : MonoBehaviour
 
 		//OnLocaleChanged?.Invoke(locale);
 	}
-
-	//public void OnUpdateString(string text)
-	//{
-	//	Debug.Log(text);
-	//	_text.text = text;
-	//}
 
 	string GetSystemLanguageCode(ILocalesProvider locales)
 	{

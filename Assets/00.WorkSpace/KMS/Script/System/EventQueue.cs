@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,7 +8,7 @@ using UnityEngine;
 // ================================
 // Project : DynamicBlock
 // Script  : EventQueue.cs
-// Desc    : ÀÌº¥Æ® ¹ö½º/Å¥ (Áï½Ã/Áö¿¬/½ºÆ¼Å°/Å¸ÀÌ¸Ó/½º·¹µå¼¼ÀÌÇÁ)
+// Desc    : ì´ë²¤íŠ¸ ë²„ìŠ¤/í (ì¦‰ì‹œ/ì§€ì—°/ìŠ¤í‹°í‚¤/íƒ€ì´ë¨¸/ìŠ¤ë ˆë“œì„¸ì´í”„)
 // ================================
 
 public sealed class EventQueue : IManager, ITickable, ITeardown
@@ -25,19 +25,19 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
 #endif
     public int Order => 0;
 
-    // Å¸ÀÔº° ÇÚµé·¯
+    // íƒ€ì…ë³„ í•¸ë“¤ëŸ¬
     private readonly Dictionary<Type, List<Delegate>> _handlers = new(64);
-    // ÇÁ·¹ÀÓ Ã³¸®¿ë Å¥ (¸ŞÀÎ½º·¹µå)
+    // í”„ë ˆì„ ì²˜ë¦¬ìš© í (ë©”ì¸ìŠ¤ë ˆë“œ)
     private readonly Queue<object> _queue = new(128);
-    // ¿öÄ¿ ½º·¹µå ÀÔ·Â Å¥
+    // ì›Œì»¤ ìŠ¤ë ˆë“œ ì…ë ¥ í
     private readonly ConcurrentQueue<object> _threadQueue = new();
-    // ½ºÆ¼Å°(¸¶Áö¸· »óÅÂ Ä³½Ã)
+    // ìŠ¤í‹°í‚¤(ë§ˆì§€ë§‰ ìƒíƒœ ìºì‹œ)
     private readonly Dictionary<Type, object> _sticky = new(32);
 
-    // Áö¿¬ ¹ßÇà(Å¸ÀÌ¸Ó) °ü¸®
+    // ì§€ì—° ë°œí–‰(íƒ€ì´ë¨¸) ê´€ë¦¬
     private struct Scheduled
     {
-        public float due;   // ¸¸±â ½Ã°£(Time.time + delay)
+        public float due;   // ë§Œê¸° ì‹œê°„(Time.time + delay)
         public object evt;
     }
     private readonly List<Scheduled> _scheduled = new(64);
@@ -51,24 +51,24 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
         _scheduled.Clear();
     }
 
-    public void Init() { /* ÇÊ¿ä ½Ã ¿¹¾à ÃÊ±âÈ­ */ }
-    public void PostInit() { /* ¼ÒºñÀÚ°¡ ±¸µ¶ÇÔ */ }
+    public void Init() { /* í•„ìš” ì‹œ ì˜ˆì•½ ì´ˆê¸°í™” */ }
+    public void PostInit() { /* ì†Œë¹„ìê°€ êµ¬ë…í•¨ */ }
 
     public void Tick(float dt)
     {
-        UnityEngine.Debug.Log($"[EQ] Tick, q={_queue.Count}");
+       // UnityEngine.Debug.Log($"[EQ] Tick, q={_queue.Count}");
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         using (MK_Tick.Auto())
 #endif
         {
-            // 1) ¿öÄ¿ º´ÇÕ
+            // 1) ì›Œì»¤ ë³‘í•©
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             using (MK_MergeThread.Auto())
 #endif
                 while (_threadQueue.TryDequeue(out var fromWorker))
                     _queue.Enqueue(fromWorker);
 
-            // 2) Å¸ÀÌ¸Ó Ã³¸®
+            // 2) íƒ€ì´ë¨¸ ì²˜ë¦¬
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             using (MK_Timers.Auto())
 #endif
@@ -78,7 +78,7 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
                     if (_scheduled[i].due <= now) { _queue.Enqueue(_scheduled[i].evt); _scheduled.RemoveAt(i); }
             }
 
-            // 3) Å¥ µğ½ºÆĞÄ¡
+            // 3) í ë””ìŠ¤íŒ¨ì¹˜
             int count = _queue.Count;
             for (int i = 0; i < count; i++)
             {
@@ -100,7 +100,7 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
     }
 
     // ===============================
-    // # API - ¹ßÇà
+    // # API - ë°œí–‰
     // ===============================
     public void Publish<T>(T evt) => _queue.Enqueue(evt);
     public void PublishImmediate<T>(T evt) => Dispatch(evt);
@@ -133,11 +133,11 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
     }
 #endif
 
-    // ¿öÄ¿ ½º·¹µå¿¡¼­ ¾ÈÀü
+    // ì›Œì»¤ ìŠ¤ë ˆë“œì—ì„œ ì•ˆì „
     public void EnqueueFromAnyThread<T>(T evt) => _threadQueue.Enqueue(evt!);
 
     // ===============================
-    // # API - ±¸µ¶
+    // # API - êµ¬ë…
     // ===============================
     public void Subscribe<T>(Action<T> handler, bool replaySticky = true)
     {
@@ -147,7 +147,7 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
 
         list.Add(handler);
 
-        // Sticky Áï½Ã Àç»ı
+        // Sticky ì¦‰ì‹œ ì¬ìƒ
         if (replaySticky && _sticky.TryGetValue(t, out var last))
             handler((T)last);
     }
@@ -160,7 +160,7 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
     }
 
     // ===============================
-    // # ³»ºÎ
+    // # ë‚´ë¶€
     // ===============================
     private void Dispatch(object evt)
     {
@@ -188,12 +188,12 @@ public sealed class EventQueue : IManager, ITickable, ITeardown
 #endif
     }
 
-    // Sticky ÃÊ±âÈ­
+    // Sticky ì´ˆê¸°í™”
     public void ClearSticky<T>() => _sticky.Remove(typeof(T));
     public void ClearAllSticky() => _sticky.Clear();
 }
 
-// »ùÇÃ ÀÌº¥Æ®
+// ìƒ˜í”Œ ì´ë²¤íŠ¸
 public readonly struct ScoreChanged { public readonly int value; public ScoreChanged(int v) => value = v; }
 public readonly struct ComboChanged { public readonly int value; public ComboChanged(int v) => value = v; }
 public readonly struct GameOver
@@ -201,10 +201,10 @@ public readonly struct GameOver
     public readonly int score; public readonly string reason;
     public GameOver(int score, string reason = null) { this.score = score; this.reason = reason; }
 }
-public readonly struct RewardedContinueRequest { }      // ¸í·É(Non-Sticky)
-public readonly struct AdPlaying { }                    // ±¤°í ½ÃÀÛ(ÀÔ·Â Àá±İ)
-public readonly struct AdFinished { }                   // ±¤°í Á¾·á(ÀÔ·Â ÇØÁ¦)
-public readonly struct ContinueGranted { }              // ¸í·É °á°ú
+public readonly struct RewardedContinueRequest { }      // ëª…ë ¹(Non-Sticky)
+public readonly struct AdPlaying { }                    // ê´‘ê³  ì‹œì‘(ì…ë ¥ ì ê¸ˆ)
+public readonly struct AdFinished { }                   // ê´‘ê³  ì¢…ë£Œ(ì…ë ¥ í•´ì œ)
+public readonly struct ContinueGranted { }              // ëª…ë ¹ ê²°ê³¼
 public readonly struct SaveRequested { }
 public readonly struct LoadRequested { }
 public readonly struct ResetRequested { }
@@ -221,14 +221,14 @@ public readonly struct LinesCleared
 public readonly struct GridReady { public readonly int rows, cols; public GridReady(int r, int c) { rows = r; cols = c; } }
 public readonly struct GameResetRequest
 {
-    public readonly string targetPanel; // "Game" or "Main" (ÇÊ¼ö)
+    public readonly string targetPanel; // "Game" or "Main" (í•„ìˆ˜)
     public GameResetRequest(string targetPanel) { this.targetPanel = targetPanel; }
 }
-public readonly struct GameResetting { }      // ¸®¼Â ½ÃÀÛ(ÀÔ·ÂÀá±İ/¸ğ´Ş´İ±â µî)
-public readonly struct GameResetDone { }      // ¸®¼Â ¿Ï·á(ÀÔ·ÂÇØÁ¦/ÆĞ³Î º¹±¸ µî)
-public readonly struct SplashFinish { }        // ½ºÇÃ·¡½Ã Á¾·á Æ®¸®°Å
-public readonly struct SplashSkipRequest { }   // »ç¿ëÀÚ°¡ ÅÇÀ¸·Î ½ºÅµ ¿äÃ»
-public readonly struct PreloadDone { }         // ¿¡¼Â ÇÁ¸®·Îµå°¡ ³¡³µÀ» ¶§ ¹ßÇà
+public readonly struct GameResetting { }      // ë¦¬ì…‹ ì‹œì‘(ì…ë ¥ì ê¸ˆ/ëª¨ë‹¬ë‹«ê¸° ë“±)
+public readonly struct GameResetDone { }      // ë¦¬ì…‹ ì™„ë£Œ(ì…ë ¥í•´ì œ/íŒ¨ë„ ë³µêµ¬ ë“±)
+public readonly struct SplashFinish { }        // ìŠ¤í”Œë˜ì‹œ ì¢…ë£Œ íŠ¸ë¦¬ê±°
+public readonly struct SplashSkipRequest { }   // ì‚¬ìš©ìê°€ íƒ­ìœ¼ë¡œ ìŠ¤í‚µ ìš”ì²­
+public readonly struct PreloadDone { }         // ì—ì…‹ í”„ë¦¬ë¡œë“œê°€ ëë‚¬ì„ ë•Œ ë°œí–‰
 public readonly struct SoundEvent
 {
     public readonly int id;
