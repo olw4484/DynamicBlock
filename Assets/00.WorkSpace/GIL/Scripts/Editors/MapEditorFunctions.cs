@@ -354,10 +354,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             MarkDirty(data, "Toggle Fruit Enable");
         }
 
-        // Paint helpers 
-        /// <summary> 같은 스프라이트를 다시 칠하면 null로 지우기(토글 효과). </summary>
-        public static Sprite PaintToggle(Sprite brush, Sprite current) =>
-            (brush == null || brush == current) ? null : brush;
+        
 
         // Menu: 재정렬/잔여 정리
         [MenuItem("Tools/Maps/Reindex (Fix TMP and Order)")]

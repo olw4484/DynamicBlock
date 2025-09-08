@@ -14,7 +14,7 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         [SerializeField] private Image normalImage;
         [SerializeField] private Image hoverImage;
         [SerializeField] private Image activeImage;
-        
+        [SerializeField] private Image fruitImage;
         public bool Selected { get; set; }
         public bool IsOccupied { get; private set; }
 
@@ -22,6 +22,7 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         {
             Selected = false;
             IsOccupied = false;
+            fruitImage.gameObject.SetActive(false);
             SetState(GridState.Normal);
         }
         public void SetState(GridState newState)
@@ -35,6 +36,11 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
             normalImage.sprite = sprite;
             hoverImage.sprite = sprite;
             activeImage.sprite = sprite;
+        }
+
+        public void SetFruitImage(bool isActive)
+        {
+            fruitImage.gameObject.SetActive(isActive);
         }
         public void SetOccupied(bool occupied)
         {

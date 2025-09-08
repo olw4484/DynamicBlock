@@ -39,11 +39,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Debug.Log("GridManager: Awake");
         }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.Q))
-                PrintGridStates();
-        }
+        // private void Update()
+        // {
+        //     if (Input.GetKeyDown(KeyCode.Q))
+        //         PrintGridStates();
+        // }
 
         void OnEnable() { StartCoroutine(GameBindingUtil.WaitAndRun(() => TryBindBus())); }
         void Start() { TryBindBus(); } // 중복 호출 안전

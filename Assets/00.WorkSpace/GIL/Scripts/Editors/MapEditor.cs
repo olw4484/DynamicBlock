@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using _00.WorkSpace.GIL.Scripts.Maps;
@@ -15,11 +16,15 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private MapData _data;
         private int _brush; // 현재 브러시 ID
         private const int FruitCount = 5;
-
+        private Dictionary<Sprite, int> _spriteToIndex;
+        private Sprite _brushSprite; // 현재 선택된 블록의 스프라이트(지우개는 null)
+        private Button _selectedPaletteButton;
+        
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
-
+            BuildSpriteIndex();
+            
             // 아이콘 로드/사이즈 보정
             MapEditorFunctions.EnsureIcons(_data);
 
@@ -547,7 +552,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 int rows = Mathf.Max(1, _data.rows);
                 int cols = Mathf.Max(1, _data.cols);
                 const int cell = 40; // 셀 한 변 픽셀 수
-
+                
+                MapEditorFunctions.EnsureLayoutSize(_data);
+                
                 for (int r = 0; r < rows; r++)
                 {
                     var line = Row();
@@ -555,6 +562,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
                     for (int c = 0; c < cols; c++)
                     {
+                        int idx1D = r * cols + c;
                         var ve = new VisualElement();
                         ve.style.width = cell;
                         ve.style.height = cell;
@@ -565,13 +573,14 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                         var img = new Image { scaleMode = ScaleMode.ScaleToFit };
                         img.style.width = cell - 2;
                         img.style.height = cell - 2;
+                        
+                        int curVal = (idx1D < _data.layout.Count) ? _data.layout[idx1D] : 0;
+                        img.sprite = IndexToSprite(curVal);
+                        
                         ve.Add(img);
 
                         // 칠하기(토글)
-                        ve.RegisterCallback<ClickEvent>(_ =>
-                        {
-                            img.sprite = MapEditorFunctions.PaintToggle(_brushSprite, img.sprite);
-                        });
+                        ve.RegisterCallback<ClickEvent>(_ => { PaintGrid(idx1D, img); });
 
                         line.Add(ve);
                     }
@@ -581,9 +590,70 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             }
         }
 
-        private Sprite _brushSprite; // 현재 선택된 블록의 스프라이트(지우개는 null)
-        private Button _selectedPaletteButton;
+        private void PaintGrid(int idx1D, Image img)
+        {
+            int brushVal = SpriteToIndex(_brushSprite);
+            int oldVal = _data.layout[idx1D];
+            int newVal = (brushVal == 0 || brushVal == oldVal) ? 0 : brushVal;
 
+            _data.layout[idx1D] = newVal;       
+            img.sprite = IndexToSprite(newVal); 
+
+            MapEditorFunctions.MarkDirty(_data, "Paint Cell");
+        }
+        
+        private void BuildSpriteIndex()
+        {
+            _spriteToIndex = new Dictionary<Sprite, int>();
+            int baseCount = _data.blockImages?.Length ?? 0;
+
+            // 1..baseCount : 일반 블록
+            if (_data.blockImages != null)
+            {
+                for (int i = 0; i < _data.blockImages.Length; i++)
+                {
+                    var s = _data.blockImages[i];
+                    if (s != null) _spriteToIndex[s] = i + 1;
+                }
+            }
+
+            // baseCount+1.. : 과일 블록
+            if (_data.blockWithFruitIcons != null)
+            {
+                for (int i = 0; i < _data.blockWithFruitIcons.Length; i++)
+                {
+                    var s = _data.blockWithFruitIcons[i];
+                    if (s != null) _spriteToIndex[s] = baseCount + i + 1;
+                }
+            }
+        }
+
+        private int SpriteToIndex(Sprite s)
+        {
+            if (s == null) return 0;
+            return _spriteToIndex != null && _spriteToIndex.TryGetValue(s, out var idx) ? idx : 0;
+        }
+
+        private Sprite IndexToSprite(int v)
+        {
+            if (v <= 0) return null;
+            int baseCount = _data.blockImages?.Length ?? 0;
+
+            if (v <= baseCount)
+            {
+                // 1..baseCount → blockImages
+                return _data.blockImages[v - 1];
+            }
+            else
+            {
+                // baseCount+1.. → blockWithFruitIcons
+                int j = v - baseCount - 1;
+                if (_data.blockWithFruitIcons != null && j >= 0 && j < _data.blockWithFruitIcons.Length)
+                    return _data.blockWithFruitIcons[j];
+                return null;
+            }
+        }
+        
         private void SetBrushSprite(Sprite sprite, Button sourceBtn)
         {
             Highlight(_selectedPaletteButton, false);
@@ -614,7 +684,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
             btn.style.backgroundColor = on ? new Color(1, 1, 1, 0.10f) : new Color(0, 0, 0, 0);
         }
-
+        
         // ---- 스타일 & UI 생성 ----
         private static Button Button(string text, Action onClick)
         {
