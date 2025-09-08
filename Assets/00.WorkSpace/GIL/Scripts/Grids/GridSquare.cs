@@ -14,21 +14,16 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         [SerializeField] private Image normalImage;
         [SerializeField] private Image hoverImage;
         [SerializeField] private Image activeImage;
-        
+        [SerializeField] private Image fruitImage;
         public bool Selected { get; set; }
-        public bool IsOccupied { get; private set; }
-
-        private void Start()
-        {
-            Selected = false;
-            IsOccupied = false;
-            SetState(GridState.Normal);
-        }
+        public bool IsOccupied { get; set; }
+        public GridState state;
         public void SetState(GridState newState)
         {
             normalImage.gameObject.SetActive(newState == GridState.Normal);
             hoverImage.gameObject.SetActive(newState == GridState.Hover);
             activeImage.gameObject.SetActive(newState == GridState.Active);
+            state = newState;
         }
         public void SetImage(Sprite sprite)
         {
@@ -36,10 +31,17 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
             hoverImage.sprite = sprite;
             activeImage.sprite = sprite;
         }
+
+        public void SetFruitImage(bool isActive, Sprite fruitSprite = null)
+        {
+            fruitImage.gameObject.SetActive(isActive);
+            fruitImage.sprite = fruitSprite;
+        }
         public void SetOccupied(bool occupied)
         {
             IsOccupied = occupied;
-            SetState(occupied ? GridState.Active : GridState.Normal);
+            state = occupied ? GridState.Active : GridState.Normal;
+            SetState(state);
         }
     }
 }
