@@ -22,8 +22,12 @@ public class GameData
     {
         return new GameData
         {
+            LanguageIndex = 0,
+            lastScore = 0,
+            highScore = 0,
+            playCount = 0,
             stageCleared = new int[stages],
-            stageScores = new int[stages]
+            stageScores = new int[stages],
         };
     }
 }

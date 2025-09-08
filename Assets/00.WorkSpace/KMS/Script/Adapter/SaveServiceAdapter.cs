@@ -74,6 +74,11 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
             }
             Debug.Log($"[SaveAdapter] GameOver total={e.score}, High={_legacy.gameData?.highScore}");
         }, replaySticky: false);
+
+        _bus.Subscribe<LanguageChangeRequested>(e =>
+        {
+            SetLanguageIndex(e.index);
+        }, replaySticky: false);
     }
 
     private void TryMigrateLegacyLanguage()
