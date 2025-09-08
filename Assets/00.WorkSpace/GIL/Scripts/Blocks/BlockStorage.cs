@@ -142,11 +142,20 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 var block = go.GetComponent<Block>();
                 if (block == null) { Debug.LogError("[Storage] Block component missing"); Destroy(go); continue; }
 
-                // 이미지 세팅
-                var sprite = shapeImageSprites[GetRandomImageIndex()];
+                Sprite sprite = null;
+                
+                if (MapManager.Instance.GameMode == GameMode.Tutorial)
+                {
+                    sprite = shapeImageSprites[0];
+                    MapManager.Instance.GameMode = GameMode.Classic;
+                }
+                else
+                {
+                    // 이미지 세팅
+                    sprite = shapeImageSprites[GetRandomImageIndex()];
+                }
                 block.shapePrefab.GetComponent<Image>().sprite = sprite;
                 previewSprites[i] = sprite;
-                
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
             }

@@ -1,6 +1,9 @@
+using System;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using UnityEngine;
+
+public enum GameMode{Tutorial, Classic, Adventure}
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -12,7 +15,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private int defaultMapIndex = 0;
 
         [SerializeField] private GameObject grid;
-        private MapData[] _mapList; 
+        private MapData[] _mapList;
+
+        public GameMode GameMode;
+        
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -20,7 +26,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Destroy(gameObject); return;
             }
             Instance = this;
-
+            
             if(_mapList == null) LoadMapData();
         }
         public int Order => 13;
