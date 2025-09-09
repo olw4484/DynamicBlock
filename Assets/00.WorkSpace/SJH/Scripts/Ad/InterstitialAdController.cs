@@ -15,10 +15,12 @@ public class InterstitialAdController
     public event Action Closed;
     public event Action Failed;
 
+	private DateTime _lastAdInitTime;
+
     public void Init()
 	{
 		// 초기화 과정에서 광고 한번은 로드하기
-		if (_loadedAd != null) DestroyAd();
+		if (_loadedAd != null || _lastAdInitTime > DateTime.UtcNow) DestroyAd();
 		// TODO : 1시간마다 광고가 만료되서 시간도 체크해서 로드하기
 
 		Debug.Log("전면 광고 로딩 시작");
@@ -40,14 +42,16 @@ public class InterstitialAdController
 			Debug.Log("전면 광고 로딩 성공");
             _loadedAd = ad;
             IsReady = true;
-            EventConnect(_loadedAd);
+			_lastAdInitTime = DateTime.UtcNow.AddMinutes(59);
+			EventConnect(_loadedAd);
         });
 	}
 	public void ShowAd()
 	{
 		if (AdManager.Instance.NextInterstitialTime > DateTime.UtcNow)
 		{
-			Debug.Log("시간이 지나지 않아 광고 재생을 스킵");
+			Debug.Log("시간이 지나지 않아 전면 광고 재생을 스킵");
+			AdManager.Instance.NextInterstitialTime = DateTime.UtcNow;
 			return;
 		}
 
@@ -86,7 +90,8 @@ public class InterstitialAdController
         ad.OnAdFullScreenContentClosed += () =>
         {
             Debug.Log("전면 광고 닫음");
-            IsReady = false;
+			AdManager.Instance.NextInterstitialTime = DateTime.UtcNow.AddSeconds(AdManager.Instance.InterstitialTime);
+			IsReady = false;
             Closed?.Invoke();
             Init(); // 다음 로드
         };
