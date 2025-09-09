@@ -94,79 +94,155 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             chosen = last.s; chosenFit = last.fit; return true;
         }
         
+        private void SetLastGeneratedFits(IList<FitInfo> src)
+        {
+            _lastGeneratedFits.Clear();
+            if (src == null) return;
+            for (int i = 0; i < src.Count; i++) _lastGeneratedFits.Add(src[i]);
+        }
         /// <summary>
-        /// 웨이브 전체에 대해 겹치지 않는 위치를 계산하고 Hover로 표시.
-        /// 같은 셀 중복 하이라이트를 막기 위해 가상보드에 순차 점유 마킹.
+        /// Revive 등에서 이미 계산된 fits를 그대로 사용해 프리뷰 표시.
+        /// fits가 null/부족/충돌이면 안전하게 재탐색으로 폴백.
         /// </summary>
-        public void PreviewWaveNonOverlapping(List<ShapeData> wave, List<Sprite> spritesOrNull)
+        public void PreviewWaveNonOverlapping(
+            List<ShapeData> wave,
+            IReadOnlyList<FitInfo> fitsOrNull,
+            List<Sprite> spritesOrNull = null)
         {
             ClearPreview();
 
-            GridManager gm = GridManager.Instance;
-            int rows = gm.rows; 
-            int cols = gm.cols;
-            GridSquare[,] squares = gm.gridSquares;
+            var gm = GridManager.Instance;
+            int rows = gm.rows, cols = gm.cols;
+            var squares = gm.gridSquares;
 
-            // 가상 보드: 현재 점유 상태를 복사하고, 미리보기로 선점한 칸은 true로 마킹
             var virtualBoard = new bool[rows, cols];
-            for (int row = 0; row < rows; row++)
-                for (int col = 0; col < cols; col++)
-                    virtualBoard[row, col] = squares[row, col].IsOccupied;
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    virtualBoard[r, c] = squares[r, c].IsOccupied;
 
             for (int i = 0; i < wave.Count; i++)
             {
-                if (wave[i] == null) continue;
-                if (!TryFindOneFit(wave[i], virtualBoard, out var fit)) continue;
-                // 스프라이트는 선택 사항: null이면 그리드의 기본 hover이미지로 표시됨
-                var sprite = spritesOrNull != null && i < spritesOrNull.Count ? spritesOrNull[i] : null;
+                var shape = wave[i];
+                if (shape == null) continue;
+
+                FitInfo fit = default;
+                bool useGivenFit = false;
+
+                // 1) 전달된 fits 우선 사용
+                if (fitsOrNull != null && i < fitsOrNull.Count && fitsOrNull[i].CoveredSquares != null)
+                {
+                    var f = fitsOrNull[i];
+                    bool conflict = false;
+                    foreach (var sq in f.CoveredSquares)
+                    {
+                        int rr = sq.RowIndex, cc = sq.ColIndex;
+                        if (rr < 0 || cc < 0 || rr >= rows || cc >= cols || virtualBoard[rr, cc])
+                        { conflict = true; break; }
+                    }
+                    if (!conflict) { fit = f; useGivenFit = true; }
+                }
+
+                // 2) 없거나 충돌이면 재탐색 폴백(랜덤 시작 권장)
+                if (!useGivenFit)
+                    if (!TryFindFitFromRandomStart(virtualBoard, shape, out fit))
+                        continue;
+
+                var sprite = (spritesOrNull != null && i < spritesOrNull.Count) ? spritesOrNull[i] : null;
                 ApplyPreview(fit, sprite);
-                    
-                if (fit.CoveredSquares == null) continue;
-                    
-                // 가상보드 점유 마킹(다음 블록 프리뷰가 겹치지 않게)
-                foreach (var sq in fit.CoveredSquares)
-                    virtualBoard[sq.RowIndex, sq.ColIndex] = true;
+
+                if (fit.CoveredSquares != null)
+                    foreach (var sq in fit.CoveredSquares)
+                        virtualBoard[sq.RowIndex, sq.ColIndex] = true;
             }
         }
 
-        /// <summary>
-        /// 지정된 배치의 셀들을 Hover 상태로 표시(점유 갱신 X)
-        /// </summary>
-        private void ApplyPreview(FitInfo fit, Sprite spriteOrNull)
+        /// 호환 : 기존 2파라미터 버전은 ‘저장된 Fit’이 있으면 그걸 쓰고, 없으면 재탐색
+        public void PreviewWaveNonOverlapping(List<ShapeData> wave, List<Sprite> spritesOrNull)
         {
-            if (fit.CoveredSquares == null || fit.CoveredSquares.Count == 0)
+            if (_lastGeneratedFits != null && _lastGeneratedFits.Count == wave.Count)
             {
-                Debug.LogError("fit 설정이 안되어있다.");
+                PreviewWaveNonOverlapping(wave, _lastGeneratedFits, spritesOrNull); // ✅ 실제 선택 위치 사용
                 return;
             }
-            
-            foreach (var sq in fit.CoveredSquares)
-            {
-                if (sq == null) 
-                    continue;
-                if (spriteOrNull != null) 
-                    sq.SetImage(spriteOrNull);
-                if (!sq.IsOccupied) 
-                    sq.SetState(GridState.Hover); // Hover 이미지를 켬
-            }
+
+            // 저장된 fit이 없으면 재탐색으로 폴백
+            PreviewWaveNonOverlapping(wave, null, spritesOrNull);
         }
-
-        /// <summary>
-        /// 현재 보드에서 점유되지 않은 셀들의 Hover를 모두 해제
-        /// </summary>
-        public void ClearPreview()
-        {
-            var gm = GridManager.Instance;
-            var squares = gm.gridSquares;
-
-            for (int r = 0; r < gm.rows; r++)
+            
+            /// <summary>
+            /// 지정된 배치의 셀들을 Hover 상태로 표시(점유 갱신 X)
+            /// </summary>
+            private void ApplyPreview(FitInfo fit, Sprite spriteOrNull)
             {
-                for (int c = 0; c < gm.cols; c++)
+                if (fit.CoveredSquares == null || fit.CoveredSquares.Count == 0)
                 {
-                    bool occupied = gm.gridStates[r, c];
-                    squares[r, c].SetOccupied(occupied);
+                    Debug.LogError("fit 설정이 안되어있다.");
+                    return;
+                }
+                
+                foreach (var sq in fit.CoveredSquares)
+                {
+                    if (sq == null) 
+                        continue;
+                    if (spriteOrNull != null) 
+                        sq.SetImage(spriteOrNull);
+                    if (!sq.IsOccupied) 
+                        sq.SetState(GridState.Hover); // Hover 이미지를 켬
                 }
             }
-        }
+
+            /// <summary>
+            /// 현재 보드에서 점유되지 않은 셀들의 Hover를 모두 해제
+            /// </summary>
+            public void ClearPreview()
+            {
+                var gm = GridManager.Instance;
+                var squares = gm.gridSquares;
+
+                for (int r = 0; r < gm.rows; r++)
+                {
+                    for (int c = 0; c < gm.cols; c++)
+                    {
+                        bool occupied = gm.gridStates[r, c];
+                        squares[r, c].SetOccupied(occupied);
+                    }
+                }
+            }
+
+            private void RecomputeFitsForWave(List<ShapeData> wave)
+            {
+                _lastGeneratedFits.Clear();
+
+                var gm = GridManager.Instance;
+                int rows = gm.rows, cols = gm.cols;
+                var squares = gm.gridSquares;
+
+                var virtualBoard = new bool[rows, cols];
+                for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    virtualBoard[r, c] = squares[r, c].IsOccupied;
+
+                for (int i = 0; i < wave.Count; i++)
+                {
+                    var shape = wave[i];
+                    if (shape == null) { _lastGeneratedFits.Add(default); continue; }
+
+                    if (TryFindFitFromRandomStart(virtualBoard, shape, out var fit))
+                    {
+                        _lastGeneratedFits.Add(fit);
+                        if (fit.CoveredSquares != null)
+                            foreach (var sq in fit.CoveredSquares)
+                                virtualBoard[sq.RowIndex, sq.ColIndex] = true;
+
+                        // 라인 제거 시뮬까지 반영하려면, 여기서 가상 보드에 적용
+                        // ResolveCompletedLinesInPlace(virtualBoard);
+                    }
+                    else
+                    {
+                        _lastGeneratedFits.Add(default);
+                    }
+                }
+            }
+            
     }
 }

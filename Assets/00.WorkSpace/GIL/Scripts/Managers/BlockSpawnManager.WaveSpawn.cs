@@ -12,6 +12,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public List<ShapeData> GenerateBasicWave(int count)
         {
             var result = new List<ShapeData>(count);
+            var fitsForWave = new List<FitInfo>(count);
+            
             var mM = MapManager.Instance;
             // 튜토리얼일 경우 고정 블록 소환
             if (mM.GameMode == GameMode.Tutorial)
@@ -19,6 +21,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 result.Add(null);
                 result.Add(shapeData[31]);
                 result.Add(null);
+                SetLastGeneratedFits(new[] { default(FitInfo), default(FitInfo), default(FitInfo) });
                 return result;
             }
             
@@ -47,7 +50,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (reserveCellsDuringWave)
                     {
                         //예약 보드를 기준으로 실제 배치 가능한 집합에서 가중치 선택
-                        pickedOnReserveBoard = TryPickWeightedAmongPlaceableFromRandom(waveBoard, excludedByPenalty, excludedByDupes, aForGate, out pick, out fitFromStep3);
+                        pickedOnReserveBoard = TryPickWeightedAmongPlaceableFromRandom(
+                            waveBoard, excludedByPenalty, excludedByDupes, aForGate, 
+                            out pick, out fitFromStep3);
                     }
                     if (!pickedOnReserveBoard)
                     {
@@ -60,10 +65,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (!PassSmallBlockGate(pick, aForGate))
                     {
                         var boardRef = reserveCellsDuringWave ? waveBoard : SnapshotBoard();
-                        if (TryApplyLineCorrectionOnce(boardRef, excludedByPenalty, excludedByDupes, out var correctedShape, out var correctedFit))
+                        if (TryApplyLineCorrectionOnce(boardRef, excludedByPenalty, excludedByDupes, 
+                                out var correctedShape, out var correctedFit))
                         {
                             chosen = correctedShape; // 보정 성공 → 이걸 채택
-                            if (reserveCellsDuringWave) fitToCommit = correctedFit;
+                            fitToCommit = correctedFit;
                             break;
                         }
                         excludedByPenalty.Add(pick.Id);
@@ -72,32 +78,46 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     // 성공
                     chosen = pick;
                     
-                    // 예약 모드면 최종 커밋용 Fit 확보 (step3에서 이미 갖고 오거나, 폴백이면 새로 탐색)
-                    if (!reserveCellsDuringWave) continue;
-                    if (pickedOnReserveBoard)
+                    // 예약 모드면 최종 커밋용 fit 확보
+                    if (reserveCellsDuringWave)
                     {
-                        fitToCommit = fitFromStep3;
+                        if (pickedOnReserveBoard)
+                        {
+                            fitToCommit = fitFromStep3;
+                        }
+                        else
+                        {
+                            // 폴백으로 뽑혔으면 현재 예약 보드에서 자리 찾기(못 찾으면 다음 후보 계속)
+                            if (!TryFindFitFromRandomStart(waveBoard, chosen, out fitToCommit))
+                            {
+                                chosen = null;
+                                excludedByPenalty.Add(pick.Id);
+                            }
+                        }
                     }
                     else
                     {
-                        // 폴백으로 뽑힌 경우, 현재 예약 보드 기준으로 실제 배치 위치를 찾아야 함
-                        if (TryFindFitFromRandomStart(waveBoard, chosen, out fitToCommit)) continue;
-                        // 예약 보드에선 배치 불가 → 실패로 간주하고 다음 후보를 계속 탐색
-                        chosen = null;
-                        excludedByPenalty.Add(pick.Id);
+                        // 예약 모드가 아니어도 “당시 보드 스냅샷” 기준으로 1회만 자리 기록(재탐색 금지)
+                        // 이후 블록 때문에 겹칠 수 있으니, 정확 일치가 필요하면 reserveCellsDuringWave를 켜두는 걸 권장
+                        TryFindFitFromRandomStart(SnapshotBoard(), chosen, out fitToCommit); // 실패해도 default 저장
                     }
                 }
                 // 소형 패널티는 무시하지만, 중복 한도 제외는 반드시 시킴
                 if (chosen == null)
                 {
-                    Debug.LogWarning("모든 후보가 소형 페널티로 제외되어 가중치 강제 소환을 수행합니다.");                    
+                    Debug.LogWarning("모든 후보가 소형 페널티로 제외되어 가중치 강제 소환을 수행합니다.");
                     chosen = GetRandomShapeByWeightExcluding(null, excludedByDupes) ?? GetRandomShapeByWeight();
+                    // 강제 소환도 “당시 보드 스냅샷” 기준으로 1회만 fit 기록(없으면 default)
+                    if (!reserveCellsDuringWave)
+                        TryFindFitFromRandomStart(SnapshotBoard(), chosen, out fitToCommit);
                 }
                 
                 // 최종 확정 시, 예약 보드에 점유 마킹
-                if (reserveCellsDuringWave && fitToCommit.CoveredSquares != null) ReserveAndResolveLines(waveBoard, chosen, fitToCommit);
+                if (reserveCellsDuringWave && fitToCommit.CoveredSquares != null) 
+                    ReserveAndResolveLines(waveBoard, chosen, fitToCommit);
                 
                 result.Add(chosen);
+                fitsForWave.Add(fitToCommit);
                 
                 string chosenId = chosen.Id;
                 perShapeCount.TryGetValue(chosenId, out int cnt);
@@ -108,34 +128,34 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 excludedByDupes.Add(chosenId); // 다음 선택에서 제외.
             }
             
-            // 여기서 3연속 방지 검사/치환
+            // // 여기서 3연속 방지 검사/치환
             string wave = MakeWaveHistory(result);
             if (WouldBecomeNStreak(wave, maxSameWaveStreak))
             {
                 // 교체할 인덱스 선택(랜덤 하나)
                 int idx = Random.Range(0, result.Count);
                 string oldId = result[idx].Id;
-
+            
                 // 교체 후보: 중복 한도 및 현재 카운트 고려, '더 큰 타일 수' 우선
                 ShapeData candidate = null; int bestTiles = int.MinValue;
                 foreach (var s in shapeData)
                 {
                     if (s == null) continue;
-
+            
                     // 같은 ID로 교체하면 구성 안 바뀌므로 제외
                     if (s.Id == oldId) continue;
-
+            
                     // 중복 한도 위반이면 제외
                     perShapeCount.TryGetValue(s.Id, out int cur);
                     if (cur >= maxDuplicatesPerWave) continue;
-
+            
                     // (선택) 소형 페널티는 이 단계에서 무시 — “반복 깨기”가 우선
                     int tiles = s.activeBlockCount;
                     if (tiles <= bestTiles) continue;
                     bestTiles = tiles;
                     candidate = s;
                 }
-
+            
                 if (candidate != null)
                 {
                     // 카운트 갱신
@@ -143,7 +163,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         perShapeCount[oldId] = oc - 1;
                     perShapeCount.TryGetValue(candidate.Id, out int cc);
                     perShapeCount[candidate.Id] = cc + 1;
-
+            
                     result[idx] = candidate;
                     wave = MakeWaveHistory(result); // 새 구성
                 }
@@ -187,6 +207,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             // 이력 등록(직전 N-1개만 유지)
             RegisterWaveHistory(wave);
+            RecomputeFitsForWave(result);
             return result;
         }
     }
