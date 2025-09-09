@@ -75,50 +75,49 @@ public class ParticleManager : MonoBehaviour
             foreach (var anchor in allClearPos)
             {
                 if (!anchor) continue;
-                var go = Instantiate(allClearParticle, anchor);
+                var go = Instantiate(allClearParticle, fxRoot);
+                if (fxLayer >= 0) LayerUtil.SetLayerRecursive(go, fxLayer);
                 go.SetActive(false);
 
                 var ps = go.GetComponent<ParticleSystem>();
                 if (ps)
                 {
                     var main = ps.main;
-                    // 필요 시 scalingMode 조정
                     main.scalingMode = ParticleSystemScalingMode.Hierarchy;
                 }
-                // UI에서 크게 보이게 쓰고 있으면 여기서만 스케일 조정
-                go.transform.localScale = Vector3.one; // 필요 시 수정
+                go.transform.localScale = Vector3.one;
                 allClearPSs.Add(ps);
             }
         }
 
-        // New Score / GameOver: 게임오버 UI 상 부모에 생성
-        if (gameOverTransform)
+        if (newScoreParticle)
         {
-            if (newScoreParticle)
+            var go = Instantiate(newScoreParticle, fxRoot);
+            if (fxLayer >= 0) LayerUtil.SetLayerRecursive(go, fxLayer);
+            go.SetActive(false);
+            newScorePS = go.GetComponent<ParticleSystem>();
+            if (newScorePS)
             {
-                var go = Instantiate(newScoreParticle, gameOverTransform);
-                go.SetActive(false);
-                newScorePS = go.GetComponent<ParticleSystem>();
-                if (newScorePS)
-                {
-                    var m = newScorePS.main;
-                    // timeScale=0에서도 재생하고 싶으면 켜기
-                    // m.useUnscaledTime = true;
-                }
-                go.transform.localScale = Vector3.one;
+                var m = newScorePS.main;
+                m.useUnscaledTime = true;
+                m.scalingMode = ParticleSystemScalingMode.Hierarchy;
             }
-            if (gameOverParticle)
+            go.transform.localScale = Vector3.one;
+        }
+
+        if (gameOverParticle)
+        {
+            var go = Instantiate(gameOverParticle, fxRoot);
+            if (fxLayer >= 0) LayerUtil.SetLayerRecursive(go, fxLayer);
+            go.SetActive(false);
+            gameOverPS = go.GetComponent<ParticleSystem>();
+            if (gameOverPS)
             {
-                var go = Instantiate(gameOverParticle, gameOverTransform);
-                go.SetActive(false);
-                gameOverPS = go.GetComponent<ParticleSystem>();
-                if (gameOverPS)
-                {
-                    var m = gameOverPS.main;
-                    // m.useUnscaledTime = true; // 필요 시
-                }
-                go.transform.localScale = Vector3.one;
+                var m = gameOverPS.main;
+                m.useUnscaledTime = true;
+                m.scalingMode = ParticleSystemScalingMode.Hierarchy;
             }
+            go.transform.localScale = Vector3.one;
         }
     }
     // Pool 초기화
@@ -313,44 +312,118 @@ public class ParticleManager : MonoBehaviour
         perimeterPool.Enqueue(ps);
     }
 
+    Vector3 UiWorldToFxLocal(Vector3 uiWorld)
+    {
+        var uiCam = uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : uiCanvas.worldCamera;
+        var screen = RectTransformUtility.WorldToScreenPoint(uiCam, uiWorld);
+
+        // RT 보정
+        if (fxCamera.targetTexture != null)
+        {
+            float sx = (float)fxCamera.pixelWidth / Screen.width;
+            float sy = (float)fxCamera.pixelHeight / Screen.height;
+            screen.x *= sx; screen.y *= sy;
+        }
+
+        float depth = Mathf.Abs(fxRoot.position.z - fxCamera.transform.position.z);
+        var fxWorld = fxCamera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, depth));
+        return fxRoot.InverseTransformPoint(fxWorld);
+    }
+
+    Vector3 GetRectWorldCenter(RectTransform rt)
+    {
+        var rect = rt.rect;
+        // pivot 보정된 로컬 중앙
+        var localCenter = new Vector3(
+            (0.5f - rt.pivot.x) * rect.width,
+            (0.5f - rt.pivot.y) * rect.height,
+            0f
+        );
+        return rt.TransformPoint(localCenter);
+    }
+
     // 단발 연출
     public void PlayAllClear()
     {
-        foreach (var ps in allClearPSs)
+        for (int i = 0; i < allClearPSs.Count; i++)
         {
-            if (!ps) continue;
+            var ps = allClearPSs[i];
+            var anchor = (allClearPos != null && i < allClearPos.Length) ? allClearPos[i] : null;
+            if (!ps || !anchor) continue;
+
+            var uiWorld = GetRectWorldCenter(anchor);
+            var fxLocal = UiWorldToFxLocal(uiWorld);
+
+            var t = ps.transform;
+            t.SetParent(fxRoot, worldPositionStays: false);
+            t.localPosition = fxLocal;
+            t.localRotation = Quaternion.identity;
+            t.localScale = Vector3.one;
+
             ps.gameObject.SetActive(true);
             ps.Clear();
             ps.Play();
+
             StartCoroutine(DisableNonPool(ps, LifetimeMax(ps.main)));
         }
     }
 
     public void PlayNewScore()
     {
-        if (!newScorePS) return;
+        if (!newScorePS || !gameOverTransform) return;
+
+        var uiWorldCenter = GetRectWorldCenter(gameOverTransform);
+        var fxLocal = UiWorldToFxLocal(uiWorldCenter);
+
+        var t = newScorePS.transform;
+        t.SetParent(fxRoot, worldPositionStays: false);
+        t.localPosition = fxLocal;
+        t.localRotation = Quaternion.identity;
+        t.localScale = Vector3.one;
+
         var m = newScorePS.main;
-        // m.useUnscaledTime = true; // 필요 시
+        m.useUnscaledTime = true;
+
         newScorePS.gameObject.SetActive(true);
         newScorePS.Clear();
         newScorePS.Play();
-        StartCoroutine(DisableNonPool(newScorePS, 3f));
+
+        StartCoroutine(DisableNonPool(newScorePS, LifetimeMax(m)));
     }
 
     public void PlayGameOver()
     {
         if (!gameOverPS) return;
-        var m = gameOverPS.main;
-        // m.useUnscaledTime = true; // 필요 시
+
+        Vector2 screen = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 10f);
+
+        if (fxCamera.targetTexture != null)
+        {
+            float sx = (float)fxCamera.pixelWidth / Screen.width;
+            float sy = (float)fxCamera.pixelHeight / Screen.height;
+            screen.x *= sx; screen.y *= sy;
+        }
+
+        float depth = Mathf.Abs(fxRoot.position.z - fxCamera.transform.position.z);
+        Vector3 world = fxCamera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, depth));
+
+        var t = gameOverPS.transform;
+        t.SetParent(fxRoot, worldPositionStays: false);
+        t.position = world;
+        t.localRotation = Quaternion.identity;
+        t.localScale = Vector3.one;
+
+        if (fxLayer >= 0) LayerUtil.SetLayerRecursive(gameOverPS.gameObject, fxLayer);
+
         gameOverPS.gameObject.SetActive(true);
         gameOverPS.Clear();
         gameOverPS.Play();
-        StartCoroutine(DisableNonPool(gameOverPS, 3f));
     }
 
     private IEnumerator DisableNonPool(ParticleSystem ps, float delay)
     {
-        yield return new WaitForSeconds(delay);
+        // yield return new WaitForSeconds(delay);   // 멈춤
+        yield return new WaitForSecondsRealtime(delay); // 일시정지 무시
         ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         ps.gameObject.SetActive(false);
     }

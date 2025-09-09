@@ -1,50 +1,30 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
-public sealed class BlockFxFacade : MonoBehaviour
+public class BlockFxFacade : MonoBehaviour, IFx
 {
-    [Header("Bridged")]
-    [SerializeField] private ParticleManager particle;
-    [SerializeField] private EffectLane effectLane; 
-    [SerializeField] private AudioFxFacade audioFx; 
+    public static IFx Instance { get; private set; }
 
-    [Header("IDs")]
-    [SerializeField] private int rowClearFxId = 2000;
-    [SerializeField] private int colClearFxId = 2001;
-    [SerializeField] public int rowClearSfxId = (int)SfxId.LineClear1;
-    [SerializeField] public int colClearSfxId = (int)SfxId.LineClear1;
+    [SerializeField] private ParticleManager particle; // 씬의 ParticleManager drag&drop
 
-    [Header("Optional")]
-    [SerializeField] private FxTheme theme; 
-    [SerializeField] private Transform fxSpawnParent;
-
-    // 외부 API
-    public void PlayRowClear(int row, Color color)
+    private void Awake()
     {
-        if (particle != null)
+        if (Instance != null)
         {
-            particle.PlayRowParticle(row, ResolveRowColor(color));
+            Destroy(gameObject);
+            return;
         }
-        audioFx?.EnqueueSound(rowClearSfxId);
+        Instance = this;
+        DontDestroyOnLoad(gameObject); // 필요시
     }
 
-    public void PlayColClear(int col, Color color)
-    {
-        if (particle != null)
-        {
-            particle.PlayColParticle(col, ResolveColColor(color));
-        }
-        audioFx?.EnqueueSound(colClearSfxId);
-    }
-
-    // 이벤트 핸들러(사용안함)
-    private void OnRowFx(RowClearFxEvent e) => PlayRowClear(e.row, e.color);
-    private void OnColFx(ColClearFxEvent e) => PlayColClear(e.col, e.color);
-
-    // 내부 헬퍼
-    private Color ResolveRowColor(Color candidate)
-    => candidate.a > 0f ? candidate : (theme ? theme.rowClearColor : Color.cyan);
-    private Color ResolveColColor(Color candidate)
-      => candidate.a > 0f ? candidate : (theme ? theme.colClearColor : Color.magenta);
+    public void PlayRow(int row, Color color) => particle?.PlayRowParticle(row, color);
+    public void PlayCol(int col, Color color) => particle?.PlayColParticle(col, color);
+    public void PlayRowPerimeter(int row, Color color) => particle?.PlayRowPerimeterParticle(row, color);
+    public void PlayColPerimeter(int col, Color color) => particle?.PlayColPerimeterParticle(col, color);
+    public void PlayAllClear() => particle?.PlayAllClear();
+    public void PlayNewScore() => particle?.PlayNewScore();
+    public void PlayGameOver() => particle?.PlayGameOver();
 }

@@ -213,7 +213,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Time.timeScale = 0f;
 
             // 1) 예약
-            TryQueueInterstitialAfterGameOver();
+            //TryQueueInterstitialAfterGameOver();
         }
 
         void TryQueueInterstitialAfterGameOver()

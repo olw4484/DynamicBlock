@@ -123,6 +123,9 @@ MonoBehaviour:
   _showBtn: {fileID: 0}
   _bannerBtn: {fileID: 0}
   _rewardBtn: {fileID: 0}
+  _classicBtn: {fileID: 0}
+  RewardTime: 90
+  InterstitialTime: 120
 --- !u!1 &1811149873304092865
 GameObject:
   m_ObjectHideFlags: 0
@@ -228,7 +231,7 @@ MonoBehaviour:
   - key: Game
     root: {fileID: 0}
     defaultActive: 0
-    useCanvasGroup: 0
+    useCanvasGroup: 1
     isModal: 0
     closeOnEscape: 0
     baseSorting: 100
@@ -356,6 +359,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7420984365196762505}
     m_Modifications:
+    - target: {fileID: 2752346032513187545, guid: 0f5b8d44a707bc744a08ca93dabcd01b, type: 3}
+      propertyPath: poolSize
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 2752346032513187545, guid: 0f5b8d44a707bc744a08ca93dabcd01b, type: 3}
+      propertyPath: lineStartSize
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2752346032513187545, guid: 0f5b8d44a707bc744a08ca93dabcd01b, type: 3}
+      propertyPath: allClearPos.Array.size
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 4729092175241834448, guid: 0f5b8d44a707bc744a08ca93dabcd01b, type: 3}
       propertyPath: m_Name
       value: LJJ_ParticleManager
