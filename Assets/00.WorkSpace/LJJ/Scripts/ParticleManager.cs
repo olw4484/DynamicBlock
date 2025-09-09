@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using UnityEditor.Experimental.GraphView;
@@ -5,6 +6,23 @@ using UnityEngine;
 
 public class ParticleManager : MonoBehaviour
 {
+    [Header("Non Pool Particle")]
+    public GameObject newScoreParticle;
+    private ParticleSystem newScorePS;
+
+    public GameObject gameOverParticle;
+    private ParticleSystem gameOverPS;
+
+    public GameObject allClearParticle;
+    private List<ParticleSystem> allClearPSs = new List<ParticleSystem>();
+    public RectTransform[] allClearPos;
+
+    [SerializeField] GameObject safeArea;
+    [SerializeField] GameObject gameOverCanvas;
+    [SerializeField] RectTransform gameOverTransform;
+
+
+
     [Header("Pool Settings")]
     public GameObject destroyParticle;
     public GameObject perimeterParticle;
@@ -34,12 +52,68 @@ public class ParticleManager : MonoBehaviour
         //squarePos = squareRect.position;
         //부모 기준 레이아웃이면 localPosition이 일관적이라 생각
         squarePos = squareRect.localPosition;
+
+        NonPoolInit();
+    }
+
+    private void NonPoolInit()
+    {
+        int fxLayer = LayerMask.NameToLayer("FX");
+
+        if (safeArea != null)
+        {
+            if (allClearParticle != null)
+            {
+                for (int i = 0; i < allClearPos.Length; i++) 
+                {
+                    GameObject fx = Instantiate(allClearParticle, fxRoot);
+                    fx.SetActive(false);
+                    LayerUtil.SetLayerRecursive(fx, fxLayer);
+
+                    GameObject ps = Instantiate(allClearParticle, allClearPos[i].transform);
+                    bool isLeft = i % 2 == 0 ? true : false;
+
+                    if (isLeft)
+                    {
+                        ps.transform.rotation = Quaternion.Euler(-120f, -90f, 90f);
+                    }
+                    else
+                    {
+                        ps.transform.rotation = Quaternion.Euler(-60f, -90f, 90f);
+                    }
+
+                    allClearPSs.Add(ps.GetComponent<ParticleSystem>());
+                    ps.SetActive(false);
+                }
+            }
+        }
+        if (gameOverCanvas != null)
+        {
+            if (newScoreParticle != null)
+            {
+                GameObject newScore = Instantiate(newScoreParticle, gameOverTransform);
+                newScore.transform.localScale = Vector3.one * 10;
+                newScore.transform.rotation = Quaternion.Euler(180f, 0f, 0f);
+                newScorePS = newScore.GetComponent<ParticleSystem>();
+                //LayerUtil.SetLayerRecursive(newScore, fxLayer);
+                newScore.SetActive(false);
+            }
+            if (gameOverParticle != null)
+            {
+                GameObject gameOver = Instantiate(gameOverParticle, gameOverTransform);
+                gameOver.transform.localScale = Vector3.one * 10;
+                gameOver.transform.rotation = Quaternion.Euler(180f, 0f, 0f);
+                gameOverPS = gameOver.GetComponent<ParticleSystem>();
+                //LayerUtil.SetLayerRecursive(gameOver, fxLayer);
+                gameOver.SetActive(false);
+            }
+        }
     }
 
     // 풀 초기화
     private void InitializePool()
     {
-        if (!fxRoot) { Debug.LogError("[PM] fxRoot is null. Assign FX_GridRoot."); return; }
+        //if (!fxRoot) { Debug.LogError("[PM] fxRoot is null. Assign FX_GridRoot."); return; }
 
         if (perimeterParticle != null && destroyParticle != null)
         {
@@ -268,6 +342,41 @@ public class ParticleManager : MonoBehaviour
         ps.transform.rotation = Quaternion.identity; // 회전 초기화
         ps.gameObject.SetActive(false);
         destroyPool.Enqueue(ps);
+    }
+
+    // 올클리어 파티클 재생
+    public void PlayAllClear()
+    {
+        foreach (var ps in allClearPSs)
+        {
+            ps.gameObject.SetActive(true);
+            ps.Play();
+            StartCoroutine(DisableNonPool(ps, LifetimeMax(ps.main)));
+        }
+    }
+
+    // 뉴스코어 파티클 재생
+    public void PlayNewScore()
+    { 
+        newScorePS.gameObject.SetActive(true);
+        newScorePS.Play();
+        StartCoroutine(DisableNonPool(newScorePS, 3f));
+    }
+
+    // 게임오버 파티클 재생
+    public void PlayGameOver()
+    { 
+        gameOverPS.gameObject.SetActive(true);
+        gameOverPS.Play();
+        StartCoroutine(DisableNonPool(gameOverPS, 3f));
+    }
+
+    // 논풀 파티클 비활성화
+    private IEnumerator DisableNonPool(ParticleSystem ps, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        ps.gameObject.SetActive(false);
     }
 
     private Vector3 UiLocalToFxLocal(Vector3 uiLocal)
