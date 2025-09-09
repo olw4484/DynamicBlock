@@ -20,10 +20,10 @@ public class AdManager : MonoBehaviour
     bool _rewardLocked; // 광고 진행 중 버튼 잠금
 
     [SerializeField] private Button _classicBtn;    // 클래식 시작 버튼
-    [SerializeField] private int _rewardTimer = 90; // 90
-    [SerializeField] private int _interstitialTimer = 120; // 120
-    public DateTime NextRewardTime;
-    public DateTime NextInterstitialTime;
+    public int RewardTime = 90; // 90
+    public int InterstitialTime = 120; // 120
+    public DateTime NextRewardTime = DateTime.MaxValue;
+    public DateTime NextInterstitialTime = DateTime.MinValue;
 
     void Awake()
     {
@@ -49,10 +49,10 @@ public class AdManager : MonoBehaviour
         });
 
         // 클래식 시작버튼 이벤트 연결
-        NextInterstitialTime = DateTime.UtcNow.AddSeconds(_interstitialTimer);
+        NextInterstitialTime = DateTime.UtcNow.AddSeconds(InterstitialTime);
         _classicBtn.onClick.AddListener(() =>
         {
-            NextRewardTime = DateTime.UtcNow.AddSeconds(_rewardTimer);
+            NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
 		});
     }
 

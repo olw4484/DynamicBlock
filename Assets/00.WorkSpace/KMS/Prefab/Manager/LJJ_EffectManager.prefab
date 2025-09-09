@@ -58,8 +58,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fc848dd3f7df0b44ea9b65f58313d72c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rowParticle: {fileID: 5539121658716097015, guid: e5e4f0f246da34465871391a4db98da3, type: 3}
-  colParticle: {fileID: 4883431078802176644, guid: aa3cdc57cda59f5469c8fef9a0ba7580, type: 3}
+  newScoreParticle: {fileID: 5539121658716097015, guid: e5642e357050448a8bb7aacc47e7d63b, type: 3}
+  gameOverParticle: {fileID: 5539121658716097015, guid: e9f29f7eb565e4065a29128b6fe969eb, type: 3}
+  allClearParticle: {fileID: 165102, guid: 4de72d65c2293424cbe6461a89fe2997, type: 3}
+  allClearPos: []
+  safeArea: {fileID: 4729092175241834448}
+  gameOverCanvas: {fileID: 0}
+  gameOverTransform: {fileID: 0}
+  destroyParticle: {fileID: 4883431078802176644, guid: aa3cdc57cda59f5469c8fef9a0ba7580, type: 3}
+  perimeterParticle: {fileID: 0}
   poolSize: 5
   gridSquare: {fileID: 7774295559643476045, guid: 92c380a173ad5e74fbb78ee3050c3610, type: 3}
   gridParent: {fileID: 0}
+  uiCanvas: {fileID: 0}
+  fxCamera: {fileID: 0}
+  fxRoot: {fileID: 0}
