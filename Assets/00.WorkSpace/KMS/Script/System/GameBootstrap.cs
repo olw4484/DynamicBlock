@@ -75,7 +75,6 @@ public class GameBootstrap : MonoBehaviour
         // 초기화 & 바인딩
         group.Initialize();
         var report = Game.Bind(group);
-        Debug.Log(report.Detail);
 
         // 씬 파사드/레인 확보 & 바인딩
         if (!audioFx) audioFx = FindFirstObjectByType<AudioFxFacade>();
