@@ -158,12 +158,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             var gm = GridManager.Instance;
             var squares = gm.gridSquares;
+
             for (int r = 0; r < gm.rows; r++)
             {
                 for (int c = 0; c < gm.cols; c++)
                 {
-                    if (!squares[r, c].IsOccupied)
-                        squares[r, c].SetState(GridState.Normal);
+                    bool occupied = gm.gridStates[r, c];
+                    squares[r, c].SetOccupied(occupied);
                 }
             }
         }
