@@ -19,6 +19,8 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private Dictionary<Sprite, int> _spriteToIndex;
         private Sprite _brushSprite; // 현재 선택된 블록의 스프라이트(지우개는 null)
         private Button _selectedPaletteButton;
+        private bool _isDragging;
+        private int _dragValue;
         
         public override VisualElement CreateInspectorGUI()
         {
@@ -109,7 +111,8 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             // 점수 상세(목표 점수)와 과일 표를 모아두는 컨테이너
             VisualElement scoreDetailRow = null;
             VisualElement fruitTable     = null;
-
+            VisualElement fruitBlocksRow = null;
+            
             // 과일 카운트 참조(ApplyGoalUI에서 on/off)
             var fruitCounts  = new IntegerField[FruitCount + 1];
 
@@ -128,7 +131,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 Undo.RecordObject(_data, "Change Goal");
                 _data.goalKind = kind;
                 EditorUtility.SetDirty(_data);
-                ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitCounts);
+                ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitCounts, fruitBlocksRow);
                 isUpdating = false;
             }
 
@@ -340,7 +343,46 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 panel.Add(fruitTable);
                 SpaceV(panel, 7);
             }
+            
+            var alphaRow = Row();
 
+            var alphaLbl = new Label("Alpha");
+            alphaLbl.style.width = 50;
+            alphaLbl.style.fontSize = 15;
+            alphaLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            var alphaSlider = new Slider(0f, 2f);
+            alphaSlider.value = _data.alpha;
+            alphaSlider.style.width = 150;      // 가로 공간 쭉 차지
+
+            var alphaField = new FloatField();
+            alphaField.value = _data.alpha;
+            alphaField.style.width = 60;
+            alphaField.formatString = "0.00";    // 2자리 소수 표시
+
+            bool alphaUpdating = false;          // 쌍방 이벤트 루프 방지
+
+            alphaSlider.RegisterValueChangedCallback(e =>
+            {
+                alphaUpdating = AlphaUpdating(alphaUpdating, e, alphaField);
+            });
+
+            alphaField.RegisterValueChangedCallback(e =>
+            {
+                alphaUpdating = AlphaUpdating(alphaUpdating, e, alphaField);
+            });
+
+            // 조립
+            SpaceH(alphaRow, 6);
+            alphaRow.Add(alphaLbl);
+            SpaceH(alphaRow, 8);
+            alphaRow.Add(alphaSlider);
+            SpaceH(alphaRow, 8);
+            alphaRow.Add(alphaField);
+
+            panel.Add(alphaRow);
+            SpaceV(panel, 6);
+            
             // ========== 블록 선택 ==========
             var selectBlockLbl = new Label("Select Block");
             selectBlockLbl.style.fontSize = 20;
@@ -395,6 +437,8 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             line3.style.flexWrap = Wrap.NoWrap;
             line3.style.flexShrink = 0;
             line3.style.overflow = Overflow.Hidden;
+
+            fruitBlocksRow = line3;
 
             for (int i = 0; i < FruitCount; i++)
             {
@@ -457,8 +501,20 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             });
 
             // ---- 최초 1회 상태 적용 ----
-            ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitCounts);
+            ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitCounts, fruitBlocksRow);
             return panel;
+        }
+
+        private bool AlphaUpdating(bool alphaUpdating, ChangeEvent<float> e, FloatField alphaField)
+        {
+            if (alphaUpdating) return alphaUpdating;
+            alphaUpdating = true;
+            Undo.RecordObject(_data, "Change Alpha");
+            _data.alpha = Mathf.Clamp(e.newValue, 0f, 2f);
+            alphaField.SetValueWithoutNotify(_data.alpha);
+            EditorUtility.SetDirty(_data);
+            alphaUpdating = false;
+            return alphaUpdating;
         }
 
         private static void SetFruitTileVisual(Button tile, bool enabled)
@@ -487,7 +543,8 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             Toggle tutT, Toggle scoT, Toggle fruT,
             VisualElement scoreDetailRow,
             VisualElement fruitTable,
-            IntegerField[] fruitCounts)
+            IntegerField[] fruitCounts,
+            VisualElement fruitBlocksRow)
         {
             bool isTut   = data.goalKind == MapGoalKind.Tutorial;
             bool isScore = data.goalKind == MapGoalKind.Score;
@@ -504,7 +561,11 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
             if (fruitTable != null)
                 fruitTable.style.display = isFruit ? DisplayStyle.Flex : DisplayStyle.None;
-
+            
+            if (fruitBlocksRow != null)
+                //fruitBlocksRow.SetEnabled(isFruit);
+                fruitBlocksRow.style.display = isFruit ? DisplayStyle.Flex : DisplayStyle.None;
+            
             // 과일 표 내부 활성/비활성
             int n = Math.Min(data.fruitEnabled?.Length ?? 0, fruitCounts?.Length ?? 0);
             for (int i = 0; i < n; i++)
@@ -525,7 +586,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var wrap = new VisualElement { name = "grid-wrap" };
             wrap.style.flexGrow = 0;
             wrap.style.flexShrink = 0;
-            Border(wrap, new Color(0, 0, 0, 0.25f));
             Pad(wrap, 6);
 
             var grid = new VisualElement { name = "grid" };
@@ -554,6 +614,14 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 const int cell = 40; // 셀 한 변 픽셀 수
                 
                 MapEditorFunctions.EnsureLayoutSize(_data);
+                // 업 이벤트는 그리드에 한번만 등록.
+                grid.RegisterCallback<PointerUpEvent>(e =>
+                {
+                    if (!_isDragging) return;
+                    _isDragging = false;
+                    grid.ReleasePointer(e.pointerId);
+                    e.StopPropagation();
+                });
                 
                 for (int r = 0; r < rows; r++)
                 {
@@ -580,8 +648,37 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                         ve.Add(img);
 
                         // 칠하기(토글)
-                        ve.RegisterCallback<ClickEvent>(_ => { PaintGrid(idx1D, img); });
+                        ve.RegisterCallback<PointerDownEvent>(e =>
+                        {
+                            if (e.button == 1) // 우클릭
+                            {
+                                _isDragging = true;
+                                _dragValue = 0;                          // 항상 지우기
+                                PaintGridWithValue(idx1D, img, _dragValue);
+                                grid.CapturePointer(e.pointerId);
+                                e.StopPropagation();
+                                return;
+                            }
+                            if (e.button != 0) return; // 좌클릭만
+                            _isDragging = true;
+                            // 첫 칸에서 토글 규칙으로 '이번 스트로크 값' 결정
+                            int brushVal = SpriteToIndex(_brushSprite);
+                            int oldVal   = _data.layout[idx1D];
+                            _dragValue   = (brushVal == 0 || brushVal == oldVal) ? 0 : brushVal;
 
+                            PaintGridWithValue(idx1D, img, _dragValue);
+
+                            // 드래그 캡쳐(밖으로 나가도 Up이 grid로 옴)
+                            grid.CapturePointer(e.pointerId);
+                            e.StopPropagation();
+                        });
+                        
+                        ve.RegisterCallback<PointerEnterEvent>(e =>
+                        {
+                            if (!_isDragging) return;
+                            PaintGridWithValue(idx1D, img, _dragValue);
+                        });
+                        
                         line.Add(ve);
                     }
 
@@ -599,6 +696,13 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             _data.layout[idx1D] = newVal;       
             img.sprite = IndexToSprite(newVal); 
 
+            MapEditorFunctions.MarkDirty(_data, "Paint Cell");
+        }
+        
+        private void PaintGridWithValue(int idx1D, Image img, int value)
+        {
+            _data.layout[idx1D] = value;
+            img.sprite = IndexToSprite(value);
             MapEditorFunctions.MarkDirty(_data, "Paint Cell");
         }
         
@@ -712,7 +816,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             ve.style.paddingLeft = all; ve.style.paddingRight = all;
             ve.style.paddingTop = all;  ve.style.paddingBottom = all;
         }
-        private static void Border(VisualElement ve, Color c)
+        private static void Border(VisualElement ve, Color c = default)
         {
             ve.style.borderLeftWidth = 1;  ve.style.borderLeftColor = c;
             ve.style.borderRightWidth = 1; ve.style.borderRightColor = c;

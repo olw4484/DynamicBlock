@@ -16,6 +16,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private string resourcesPath = "Shapes";
         [SerializeField] private List<ShapeData> shapeData;
         
+        [Header("Fit Info")]
+        private readonly List<FitInfo> _lastGeneratedFits = new List<FitInfo>(4);
+        public IReadOnlyList<FitInfo> LastGeneratedFits => _lastGeneratedFits;
+
+        
         [Header("Wave Rules")] 
         [SerializeField, Range(1, 3)] private int maxDuplicatesPerWave = 2;
         [SerializeField, Range(2, 5)] private int maxSameWaveStreak = 3;
@@ -30,7 +35,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private bool useDynamicWeightByTilePowA = true;
         [SerializeField] private float aMin;
         [SerializeField] private float aMax = 1.0f;
-        
         [SerializeField] private SmallBlockGate[] smallBlockGates =
         {
             new() { tiles=1, percentAtAMin=30, percentAtAMax=10 },
