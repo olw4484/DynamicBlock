@@ -54,7 +54,6 @@ public class InterstitialAdController
 			AdManager.Instance.NextInterstitialTime = DateTime.UtcNow;
 			return;
 		}
-		AdManager.Instance.NextInterstitialTime = DateTime.UtcNow.AddSeconds(AdManager.Instance.InterstitialTime);
 
 		// 1로딩 1재생
 		if (_loadedAd != null && _loadedAd.CanShowAd())
@@ -91,7 +90,8 @@ public class InterstitialAdController
         ad.OnAdFullScreenContentClosed += () =>
         {
             Debug.Log("전면 광고 닫음");
-            IsReady = false;
+			AdManager.Instance.NextInterstitialTime = DateTime.UtcNow.AddSeconds(AdManager.Instance.InterstitialTime);
+			IsReady = false;
             Closed?.Invoke();
             Init(); // 다음 로드
         };
