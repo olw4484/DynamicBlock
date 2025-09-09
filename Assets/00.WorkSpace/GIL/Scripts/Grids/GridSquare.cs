@@ -16,7 +16,7 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         [SerializeField] private Image activeImage;
         [SerializeField] private Image fruitImage;
         public bool Selected { get; set; }
-        public bool IsOccupied { get; set; }
+        public bool IsOccupied;
         public GridState state;
         public void SetState(GridState newState)
         {
