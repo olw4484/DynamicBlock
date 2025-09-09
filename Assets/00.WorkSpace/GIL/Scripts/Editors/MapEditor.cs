@@ -340,7 +340,46 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 panel.Add(fruitTable);
                 SpaceV(panel, 7);
             }
+            
+            var alphaRow = Row();
 
+            var alphaLbl = new Label("Alpha");
+            alphaLbl.style.width = 50;
+            alphaLbl.style.fontSize = 15;
+            alphaLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            var alphaSlider = new Slider(0f, 2f);
+            alphaSlider.value = _data.alpha;
+            alphaSlider.style.width = 150;      // 가로 공간 쭉 차지
+
+            var alphaField = new FloatField();
+            alphaField.value = _data.alpha;
+            alphaField.style.width = 60;
+            alphaField.formatString = "0.00";    // 2자리 소수 표시
+
+            bool alphaUpdating = false;          // 쌍방 이벤트 루프 방지
+
+            alphaSlider.RegisterValueChangedCallback(e =>
+            {
+                alphaUpdating = AlphaUpdating(alphaUpdating, e, alphaField);
+            });
+
+            alphaField.RegisterValueChangedCallback(e =>
+            {
+                alphaUpdating = AlphaUpdating(alphaUpdating, e, alphaField);
+            });
+
+            // 조립
+            SpaceH(alphaRow, 6);
+            alphaRow.Add(alphaLbl);
+            SpaceH(alphaRow, 8);
+            alphaRow.Add(alphaSlider);
+            SpaceH(alphaRow, 8);
+            alphaRow.Add(alphaField);
+
+            panel.Add(alphaRow);
+            SpaceV(panel, 6);
+            
             // ========== 블록 선택 ==========
             var selectBlockLbl = new Label("Select Block");
             selectBlockLbl.style.fontSize = 20;
@@ -459,6 +498,18 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             // ---- 최초 1회 상태 적용 ----
             ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitCounts);
             return panel;
+        }
+
+        private bool AlphaUpdating(bool alphaUpdating, ChangeEvent<float> e, FloatField alphaField)
+        {
+            if (alphaUpdating) return alphaUpdating;
+            alphaUpdating = true;
+            Undo.RecordObject(_data, "Change Alpha");
+            _data.alpha = Mathf.Clamp(e.newValue, 0f, 2f);
+            alphaField.SetValueWithoutNotify(_data.alpha);
+            EditorUtility.SetDirty(_data);
+            alphaUpdating = false;
+            return alphaUpdating;
         }
 
         private static void SetFruitTileVisual(Button tile, bool enabled)
