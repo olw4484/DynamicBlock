@@ -269,4 +269,9 @@ public readonly struct ColClearFxEvent
         this.col = col;
         this.color = color;
     }
+    public readonly struct LanguageChangeRequested
+    {
+        public readonly int index;
+        public LanguageChangeRequested(int index) { this.index = index; }
+    }
 }

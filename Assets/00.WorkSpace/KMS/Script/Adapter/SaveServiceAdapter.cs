@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static ColClearFxEvent;
 
 // ================================
 // Script  : SaveServiceAdapter.cs
@@ -73,6 +74,11 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
                 _legacy.SaveGame();
             }
             Debug.Log($"[SaveAdapter] GameOver total={e.score}, High={_legacy.gameData?.highScore}");
+        }, replaySticky: false);
+
+        _bus.Subscribe<LanguageChangeRequested>(e =>
+        {
+            SetLanguageIndex(e.index);
         }, replaySticky: false);
     }
 
