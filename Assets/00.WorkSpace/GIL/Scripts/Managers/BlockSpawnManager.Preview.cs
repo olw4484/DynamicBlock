@@ -235,7 +235,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                                 virtualBoard[sq.RowIndex, sq.ColIndex] = true;
 
                         // 라인 제거 시뮬까지 반영하려면, 여기서 가상 보드에 적용
-                        // ResolveCompletedLinesInPlace(virtualBoard);
+                        ResolveCompletedLinesInPlace(virtualBoard);
                     }
                     else
                     {
