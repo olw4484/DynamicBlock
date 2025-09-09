@@ -60,7 +60,8 @@ public class ReviveScreen : MonoBehaviour
 	void ShowRewardAd()
 	{
 		// TODO : 리워드 콜백에 클래식, 어드벤처에 따른 블럭 생성 구분해야함
-		AdManager.Instance.Reward.ShowAdSimple();
+		Debug.Log("Revive 버튼 클릭, 리워드광고 실행");
+		AdManager.Instance.Reward.ShowAd();
 		gameObject.SetActive(false);
 	}
 }

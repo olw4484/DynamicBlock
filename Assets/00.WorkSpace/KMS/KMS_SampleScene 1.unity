@@ -427,6 +427,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3078843574493295484, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
+      propertyPath: m_MatchWidthOrHeight
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4518999109263167989, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1
@@ -3802,22 +3806,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: ReviveScreen
       objectReference: {fileID: 0}
-    - target: {fileID: 4483604268369790003, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8770351384716598602, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
-      propertyPath: _countText
-      value: 
-      objectReference: {fileID: 2620731318834460860}
-    - target: {fileID: 8770351384716598602, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
-      propertyPath: _reviveBtn
-      value: 
-      objectReference: {fileID: 7613634675624288278}
-    - target: {fileID: 8770351384716598602, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
-      propertyPath: _countImage
-      value: 
-      objectReference: {fileID: 1883875596610785843}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -6283,17 +6271,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 0
---- !u!114 &1883875596610785843 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5625604887143383766, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
-  m_PrefabInstance: {fileID: 848846381110867778}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1897281281028864778
 GameObject:
   m_ObjectHideFlags: 0
@@ -8232,17 +8209,6 @@ RectTransform:
   m_AnchoredPosition: {x: 331.879, y: -342.03882}
   m_SizeDelta: {x: 109.083, y: 112.413}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &2620731318834460860 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2430480489447410940, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
-  m_PrefabInstance: {fileID: 848846381110867778}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!224 &2622156384607034929
 RectTransform:
   m_ObjectHideFlags: 0
@@ -19282,11 +19248,11 @@ PrefabInstance:
       objectReference: {fileID: 993338585}
     - target: {fileID: 4960349516357863909, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: _rewardTimer
-      value: 5
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: 4960349516357863909, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: _interstitialTimer
-      value: 5
+      value: 120
       objectReference: {fileID: 0}
     - target: {fileID: 6316385883739004828, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: _hudBestText
@@ -21760,17 +21726,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &7613634675624288278 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8474633457480573061, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
-  m_PrefabInstance: {fileID: 848846381110867778}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &7623990931398395305
 MonoBehaviour:
   m_ObjectHideFlags: 0

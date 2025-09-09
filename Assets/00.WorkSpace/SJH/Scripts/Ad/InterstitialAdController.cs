@@ -50,9 +50,11 @@ public class InterstitialAdController
 	{
 		if (AdManager.Instance.NextInterstitialTime > DateTime.UtcNow)
 		{
-			Debug.Log("시간이 지나지 않아 광고 재생을 스킵");
+			Debug.Log("시간이 지나지 않아 전면 광고 재생을 스킵");
+			AdManager.Instance.NextInterstitialTime = DateTime.UtcNow;
 			return;
 		}
+		AdManager.Instance.NextInterstitialTime = DateTime.UtcNow.AddSeconds(AdManager.Instance.InterstitialTime);
 
 		// 1로딩 1재생
 		if (_loadedAd != null && _loadedAd.CanShowAd())
