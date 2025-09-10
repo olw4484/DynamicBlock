@@ -10,7 +10,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 {
     public class GridManager : MonoBehaviour, IRuntimeReset
     {
-        [SerializeField] private BlockFxFacade fx;
         public static GridManager Instance { get; private set; }
 
         public GridSquare[,] gridSquares; // 시각적 표현용
@@ -270,16 +269,21 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     SetCellOccupied(row, col, false);
             }
 
+            if (IsBoardEmpty())
+            {
+                _bus?.Publish(new AllClear());
+            }
+
             _lineCount = 0;
         }
 
         private void ActiveClearEffectLine(int index, bool isRow)
         {
-            if (fx == null) return;              
+            if (Game.Fx == null) return;              
             var color = Color.white;              
 
-            if (isRow) fx.PlayRowClear(index, color);
-            else fx.PlayColClear(index, color);
+            if (isRow) Game.Fx.PlayRow(index, color);
+            else Game.Fx.PlayCol(index, color);
         }
 
         public void SetDependencies(EventQueue bus)
@@ -313,6 +317,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (_bus != null || !Game.IsBound) return;
             SetDependencies(Game.Bus); // 실제 DI
+        }
+
+        private bool IsBoardEmpty()
+        {
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    if (gridStates[r, c]) return false;  // 하나라도 true(점유)면 비지 않음
+            return true;
         }
         
         private bool PredictCompletedLines(

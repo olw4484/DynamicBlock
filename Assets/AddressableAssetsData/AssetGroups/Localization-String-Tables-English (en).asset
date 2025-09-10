@@ -15,10 +15,16 @@ MonoBehaviour:
   m_GroupName: Localization-String-Tables-English (en)
   m_Data:
     m_SerializedData: []
-  m_GUID: 570c4f98571d0ee408260b919b8d86a7
+  m_GUID: 716617029d77a9a43be3ade468c41429
   m_SerializeEntries:
   - m_GUID: 129801e68d44bcd459e0943cbe97211a
     m_Address: LanguageTable_en
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7303047be79cbf042991ad67fe3f15e0
+    m_Address: TextTable_en
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-en
@@ -27,5 +33,5 @@ MonoBehaviour:
   m_Settings: {fileID: 11400000, guid: e4032e69d20915141886eb7276a16890, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: aabff2bbe9013ff4c8f862a443a3cb21, type: 2}
-    - {fileID: 11400000, guid: 1a6c90f406391e14fab2f65cd496b955, type: 2}
+    - {fileID: 11400000, guid: f5deb34908c4abf429879610c0b3ba2d, type: 2}
+    - {fileID: 11400000, guid: da5a766eb73876344955bc43875c23fd, type: 2}
