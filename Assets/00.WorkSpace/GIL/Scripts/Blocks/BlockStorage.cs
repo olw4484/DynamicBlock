@@ -45,7 +45,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         // 게임 오버 1회만 발동 가드
         bool _gameOverFired;
         System.Action<ContinueGranted> _onContinue;
-
+        int _lastScore;
+        string _lastReason;
         bool _paused;
         private bool _initialized;
 
@@ -197,15 +198,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             Debug.Log("===== GAME OVER! 더 이상 배치할 수 있는 블록이 없습니다. =====");
-            // TODO : 여기 밑에다가 게임 오버 붙이기!
-            // GenerateGameOver(bool)타입으로 한줄 요약 했으니 Reward 애드 광고 시청 성공?시에 붙이면 될 것으로 예상.
-            //ActivateGameOver();
-#if UNITY_EDITOR
-            _gameOverFired = true;
-            if (!GenerateAdRewardWave()) ActivateGameOver();
-#else
+
             ActivateGameOver();
-#endif
         }
 
         private void ActivateGameOver()
@@ -222,7 +216,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             int score = ScoreManager.Instance ? ScoreManager.Instance.Score
                        : (Game.GM != null ? Game.GM.Score : 0);
 
-            Game.Bus.PublishSticky(new GameOver(score, reason));
+            Game.Bus.PublishSticky(new PlayerDowned(_lastScore, _lastReason));
             Time.timeScale = 0f;
 
 
@@ -272,7 +266,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _gameOverFired = false;
             Time.timeScale = 1f;
 
-            Game.Bus?.ClearSticky<GameOver>();
+            Game.Bus?.ClearSticky<PlayerDowned>();
+            Game.Bus?.PublishImmediate(new RevivePerformed());
             Game.Bus?.PublishImmediate(new ContinueGranted());
 
             // 4) 손패를 Revive 웨이브로 교체하고, 손패 갱신 훅 호출
@@ -333,7 +328,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             return previewSprites;
         }
-        private void CancelQueuedInterstitialIfAny() // ★ 추가
+        private void CancelQueuedInterstitialIfAny() //
         {
             if (_queuedInterstitialCo != null)
             {
@@ -381,6 +376,15 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
         }
 
+        public void ConfirmGameOver()
+        {
+            if (!_gameOverFired) return;
+
+            // 다운 스티키 정리 후 최종 오버 알림(이때 Save/FX 실행 대상)
+            Game.Bus?.ClearSticky<PlayerDowned>();
+            Game.Bus?.PublishImmediate(new GameOverConfirmed(_lastScore, _lastReason));
+        }
+
         #endregion
         #region Game Reset
         public void SetDependencies(EventQueue bus)
@@ -416,7 +420,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void ResetRuntime()
         {
             _gameOverFired = false;
+            _reviveUsed = false;
             Time.timeScale = 1f;
+            CancelQueuedInterstitialIfAny();
+
+            Game.Bus?.ClearSticky<PlayerDowned>();
+            Game.Bus?.ClearSticky<GameOverConfirmed>();
 
             // 생성/체크 잠깐 중지
             _paused = true;
