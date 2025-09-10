@@ -418,6 +418,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 Debug.Log("[Storage] Fallback OnGridReady (grid already built)");
                 OnGridReady(new GridReady(GridManager.Instance.rows, GridManager.Instance.cols));
             }
+
+            _bus.Subscribe<ReviveRequest>(_ =>
+            {
+                if (!GenerateAdRewardWave())
+                    ConfirmGameOver(); // 실패 시 곧바로 확정 오버
+            }, replaySticky: false);
+
+            _bus.Subscribe<GiveUpRequest>(_ => { ConfirmGameOver(); }, replaySticky: false);
         }
 
         public void ResetRuntime()
