@@ -28,9 +28,15 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
         public bool[] fruitEnabled = new bool[5]; // Fruit 모드일 때 사용
         public int[] fruitGoals = new int[5]; // Fruit일 때 사용
 
-        [Header("Alpha")] [Range(0f, 2f)] public float alpha = 1f;
+        [Header("Alpha")] 
+        [Range(0f, 2f)] public float alphaMin = 0.5f;
+        [Range(0f, 2f)] public float alphaMax = 1.5f;
+        
+        [Header("Charlie")]
+        [Range(0f, 2f)] public float charlieMin = 0.5f;
+        [Range(0f, 2f)] public float charlieMax = 1.5f;
 
-    public int Get(int r, int c) => layout[r * cols + c];
+        public int Get(int r, int c) => layout[r * cols + c];
         public void Set(int r, int c, int v) { layout[r * cols + c] = v; }
         
         private void OnEnable()

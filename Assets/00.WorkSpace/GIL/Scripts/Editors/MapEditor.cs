@@ -60,6 +60,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             // 스테이지 이름
             var idField = new TextField { value = _data.id };
             idField.style.unityTextAlign = TextAnchor.MiddleCenter;
+            idField.style.width = 340;
             idField.style.fontSize = 25;
             idField.style.unityFontStyleAndWeight = FontStyle.Bold;
             idField.RegisterValueChangedCallback(e =>
@@ -343,46 +344,17 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 panel.Add(fruitTable);
                 SpaceV(panel, 7);
             }
+
+            var textWidth = 75;
+            var textFontSize = 15;
+            var sliderLength = 200;
+            var floatWidth = 35;
             
-            var alphaRow = Row();
+            CreateAlphaRow(textWidth, textFontSize, sliderLength, floatWidth, panel);
 
-            var alphaLbl = new Label("Alpha");
-            alphaLbl.style.width = 50;
-            alphaLbl.style.fontSize = 15;
-            alphaLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+            CreateCharlieRow(textWidth, textFontSize, sliderLength, floatWidth, panel);
 
-            var alphaSlider = new Slider(0f, 2f);
-            alphaSlider.value = _data.alpha;
-            alphaSlider.style.width = 150;      // 가로 공간 쭉 차지
 
-            var alphaField = new FloatField();
-            alphaField.value = _data.alpha;
-            alphaField.style.width = 60;
-            alphaField.formatString = "0.00";    // 2자리 소수 표시
-
-            bool alphaUpdating = false;          // 쌍방 이벤트 루프 방지
-
-            alphaSlider.RegisterValueChangedCallback(e =>
-            {
-                alphaUpdating = AlphaUpdating(alphaUpdating, e, alphaField);
-            });
-
-            alphaField.RegisterValueChangedCallback(e =>
-            {
-                alphaUpdating = AlphaUpdating(alphaUpdating, e, alphaField);
-            });
-
-            // 조립
-            SpaceH(alphaRow, 6);
-            alphaRow.Add(alphaLbl);
-            SpaceH(alphaRow, 8);
-            alphaRow.Add(alphaSlider);
-            SpaceH(alphaRow, 8);
-            alphaRow.Add(alphaField);
-
-            panel.Add(alphaRow);
-            SpaceV(panel, 6);
-            
             // ========== 블록 선택 ==========
             var selectBlockLbl = new Label("Select Block");
             selectBlockLbl.style.fontSize = 20;
@@ -391,7 +363,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             SpaceV(panel, 4);
 
             var palette = new VisualElement();
-            palette.style.backgroundColor = new Color(1, 1, 1, 0.4f);
+            //palette.style.backgroundColor = new Color(1, 1, 1, 0.4f);
             palette.style.alignItems = Align.FlexStart;
             Pad(palette, 6);
 
@@ -505,16 +477,240 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             return panel;
         }
 
-        private bool AlphaUpdating(bool alphaUpdating, ChangeEvent<float> e, FloatField alphaField)
+        private void CreateCharlieRow(int textWidth, int textFontSize, int sliderLength, int floatWidth, VisualElement panel)
         {
-            if (alphaUpdating) return alphaUpdating;
-            alphaUpdating = true;
-            Undo.RecordObject(_data, "Change Alpha");
-            _data.alpha = Mathf.Clamp(e.newValue, 0f, 2f);
-            alphaField.SetValueWithoutNotify(_data.alpha);
-            EditorUtility.SetDirty(_data);
-            alphaUpdating = false;
-            return alphaUpdating;
+            var charlieMinRow = Row();
+
+            var charlieMinLbl = new Label("C Min");
+            charlieMinLbl.style.width = textWidth;
+            charlieMinLbl.style.fontSize = textFontSize;
+            charlieMinLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            var charileMinSlider = new Slider(0f, 2f);
+            charileMinSlider.value = _data.charlieMin;
+            charileMinSlider.style.width = sliderLength;      
+            
+            var charlieMinField = new FloatField();
+            charlieMinField.value = _data.charlieMin;
+            charlieMinField.style.width = floatWidth;
+            charlieMinField.formatString = "0.00";    // 2자리 소수 표시
+            
+            var charlieMaxRow = Row();
+            
+            var charlieMaxLbl = new Label("C Max");
+            charlieMaxLbl.style.width = textWidth;
+            charlieMaxLbl.style.fontSize = textFontSize;
+            charlieMaxLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            var charlieMaxSlider = new Slider(0f, 2f);
+            charlieMaxSlider.value = _data.charlieMax;
+            charlieMaxSlider.style.width = sliderLength;     
+
+            var charlieMaxField = new FloatField();
+            charlieMaxField.value = _data.charlieMax;
+            charlieMaxField.style.width = floatWidth;
+            charlieMaxField.formatString = "0.00";    // 2자리 소수 표시
+
+            bool charlieUpdating = false;          // 쌍방 이벤트 루프 방지
+
+            // --- 로컬 헬퍼: Min을 설정 ---
+            void SetCharlieMin(float v, bool withUndo = true)
+            {
+                if (charlieUpdating) return;
+                charlieUpdating = true;
+
+                float nv = Mathf.Clamp(v, 0f, 2f);
+                if (withUndo) Undo.RecordObject(_data, "Change Charlie Min");
+                _data.charlieMin = nv;
+
+                // min이 max를 넘어섰으면 max를 따라올림
+                if (_data.charlieMin > _data.charlieMax)
+                {
+                    _data.charlieMax = _data.charlieMin;
+                    charlieMaxSlider.SetValueWithoutNotify(_data.charlieMax);
+                    charlieMaxField.SetValueWithoutNotify(_data.charlieMax);
+                }
+
+                // 본인 UI 동기화
+                charileMinSlider.SetValueWithoutNotify(_data.charlieMin);
+                charlieMinField.SetValueWithoutNotify(_data.charlieMin);
+
+                EditorUtility.SetDirty(_data);
+                charlieUpdating = false;
+            }
+
+// --- 로컬 헬퍼: Max를 설정 ---
+            void SetCharlieMax(float v, bool withUndo = true)
+            {
+                if (charlieUpdating) return;
+                charlieUpdating = true;
+
+                float nv = Mathf.Clamp(v, 0f, 2f);
+                if (withUndo) Undo.RecordObject(_data, "Change Charlie Max");
+                _data.charlieMax = nv;
+
+                // max가 min보다 작아졌으면 min을 끌어내림
+                if (_data.charlieMax < _data.charlieMin)
+                {
+                    _data.charlieMin = _data.charlieMax;
+                    charileMinSlider.SetValueWithoutNotify(_data.charlieMin);
+                    charlieMinField.SetValueWithoutNotify(_data.charlieMin);
+                }
+
+                // 본인 UI 동기화
+                charlieMaxSlider.SetValueWithoutNotify(_data.charlieMax);
+                charlieMaxField.SetValueWithoutNotify(_data.charlieMax);
+
+                EditorUtility.SetDirty(_data);
+                charlieUpdating = false;
+            }
+
+// --- 콜백: 헬퍼만 호출 ---
+            charileMinSlider.RegisterValueChangedCallback(e => SetCharlieMin(e.newValue));
+            charlieMinField .RegisterValueChangedCallback(e => SetCharlieMin(e.newValue));
+            charlieMaxSlider.RegisterValueChangedCallback(e => SetCharlieMax(e.newValue));
+            charlieMaxField .RegisterValueChangedCallback(e => SetCharlieMax(e.newValue));
+
+// --- 초기값을 한 번 정규화(데이터가 어긋나 있었을 수 있으니) ---
+            SetCharlieMin(_data.charlieMin, withUndo:false);
+            SetCharlieMax(_data.charlieMax, withUndo:false);
+            
+            // 조립
+            SpaceH(charlieMinRow, 6);
+            charlieMinRow.Add(charlieMinLbl);
+            SpaceH(charlieMinRow, 8);
+            charlieMinRow.Add(charlieMinField);
+            SpaceH(charlieMinRow, 8);
+            charlieMinRow.Add(charileMinSlider);
+            panel.Add(charlieMinRow);
+            SpaceV(panel, 6);
+            
+            SpaceH(charlieMaxRow, 6);
+            charlieMaxRow.Add(charlieMaxLbl);
+            SpaceH(charlieMaxRow, 8);
+            charlieMaxRow.Add(charlieMaxField);
+            SpaceH(charlieMaxRow, 8);
+            charlieMaxRow.Add(charlieMaxSlider);
+            panel.Add(charlieMaxRow);
+            SpaceV(panel, 6);
+        }
+
+        private void CreateAlphaRow(int textWidth, int textFontSize, int sliderLength, int floatWidth, VisualElement panel)
+        {
+            var alphaMinRow = Row();
+
+            var alphaMinLbl = new Label("A Min");
+            alphaMinLbl.style.width = textWidth;
+            alphaMinLbl.style.fontSize = textFontSize;
+            alphaMinLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            var alphaMinSlider = new Slider(0f, 2f);
+            alphaMinSlider.value = _data.alphaMin;
+            alphaMinSlider.style.width = sliderLength;      
+            
+            var alphaMinField = new FloatField();
+            alphaMinField.value = _data.alphaMin;
+            alphaMinField.style.width = floatWidth;
+            alphaMinField.formatString = "0.00";    // 2자리 소수 표시
+            
+            var alphaMaxRow = Row();
+            
+            var alphaMaxLbl = new Label("A Max");
+            alphaMaxLbl.style.width = textWidth;
+            alphaMaxLbl.style.fontSize = textFontSize;
+            alphaMaxLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            var alphaMaxSlider = new Slider(0f, 2f);
+            alphaMaxSlider.value = _data.alphaMax;
+            alphaMaxSlider.style.width = sliderLength;     
+
+            var alphaMaxField = new FloatField();
+            alphaMaxField.value = _data.alphaMax;
+            alphaMaxField.style.width = floatWidth;
+            alphaMaxField.formatString = "0.00";    // 2자리 소수 표시
+
+            bool alphaUpdating = false;          // 쌍방 이벤트 루프 방지
+
+            // --- 로컬 헬퍼: Min을 설정 ---
+            void SetAlphaMin(float v, bool withUndo = true)
+            {
+                if (alphaUpdating) return;
+                alphaUpdating = true;
+
+                float nv = Mathf.Clamp(v, 0f, 2f);
+                if (withUndo) Undo.RecordObject(_data, "Change Alpha Min");
+                _data.alphaMin = nv;
+
+                // min이 max를 넘어섰으면 max를 따라올림
+                if (_data.alphaMin > _data.alphaMax)
+                {
+                    _data.alphaMax = _data.alphaMin;
+                    alphaMaxSlider.SetValueWithoutNotify(_data.alphaMax);
+                    alphaMaxField.SetValueWithoutNotify(_data.alphaMax);
+                }
+
+                // 본인 UI 동기화
+                alphaMinSlider.SetValueWithoutNotify(_data.alphaMin);
+                alphaMinField.SetValueWithoutNotify(_data.alphaMin);
+
+                EditorUtility.SetDirty(_data);
+                alphaUpdating = false;
+            }
+
+// --- 로컬 헬퍼: Max를 설정 ---
+            void SetAlphaMax(float v, bool withUndo = true)
+            {
+                if (alphaUpdating) return;
+                alphaUpdating = true;
+
+                float nv = Mathf.Clamp(v, 0f, 2f);
+                if (withUndo) Undo.RecordObject(_data, "Change Alpha Max");
+                _data.alphaMax = nv;
+
+                // max가 min보다 작아졌으면 min을 끌어내림
+                if (_data.alphaMax < _data.alphaMin)
+                {
+                    _data.alphaMin = _data.alphaMax;
+                    alphaMinSlider.SetValueWithoutNotify(_data.alphaMin);
+                    alphaMinField.SetValueWithoutNotify(_data.alphaMin);
+                }
+
+                // 본인 UI 동기화
+                alphaMaxSlider.SetValueWithoutNotify(_data.alphaMax);
+                alphaMaxField.SetValueWithoutNotify(_data.alphaMax);
+
+                EditorUtility.SetDirty(_data);
+                alphaUpdating = false;
+            }
+
+// --- 콜백: 헬퍼만 호출 ---
+            alphaMinSlider.RegisterValueChangedCallback(e => SetAlphaMin(e.newValue));
+            alphaMinField .RegisterValueChangedCallback(e => SetAlphaMin(e.newValue));
+            alphaMaxSlider.RegisterValueChangedCallback(e => SetAlphaMax(e.newValue));
+            alphaMaxField .RegisterValueChangedCallback(e => SetAlphaMax(e.newValue));
+
+// --- 초기값을 한 번 정규화(데이터가 어긋나 있었을 수 있으니) ---
+            SetAlphaMin(_data.alphaMin, withUndo:false);
+            SetAlphaMax(_data.alphaMax, withUndo:false);
+            
+            // 조립
+            SpaceH(alphaMinRow, 6);
+            alphaMinRow.Add(alphaMinLbl);
+            SpaceH(alphaMinRow, 8);
+            alphaMinRow.Add(alphaMinField);
+            SpaceH(alphaMinRow, 8);
+            alphaMinRow.Add(alphaMinSlider);
+            panel.Add(alphaMinRow);
+            SpaceV(panel, 6);
+            
+            SpaceH(alphaMaxRow, 6);
+            alphaMaxRow.Add(alphaMaxLbl);
+            SpaceH(alphaMaxRow, 8);
+            alphaMaxRow.Add(alphaMaxField);
+            SpaceH(alphaMaxRow, 8);
+            alphaMaxRow.Add(alphaMaxSlider);
+            panel.Add(alphaMaxRow);
+            SpaceV(panel, 6);
         }
 
         private static void SetFruitTileVisual(Button tile, bool enabled)
@@ -824,6 +1020,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             ve.style.borderBottomWidth = 1;ve.style.borderBottomColor = c;
         }
         private static void BorderThin(VisualElement ve, Color c) => Border(ve, c);
+        
     }
+    
+    
 }
 #endif
