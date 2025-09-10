@@ -106,9 +106,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             BlockSpawnManager.Instance?.ClearPreview();
             
-            if(MapManager.Instance.GameMode == GameMode.Tutorial) 
-                MapManager.Instance.SetGameMode(GameMode.Classic);
-            
             _isDragging = false;
             
             _shapeTransform.localScale = shapeSelectedScale;

@@ -39,7 +39,6 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
             // TODO : 이 구문을 클래식 모드 시작할 위치에 옮기기
             // 리셋, 메인화면 갔다오기 이런걸 할 경우에도 상관 없이
             // 이동 완료, PanelSwitchOnClick.cs 42줄, RestartOnClick.cs 31줄에 추가
-            MapManager.Instance.GenerateClassicStartingMap();
         }
         
         public void CreateGrid()
