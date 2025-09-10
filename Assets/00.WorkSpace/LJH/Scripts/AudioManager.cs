@@ -16,7 +16,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private int sePoolSize = 10; // 동시에 재생 가능한 SE 수
     [Range(0f, 1f)] public float BGMVolume = 1f;
     [Range(0f, 1f)] public float SEVolume = 1f;
-    
+
     [Header("1001 Click Button")]
     public AudioClip SE_Button;
 
@@ -57,7 +57,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("1024 Clear All Block")]
     public AudioClip SE_ClearAllBlock;
-    
+
     [Header("BGM Clips")]
     public AudioClip BGM_Main;
     public AudioClip BGM_Adventure;
@@ -143,7 +143,7 @@ public class AudioManager : MonoBehaviour
                 src.clip = clip;
                 src.volume = SEVolume;
                 src.Play();
-                if (vibrate) Handheld.Vibrate();
+                if (vibrate) TryVibrate();
                 return;
             }
         }
@@ -156,7 +156,7 @@ public class AudioManager : MonoBehaviour
         extra.Play();
         sePool.Add(extra);
 
-        if (vibrate) Handheld.Vibrate();
+        if (vibrate) TryVibrate();
     }
     // SE 볼륨 설정 (0~1)
     public void SetSEVolume(float volume)
@@ -212,4 +212,14 @@ public class AudioManager : MonoBehaviour
     // Button Click SE
     public void PlayButtonClickSE() => PlaySE(SE_Button, vibrate: true);
     #endregion
+    static void TryVibrate()
+    {
+#if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
+        UnityEngine.Handheld.Vibrate();
+#else
+        // 모바일이 아니면 무시 (필요시 로그)
+        // Debug.Log("[Vibrate] skipped (not mobile build)");
+#endif
+
+    }
 }

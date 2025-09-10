@@ -43,7 +43,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             LoadMapData();
         }
-        
+
+        /// <summary>
+        /// 게임 모드 변경, 바꿀 때 이걸 쓰기(추적 용이함)
+        /// </summary>
+        public void SetGameMode(GameMode gameMode)
+        {
+            var currMode = GameMode;
+            GameMode = gameMode;
+            Debug.Log($"[MapManager] 게임 모드 변경 : {currMode} -> {GameMode}");
+        }
         public void PostInit() { }
         
         private void LoadMapData()
@@ -96,10 +105,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
 
-            // 크기 상이시 안전 범위만 칠함(필요하면 Grid를 재생성하도록 변경 가능)
             rows = Mathf.Min(rows, squares.GetLength(0));
             cols = Mathf.Min(cols, squares.GetLength(1));
-
+            
             for (int r = 0; r < rows; r++)
             {
                 for (int c = 0; c < cols; c++)
@@ -108,42 +116,56 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     var cell = gm.gridSquares[r, c];
                     if (!cell) continue;
 
-                    // 항상 보이도록
+                    // 항상 보이게
                     cell.gameObject.SetActive(true);
 
-                    bool occupied   = code is >= 1 and <= 10;     // 1~5: 블럭, 6~10: 블럭+과일
-                    bool hasFruit   = code is >= 6 and <= 10;
-                    int  blockIdx   = Mathf.Clamp(code - 1, 0, (map.blockImages?.Length ?? 1) - 1);
-                    int  fruitIdx   = Mathf.Clamp(code - 6, 0, (map.fruitImages?.Length ?? 1) - 1);
+                    bool occupied = (code >= 1 && code <= 10); // 1~5: 일반 블록, 6~10: 과일 블록(합쳐진거)
+                    bool hasFruit = (code >= 6 && code <= 10);
 
                     if (occupied)
                     {
-                        if (hasFruit && map.blockWithFruitIcons != null && fruitIdx < map.blockWithFruitIcons.Length && map.blockWithFruitIcons[fruitIdx] != null)
+                        if (hasFruit)
                         {
-                            cell.SetImage(map.blockWithFruitIcons[fruitIdx]);
-                            cell.SetFruitImage(false);
+                            // 과일 블록 (6~10): 합친 스프라이트 사용
+                            int f = code - 6; // 0~4
+                            if (map.blockWithFruitIcons != null &&
+                                f < map.blockWithFruitIcons.Length &&
+                                map.blockWithFruitIcons[f] != null)
+                            {
+                                cell.SetImage(map.blockWithFruitIcons[f]);
+                            }
+                            else
+                            {
+                                // 과일데이터 누락 시 경고만 남기고 스킵
+                                Debug.LogWarning($"[MapManager] blockWithFruitIcons[{f}] 없음");
+                            }
+                            cell.SetFruitImage(false, null); // 오버레이는 항상 OFF
                         }
                         else
                         {
-                            if (map.blockImages != null && blockIdx < map.blockImages.Length && map.blockImages[blockIdx] != null)
-                                cell.SetImage(map.blockImages[blockIdx]);
-
-                            if (hasFruit && map.fruitImages != null && fruitIdx < map.fruitImages.Length && map.fruitImages[fruitIdx] != null)
+                            // 일반 블록 (1~5)
+                            int i = code - 1; // 0~4
+                            if (map.blockImages != null &&
+                                i < map.blockImages.Length &&
+                                map.blockImages[i] != null)
                             {
-                                cell.SetFruitImage(true);
+                                cell.SetImage(map.blockImages[i]);
                             }
-                            else cell.SetFruitImage(false);
+                            cell.SetFruitImage(false, null); // 오버레이 OFF (잔상 방지)
                         }
                     }
                     else
                     {
-                        cell.SetFruitImage(false);
+                        // 빈 칸 (0)
+                        cell.SetFruitImage(false, null); // 혹시 남은 오버레이 제거
                     }
 
+                    // 모델(점유) → 뷰 동기화
                     gm.gridStates[r, c] = occupied; // true = 점유
-                    cell.SetOccupied(occupied);     // Active/Normal 시각 상태 동기화
+                    cell.SetOccupied(occupied);     // Active/Normal 시각 상태 적용
                 }
             }
+            
         }
         
         // 블록 규칙성
@@ -184,8 +206,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     /// 난이도 3~4 블록만 후보, 배치 시 '예약'하여 겹침 방지,
     /// 타일 합이 minTotalTiles 이상 될 때까지 반복.
     /// </summary>
-    public void GenerateClassicStartingMap(int minTotalTiles = 12, int maxPlacements = 5, bool avoidInstantLineClear = true, int perQuadrantTileCap = 8)
+    public void GenerateClassicStartingMap(int minTotalTiles = 30, int maxPlacements = 8, bool avoidInstantLineClear = true, int perQuadrantTileCap = 8)
     {
+        // -1) 클래식 모드가 아니면 즉시 종료
+        if (GameMode != GameMode.Classic) return;
+        
         var grid = GridManager.Instance?.gridSquares;
         if (grid == null) { Debug.LogError("[ClassicStart] gridSquares is null"); return; }
 
@@ -247,7 +272,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                 int tcount = GetTileCount(pick.s);
 
-                // ★ 분면 한도 검사: 초과하면 이 블록은 놓지 않고 "다음 분면"으로 이동
+                // 분면 한도 검사: 초과하면 이 블록은 놓지 않고 "다음 분면"으로 이동
                 if (quadTileSums[qi] + tcount > perQuadrantTileCap)
                 {
                     break; // 현재 분면 스캔 종료 → for 루프가 다음 분면으로 진행

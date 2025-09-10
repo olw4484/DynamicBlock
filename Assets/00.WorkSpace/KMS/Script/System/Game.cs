@@ -27,6 +27,7 @@ public static class Game
 
 
     public static bool IsBound { get; private set; }
+    public static bool IsAdsBound => Ads != null;
 
     public struct BindOptions
     {
@@ -45,6 +46,9 @@ public static class Game
         public string[] Duplicated;
         public (string type, int order)[] OrderList;
     }
+
+    public static void BindAds(IAdService svc) => Ads = svc;
+    public static void UnbindAds(IAdService svc) { if (Ads == svc) Ads = null; }
 
     public static void BindSceneFacades(
     AudioFxFacade audioFx,

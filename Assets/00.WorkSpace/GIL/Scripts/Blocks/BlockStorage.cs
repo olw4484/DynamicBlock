@@ -45,7 +45,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         // 게임 오버 1회만 발동 가드
         bool _gameOverFired;
         System.Action<ContinueGranted> _onContinue;
-
+        int _lastScore;
+        string _lastReason;
         bool _paused;
         private bool _initialized;
 
@@ -104,10 +105,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void GenerateAllBlocks()
         {
+            var blockManager = BlockSpawnManager.Instance;
             Debug.Log($"[Storage] >>> ENTER GenerateAllBlocks | paused={_paused} | " +
                       $"spawnPos={(blockSpawnPosList == null ? -1 : blockSpawnPosList.Count)} | " +
                       $"sprites={(shapeImageSprites == null ? -1 : shapeImageSprites.Count)} | " +
-                      $"hasSpawner={(BlockSpawnManager.Instance != null)} | this={GetInstanceID()}");
+                      $"hasSpawner={(blockManager != null)} | this={GetInstanceID()}");
 
             if (_paused)
             {
@@ -123,7 +125,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             _currentBlocks.Clear();
 
-            var spawner = BlockSpawnManager.Instance;
+            var spawner = blockManager;
             if (spawner == null) { Debug.LogError("[Storage] Spawner null"); return; }
 
             var wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
@@ -131,7 +133,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (wave == null || wave.Count == 0)
             {
                 Debug.LogError("[Storage] Wave is null/empty. Rebuilding weights and retry.");
-                //spawner.BuildWeightTable();
                 wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
                 if (wave == null || wave.Count == 0) return;
             }
@@ -158,7 +159,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (MapManager.Instance.GameMode == GameMode.Tutorial)
                 {
                     sprite = shapeImageSprites[0];
-                    //MapManager.Instance.GameMode = GameMode.Classic;
                 }
                 else
                 {
@@ -172,7 +172,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             if (previewMode)
-                BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, previewSprites);
+                blockManager.PreviewWaveNonOverlapping(wave, previewSprites);
         }
 
         private int GetRandomImageIndex()
@@ -197,15 +197,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             Debug.Log("===== GAME OVER! 더 이상 배치할 수 있는 블록이 없습니다. =====");
-            // TODO : 여기 밑에다가 게임 오버 붙이기!
-            // GenerateGameOver(bool)타입으로 한줄 요약 했으니 Reward 애드 광고 시청 성공?시에 붙이면 될 것으로 예상.
-            //ActivateGameOver();
-#if UNITY_EDITOR
-            _gameOverFired = true;
-            if (!GenerateAdRewardWave()) ActivateGameOver();
-#else
+
             ActivateGameOver();
-#endif
         }
 
         private void ActivateGameOver()
@@ -216,20 +209,22 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         // GameOver 트리거
         void FireGameOver(string reason = "NoPlace")
         {
-            if (_gameOverFired) { Debug.Log("[GameOver] blocked by guard"); return; }
+            if (_gameOverFired) { Debug.Log("[Downed] blocked by guard"); return; }
+
+            if (oneRevivePerRun && _reviveUsed)
+            {
+                ConfirmGameOverImmediate(reason);
+                return;
+            }
+
             _gameOverFired = true;
 
-            int score = ScoreManager.Instance ? ScoreManager.Instance.Score
+            _lastScore = ScoreManager.Instance ? ScoreManager.Instance.Score
                        : (Game.GM != null ? Game.GM.Score : 0);
+            _lastReason = reason;
 
-            Game.Bus.PublishSticky(new GameOver(score, reason));
-            Time.timeScale = 0f;
-
-
-            // 1) 예약
-            //TryQueueInterstitialAfterGameOver();
-            // (기존) 광고 흐름 유지가 필요하면 아래 라인 활성화
-            TryQueueInterstitialAfterGameOver();
+            Game.Bus.PublishImmediate(new PlayerDowned(_lastScore, _lastReason));
+            StartCoroutine(Co_PauseAndOpenRevive());
         }
         void TryQueueInterstitialAfterGameOver()
         {
@@ -264,7 +259,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 Debug.LogWarning("[Revive] 라인 보정 불가 → Revive 웨이브 생성 실패. GameOver 유지");
                 return false;
             }
-            
+
             // 2) 대기 중인 인터스티셜 광고 예약이 있다면 취소 (재개 직후 광고가 뜨는 것 방지)
             CancelQueuedInterstitialIfAny();
             // 3) GameOver 해제 & UI 닫기
@@ -272,15 +267,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _gameOverFired = false;
             Time.timeScale = 1f;
 
-            Game.Bus?.ClearSticky<GameOver>();
+            Game.Bus?.PublishImmediate(new RevivePerformed());
             Game.Bus?.PublishImmediate(new ContinueGranted());
 
             // 4) 손패를 Revive 웨이브로 교체하고, 손패 갱신 훅 호출
             var previewSprites = ApplyReviveWave(wave);
             ScoreManager.Instance?.OnHandRefilled();
-            
             BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
-            
+
             Debug.Log("[Revive] Revive 웨이브 적용 완료, 게임 재개");
             return true;
         }
@@ -333,7 +327,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             return previewSprites;
         }
-        private void CancelQueuedInterstitialIfAny() // ★ 추가
+        private void CancelQueuedInterstitialIfAny() //
         {
             if (_queuedInterstitialCo != null)
             {
@@ -363,6 +357,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 Game.Ads?.Refresh();
             }
         }
+        IEnumerator Co_PauseAndOpenRevive()
+        {
+            yield return new WaitForEndOfFrame();
+            Time.timeScale = 0f;
+            TryQueueInterstitialAfterGameOver();
+        }
 
         public void OnBlockPlaced(Block placedBlock)
         {
@@ -379,6 +379,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (ScoreManager.Instance != null)
                     ScoreManager.Instance.OnHandRefilled();
             }
+        }
+
+        public void ConfirmGameOver()
+        {
+            if (!_gameOverFired) return;
+            ConfirmGameOverImmediate(_lastReason);
         }
 
         #endregion
@@ -411,12 +417,25 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 Debug.Log("[Storage] Fallback OnGridReady (grid already built)");
                 OnGridReady(new GridReady(GridManager.Instance.rows, GridManager.Instance.cols));
             }
+
+            _bus.Subscribe<ReviveRequest>(_ =>
+            {
+                if (!GenerateAdRewardWave())
+                    ConfirmGameOver(); // 실패 시 곧바로 확정 오버
+            }, replaySticky: false);
+
+            _bus.Subscribe<GiveUpRequest>(_ => { ConfirmGameOver(); }, replaySticky: false);
         }
 
         public void ResetRuntime()
         {
             _gameOverFired = false;
+            _reviveUsed = false;
             Time.timeScale = 1f;
+            CancelQueuedInterstitialIfAny();
+
+            Game.Bus?.ClearSticky<PlayerDowned>();
+            Game.Bus?.ClearSticky<GameOverConfirmed>();
 
             // 생성/체크 잠깐 중지
             _paused = true;
@@ -450,6 +469,18 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             if (_bus != null || !Game.IsBound) return;
             SetDependencies(Game.Bus);
+        }
+
+        void ConfirmGameOverImmediate(string reason)
+        {
+            _lastScore = ScoreManager.Instance ? ScoreManager.Instance.Score
+                       : (Game.GM != null ? Game.GM.Score : 0);
+            _lastReason = reason;
+
+            CancelQueuedInterstitialIfAny();
+            Time.timeScale = 0f;
+
+            Game.Bus.PublishImmediate(new GameOverConfirmed(_lastScore, _lastReason));
         }
 
         #endregion
