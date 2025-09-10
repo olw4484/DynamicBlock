@@ -28,9 +28,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             nameField.RegisterValueChangedCallback(evt => { ChangeName(evt); });
             root.Add(nameField);
             
-            // var idField = new TextField("ID") { value = _target.Id };
-            // idField.RegisterValueChangedCallback(evt => { _target.Id = evt.newValue; });
-            // root.Add(idField);
+            var idField = new IntegerField("Difficulty") { value = _target.difficulty };
+            idField.RegisterValueChangedCallback(evt => { _target.difficulty = evt.newValue; });
+            root.Add(idField);
             
             // Navigation buttons
             var navContainer = new VisualElement { style = { flexDirection = FlexDirection.Row, justifyContent = Justify.SpaceBetween, marginBottom = 5 } };
@@ -45,7 +45,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             actionContainer.Add(CreateButton("Clear All", ClearAll));
             actionContainer.Add(CreateButton("Save", Save));
             root.Add(actionContainer);
-
+            
             root.Add(new Label("Click on a square to add/remove a block") { style = { marginBottom = 5 } });
 
             // Grid container

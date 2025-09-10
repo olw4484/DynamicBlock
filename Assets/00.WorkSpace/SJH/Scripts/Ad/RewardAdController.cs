@@ -54,7 +54,8 @@ public class RewardAdController
         // 시간 예외처리
         if (AdManager.Instance.NextRewardTime > DateTime.UtcNow)
         {
-            Debug.Log("시간이 지나지 않아 광고 재생을 스킵");
+            Debug.Log("시간이 지나지 않아 리워드 광고 재생을 스킵");
+			AdManager.Instance.NextRewardTime = DateTime.UtcNow;
 			return;
 		}
 

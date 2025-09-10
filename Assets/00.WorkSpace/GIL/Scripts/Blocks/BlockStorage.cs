@@ -26,11 +26,18 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         [Header("Block Placement Helper")] 
         [SerializeField] private bool previewMode = true;
-
+        
         [Header("AD")]
         [SerializeField] private float interstitialDelayAfterGameOver = 1f;
         private bool _adQueuedForThisGameOver;
+        
+        [Header("Revive")]
+        [SerializeField] private int  reviveWaveCount         = 3;     // Revive 웨이브 크기
+        [SerializeField] private bool oneRevivePerRun         = true;  // 라운드당 1회 제한
 
+        private bool _reviveUsed;
+        private Coroutine _queuedInterstitialCo; 
+        
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
@@ -151,7 +158,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (MapManager.Instance.GameMode == GameMode.Tutorial)
                 {
                     sprite = shapeImageSprites[0];
-                    MapManager.Instance.GameMode = GameMode.Classic;
+                    //MapManager.Instance.GameMode = GameMode.Classic;
                 }
                 else
                 {
@@ -190,9 +197,15 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             Debug.Log("===== GAME OVER! 더 이상 배치할 수 있는 블록이 없습니다. =====");
-
             // TODO : 여기 밑에다가 게임 오버 붙이기!
+            // GenerateGameOver(bool)타입으로 한줄 요약 했으니 Reward 애드 광고 시청 성공?시에 붙이면 될 것으로 예상.
+            //ActivateGameOver();
+#if UNITY_EDITOR
+            _gameOverFired = true;
+            if (!GenerateAdRewardWave()) ActivateGameOver();
+#else
             ActivateGameOver();
+#endif
         }
 
         private void ActivateGameOver()
@@ -211,18 +224,121 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             Game.Bus.PublishSticky(new GameOver(score, reason));
             Time.timeScale = 0f;
-
-            // 1) 예약
+            
+            // (기존) 광고 흐름 유지가 필요하면 아래 라인 활성화
             TryQueueInterstitialAfterGameOver();
         }
-
         void TryQueueInterstitialAfterGameOver()
         {
             if (_adQueuedForThisGameOver) return;
             _adQueuedForThisGameOver = true;
-            StartCoroutine(Co_ShowInterstitialAfterGameOver());
+            //StartCoroutine(Co_ShowInterstitialAfterGameOver());
+            _queuedInterstitialCo = StartCoroutine(Co_ShowInterstitialAfterGameOver());
         }
         
+        /// <summary>
+        /// 광고 보상(onRewarded) 또는 UI 버튼에서 호출하면,
+        /// GameOver 상태를 해제하고 Revive 웨이브를 손패에 적용하여 즉시 재개한다.
+        /// </summary>
+        /// <returns>true: 성공(재개) / false: 실패(그대로 GameOver 유지)</returns>
+        public bool GenerateAdRewardWave()
+        {
+            // 0) 호출 가드
+            if (oneRevivePerRun && _reviveUsed)
+            {
+                Debug.LogWarning("[Revive] 이미 Revive를 사용했습니다.");
+                return false;
+            }
+            if (!_gameOverFired)
+            {
+                Debug.LogWarning("[Revive] GameOver 상태가 아니라 Revive를 실행하지 않습니다.");
+                return false;
+            }
+
+            // 1) Revive 웨이브 생성 (라인 보정 → 가상 배치 + 라인 제거 반영)
+            if (!BlockSpawnManager.Instance.TryGenerateReviveWave(reviveWaveCount, out var wave, out var fits))
+            {
+                Debug.LogWarning("[Revive] 라인 보정 불가 → Revive 웨이브 생성 실패. GameOver 유지");
+                return false;
+            }
+            
+            // 2) 대기 중인 인터스티셜 광고 예약이 있다면 취소 (재개 직후 광고가 뜨는 것 방지)
+            CancelQueuedInterstitialIfAny();
+            // 3) GameOver 해제 & UI 닫기
+            _reviveUsed = true;
+            _gameOverFired = false;
+            Time.timeScale = 1f;
+
+            Game.Bus?.ClearSticky<GameOver>();
+            Game.Bus?.PublishImmediate(new ContinueGranted());
+
+            // 4) 손패를 Revive 웨이브로 교체하고, 손패 갱신 훅 호출
+            var previewSprites = ApplyReviveWave(wave);
+            ScoreManager.Instance?.OnHandRefilled();
+            
+            BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
+            
+            Debug.Log("[Revive] Revive 웨이브 적용 완료, 게임 재개");
+            return true;
+        }
+        
+        // === Revive 웨이브 적용 (손패 교체) ===
+        // === Revive 웨이브 적용 (손패 교체 + 스프라이트 수집) ===
+        private List<Sprite> ApplyReviveWave(List<ShapeData> wave)
+        {
+            // 1) 기존 손패 제거
+            if (_currentBlocks != null)
+            {
+                for (int i = _currentBlocks.Count - 1; i >= 0; i--)
+                    if (_currentBlocks[i] != null)
+                        Destroy(_currentBlocks[i].gameObject);
+                _currentBlocks.Clear();
+            }
+            else _currentBlocks = new List<Block>(wave.Count);
+
+            // 2) GenerateAllBlocks와 동일하게: 슬롯 개수만큼 previewSprites 준비
+            var previewSprites = new List<Sprite>(blockSpawnPosList.Count);
+            for (int k = 0; k < blockSpawnPosList.Count; k++) previewSprites.Add(null);
+
+            // 3) 같은 방식으로 생성 + 스프라이트 세팅
+            for (int i = 0; i < blockSpawnPosList.Count && i < wave.Count; i++)
+            {
+                var shape = wave[i];
+                if (shape == null)
+                {
+                    Debug.LogWarning($"[Revive] wave[{i}] is null → skip this slot.");
+                    continue;
+                }
+
+                // GenerateAllBlocks와 동일한 부모/좌표 체계
+                var go = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
+                var blk = go.GetComponent<Block>();
+                if (!blk) { Debug.LogError("[Revive] Block component missing"); Destroy(go); continue; }
+
+                // 스프라이트 선택 로직도 GenerateAllBlocks와 동일하게
+                Sprite sprite = shapeImageSprites[GetRandomImageIndex()];
+                // 프리팹 내 이미지 적용
+                var img = blk.shapePrefab ? blk.shapePrefab.GetComponent<Image>() : null;
+                if (img) img.sprite = sprite;
+
+                previewSprites[i] = sprite;
+
+                // 블록 초기화
+                blk.GenerateBlock(shape);
+                _currentBlocks.Add(blk);
+            }
+
+            return previewSprites;
+        }
+        private void CancelQueuedInterstitialIfAny() // ★ 추가
+        {
+            if (_queuedInterstitialCo != null)
+            {
+                StopCoroutine(_queuedInterstitialCo);
+                _queuedInterstitialCo = null;
+            }
+            _adQueuedForThisGameOver = false;
+        }
         IEnumerator Co_ShowInterstitialAfterGameOver()
         {
             // 2) 게임이 멈춰도 동작하는 Realtime 딜레이
