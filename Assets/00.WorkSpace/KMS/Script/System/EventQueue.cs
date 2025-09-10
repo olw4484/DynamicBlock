@@ -204,9 +204,17 @@ public readonly struct GameOver
 public readonly struct RewardedContinueRequest { }      // 명령(Non-Sticky)
 public readonly struct AdPlaying { }                    // 광고 시작(입력 잠금)
 public readonly struct AdFinished { }                   // 광고 종료(입력 해제)
-public readonly struct PlayerDowned { public readonly int score; public readonly string reason; public PlayerDowned(int s, string r) { score = s; reason = r; } }
+public readonly struct PlayerDowned
+{
+    public readonly int score; public readonly string reason;
+    public PlayerDowned(int s, string r) { score = s; reason = r; }
+}
+public readonly struct GameOverConfirmed
+{
+    public readonly int score; public readonly string reason;
+    public GameOverConfirmed(int s, string r) { score = s; reason = r; }
+}
 public readonly struct RevivePerformed { }
-public readonly struct GameOverConfirmed { public readonly int score; public readonly string reason; public GameOverConfirmed(int s, string r) { score = s; reason = r; } }
 public readonly struct ContinueGranted { }              // 명령 결과
 public readonly struct SaveRequested { }
 public readonly struct LoadRequested { }

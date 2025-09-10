@@ -137,13 +137,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
         }, replaySticky: true);
 
-        _bus.Subscribe<GameOver>(e =>
+        _bus.Subscribe<PlayerDowned>(e =>
         {
             if (_gameOverTotalText) _gameOverTotalText.text = $"TotalScore : {FormatScore(e.score)}";
             int best = Mathf.Max(e.score, _lastHighScore);
             if (_gameOverBestText) _gameOverBestText.text = $"Best : {FormatScore(best)}";
             SetPanel("Revive", true);
-        }, replaySticky: true);
+        }, replaySticky: false);
 
         // ±¤°í ¼º°ø ½Ã ¸ð´Þ ´Ý±â
         _bus.Subscribe<ContinueGranted>(_ =>

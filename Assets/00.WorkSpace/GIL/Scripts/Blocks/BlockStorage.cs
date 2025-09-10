@@ -210,7 +210,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         // GameOver 트리거
         void FireGameOver(string reason = "NoPlace")
         {
-            if (_gameOverFired) { Debug.Log("[GameOver] blocked by guard"); return; }
+            if (_gameOverFired) { Debug.Log("[Downed] blocked by guard"); return; }
             _gameOverFired = true;
 
             int score = ScoreManager.Instance ? ScoreManager.Instance.Score
@@ -219,11 +219,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Game.Bus.PublishSticky(new PlayerDowned(_lastScore, _lastReason));
             Time.timeScale = 0f;
 
+            _lastScore = score; _lastReason = reason;
+            Game.Bus.PublishImmediate(new PlayerDowned(_lastScore, _lastReason));
+            StartCoroutine(Co_PauseAndOpenRevive());
 
-            // 1) 예약
-            //TryQueueInterstitialAfterGameOver();
-            // (기존) 광고 흐름 유지가 필요하면 아래 라인 활성화
-            TryQueueInterstitialAfterGameOver();
         }
         void TryQueueInterstitialAfterGameOver()
         {
@@ -357,6 +356,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 // 준비 안 됐으면 로드만 재시도
                 Game.Ads?.Refresh();
             }
+        }
+        IEnumerator Co_PauseAndOpenRevive()
+        {
+            yield return new WaitForEndOfFrame();
+            Time.timeScale = 0f;
+            TryQueueInterstitialAfterGameOver();
         }
 
         public void OnBlockPlaced(Block placedBlock)
