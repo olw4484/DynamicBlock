@@ -289,6 +289,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         ApplyPlacementsToGrid(grid, placed);
         SyncGridStatesWithSquares();
         Debug.Log($"[ClassicStart] placed={placed.Count}, sumTiles={sumTiles}");
+        
+        // TODO : 여기에서 블럭 생성시키라는 알림 보내기
+        var gm = GridManager.Instance;
+        Game.Bus?.ClearSticky<GridReady>();
+        Game.Bus?.PublishSticky(new GridReady(gm.rows, gm.cols));
     }
 
     #region helpers

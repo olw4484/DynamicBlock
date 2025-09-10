@@ -7,59 +7,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 {
     public partial class BlockSpawnManager
     {
-        /// <summary>
-        /// 현 보드(실제 상태 기준)에서 shape를 놓을 수 있는 모든 위치 중
-        /// '겹치지 않는' 하나를 찾아 반환 (좌상단 우선). 못 찾으면 false.
-        /// </summary>
-        public bool TryFindOneFit(ShapeData shape, bool[,] virtualBoard, out FitInfo fit)
-        {
-            fit = default;
-            FitInfo foundFit = default;
-            
-            var gm = GridManager.Instance;
-            var squares = gm.gridSquares;
-            
-            // 경계 상자
-            var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
-            int shRows = maxY - minY + 1;
-            int shCols = maxX - minX + 1;
-            
-            bool okFound = false;
-            List<GridSquare> list = null;
-            
-            ForEachOffsetFromRandomStart(gm.rows, gm.cols, shRows, shCols, (oy, ox) =>
-            {
-                if (okFound) return;
-
-                bool ok = true;
-                list ??= new List<GridSquare>(8);
-                list.Clear();
-
-                for (int y = 0; y < shRows && ok; y++)
-                for (int x = 0; x < shCols; x++)
-                {
-                    if (!shape.rows[y + minY].columns[x + minX]) continue;
-
-                    bool occupied = virtualBoard != null
-                        ? virtualBoard[oy + y, ox + x]
-                        : squares[oy + y, ox + x].IsOccupied;
-
-                    if (occupied) { ok = false; break; }
-                    list.Add(squares[oy + y, ox + x]);
-                }
-
-                if (!ok) return;
-                foundFit = new FitInfo
-                {
-                    Offset = new Vector2Int(ox, oy),
-                    CoveredSquares = new List<GridSquare>(list) // 복사본
-                };
-                okFound = true;
-            });
-            fit = foundFit;
-            return okFound;
-        }
-
         private bool TryPickWeightedAmongPlaceableFromRandom(
             bool[,] board,
             HashSet<string> excludedByPenalty,
@@ -94,7 +41,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             chosen = last.s; chosenFit = last.fit; return true;
         }
         
-        private void SetLastGeneratedFits(IList<FitInfo> src)
+        private void SetLastGeneratedFits(List<FitInfo> src)
         {
             _lastGeneratedFits.Clear();
             if (src == null) return;
