@@ -105,10 +105,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void GenerateAllBlocks()
         {
+            var blockManager = BlockSpawnManager.Instance;
             Debug.Log($"[Storage] >>> ENTER GenerateAllBlocks | paused={_paused} | " +
                       $"spawnPos={(blockSpawnPosList == null ? -1 : blockSpawnPosList.Count)} | " +
                       $"sprites={(shapeImageSprites == null ? -1 : shapeImageSprites.Count)} | " +
-                      $"hasSpawner={(BlockSpawnManager.Instance != null)} | this={GetInstanceID()}");
+                      $"hasSpawner={(blockManager != null)} | this={GetInstanceID()}");
 
             if (_paused)
             {
@@ -124,7 +125,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             _currentBlocks.Clear();
 
-            var spawner = BlockSpawnManager.Instance;
+            var spawner = blockManager;
             if (spawner == null) { Debug.LogError("[Storage] Spawner null"); return; }
 
             var wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
@@ -132,7 +133,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (wave == null || wave.Count == 0)
             {
                 Debug.LogError("[Storage] Wave is null/empty. Rebuilding weights and retry.");
-                //spawner.BuildWeightTable();
                 wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
                 if (wave == null || wave.Count == 0) return;
             }
@@ -159,7 +159,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (MapManager.Instance.GameMode == GameMode.Tutorial)
                 {
                     sprite = shapeImageSprites[0];
-                    //MapManager.Instance.GameMode = GameMode.Classic;
                 }
                 else
                 {
@@ -173,7 +172,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             if (previewMode)
-                BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, previewSprites);
+                blockManager.PreviewWaveNonOverlapping(wave, previewSprites);
         }
 
         private int GetRandomImageIndex()
