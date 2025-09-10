@@ -64,21 +64,22 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
             }
         }, replaySticky: true);
 
-        _bus.Subscribe<GameOver>(e =>
+        _bus.Subscribe<GameOverConfirmed>(e =>
         {
             _legacy.UpdateClassicScore(e.score);
+
             if (_legacy.gameData != null && e.score > _legacy.gameData.highScore)
             {
                 _legacy.gameData.highScore = e.score;
                 _legacy.SaveGame();
-
                 Game.Fx.PlayNewScoreAt();
             }
             else
             {
                 Game.Fx.PlayGameOverAt();
             }
-            Debug.Log($"[SaveAdapter] GameOver total={e.score}, High={_legacy.gameData?.highScore}");
+
+            Debug.Log($"[SaveAdapter] FINAL GameOver total={e.score}, High={_legacy.gameData?.highScore}");
         }, replaySticky: false);
 
         _bus.Subscribe<LanguageChangeRequested>(e =>

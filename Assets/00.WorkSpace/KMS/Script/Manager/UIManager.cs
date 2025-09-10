@@ -137,12 +137,26 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
         }, replaySticky: true);
 
+        // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
             if (_gameOverTotalText) _gameOverTotalText.text = $"TotalScore : {FormatScore(e.score)}";
             int best = Mathf.Max(e.score, _lastHighScore);
             if (_gameOverBestText) _gameOverBestText.text = $"Best : {FormatScore(best)}";
             SetPanel("Revive", true);
+        }, replaySticky: false);
+
+        // 리바이브 패널 OFF
+        _bus.Subscribe<RevivePerformed>(_ =>
+        {
+            SetPanel("Revive", false);
+        }, replaySticky: false);
+
+        // 리바이브 패널 OFF + 결과 패널 ON
+        _bus.Subscribe<GameOverConfirmed>(e =>
+        {
+            SetPanel("Revive", false);
+            SetPanel("GameOver", true);
         }, replaySticky: false);
 
         // 광고 성공 시 모달 닫기

@@ -211,18 +211,21 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         void FireGameOver(string reason = "NoPlace")
         {
             if (_gameOverFired) { Debug.Log("[Downed] blocked by guard"); return; }
+
+            if (oneRevivePerRun && _reviveUsed)
+            {
+                ConfirmGameOverImmediate(reason);
+                return;
+            }
+
             _gameOverFired = true;
 
-            int score = ScoreManager.Instance ? ScoreManager.Instance.Score
+            _lastScore = ScoreManager.Instance ? ScoreManager.Instance.Score
                        : (Game.GM != null ? Game.GM.Score : 0);
+            _lastReason = reason;
 
-            Game.Bus.PublishSticky(new PlayerDowned(_lastScore, _lastReason));
-            Time.timeScale = 0f;
-
-            _lastScore = score; _lastReason = reason;
             Game.Bus.PublishImmediate(new PlayerDowned(_lastScore, _lastReason));
             StartCoroutine(Co_PauseAndOpenRevive());
-
         }
         void TryQueueInterstitialAfterGameOver()
         {
@@ -257,7 +260,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 Debug.LogWarning("[Revive] 라인 보정 불가 → Revive 웨이브 생성 실패. GameOver 유지");
                 return false;
             }
-            
+
             // 2) 대기 중인 인터스티셜 광고 예약이 있다면 취소 (재개 직후 광고가 뜨는 것 방지)
             CancelQueuedInterstitialIfAny();
             // 3) GameOver 해제 & UI 닫기
@@ -265,16 +268,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _gameOverFired = false;
             Time.timeScale = 1f;
 
-            Game.Bus?.ClearSticky<PlayerDowned>();
             Game.Bus?.PublishImmediate(new RevivePerformed());
             Game.Bus?.PublishImmediate(new ContinueGranted());
 
             // 4) 손패를 Revive 웨이브로 교체하고, 손패 갱신 훅 호출
             var previewSprites = ApplyReviveWave(wave);
             ScoreManager.Instance?.OnHandRefilled();
-            
             BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
-            
+
             Debug.Log("[Revive] Revive 웨이브 적용 완료, 게임 재개");
             return true;
         }
@@ -384,10 +385,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void ConfirmGameOver()
         {
             if (!_gameOverFired) return;
-
-            // 다운 스티키 정리 후 최종 오버 알림(이때 Save/FX 실행 대상)
-            Game.Bus?.ClearSticky<PlayerDowned>();
-            Game.Bus?.PublishImmediate(new GameOverConfirmed(_lastScore, _lastReason));
+            ConfirmGameOverImmediate(_lastReason);
         }
 
         #endregion
@@ -464,6 +462,18 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             if (_bus != null || !Game.IsBound) return;
             SetDependencies(Game.Bus);
+        }
+
+        void ConfirmGameOverImmediate(string reason)
+        {
+            _lastScore = ScoreManager.Instance ? ScoreManager.Instance.Score
+                       : (Game.GM != null ? Game.GM.Score : 0);
+            _lastReason = reason;
+
+            CancelQueuedInterstitialIfAny();
+            Time.timeScale = 0f;
+
+            Game.Bus.PublishImmediate(new GameOverConfirmed(_lastScore, _lastReason));
         }
 
         #endregion
