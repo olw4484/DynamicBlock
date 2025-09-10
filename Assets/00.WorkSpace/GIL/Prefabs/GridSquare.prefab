@@ -236,7 +236,6 @@ GameObject:
   - component: {fileID: 3550620031333312452}
   - component: {fileID: 4056496381054863285}
   - component: {fileID: 9095807433715496601}
-  - component: {fileID: 8665837936947863282}
   m_Layer: 6
   m_Name: GridSquare
   m_TagString: GridSquare
@@ -334,19 +333,6 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 106, y: 109}
   m_EdgeRadius: 0
---- !u!114 &8665837936947863282
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7774295559643476045}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cf1ece107c27b434e9b0bbdd994cdf69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gizmoColor: {r: 0, g: 1, b: 0, a: 1}
 --- !u!1 &8167114659163722746
 GameObject:
   m_ObjectHideFlags: 0

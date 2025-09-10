@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using UnityEngine;
 
@@ -14,14 +15,33 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             var result = new List<ShapeData>(count);
             var fitsForWave = new List<FitInfo>(count);
             
-            var mM = MapManager.Instance;
+            var Map = MapManager.Instance;
             // 튜토리얼일 경우 고정 블록 소환
-            if (mM.GameMode == GameMode.Tutorial)
+            if (Map.GameMode == GameMode.Tutorial)
             {
                 result.Add(null);
                 result.Add(shapeData[31]);
                 result.Add(null);
-                SetLastGeneratedFits(new[] { default(FitInfo), default(FitInfo), default(FitInfo) });
+
+                var squares = GridManager.Instance.gridSquares;
+                var fits = new List<FitInfo>(3);
+                
+                var tutorialFitInfo = new FitInfo()
+                {
+                    Offset = new Vector2Int(3, 3),
+                    CoveredSquares = new List<GridSquare>(4)
+                    {
+                        squares[3, 3],
+                        squares[3, 4],
+                        squares[4, 3],
+                        squares[4, 4]
+                    }
+                };
+                
+                fits.Add(default);
+                fits.Add(tutorialFitInfo);
+                fits.Add(default);
+                SetLastGeneratedFits(fits);
                 return result;
             }
             
