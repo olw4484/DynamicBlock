@@ -320,7 +320,9 @@ MonoBehaviour:
   normalImage: {fileID: 876931138}
   hoverImage: {fileID: 331351215}
   activeImage: {fileID: 1386270573}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1493022422}
+  IsOccupied: 0
   state: 0
 --- !u!224 &20626302
 RectTransform:
@@ -1564,7 +1566,9 @@ MonoBehaviour:
   normalImage: {fileID: 146614944}
   hoverImage: {fileID: 91835502}
   activeImage: {fileID: 1923163282}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1043755873}
+  IsOccupied: 0
   state: 0
 --- !u!224 &85849499
 RectTransform:
@@ -1908,7 +1912,9 @@ MonoBehaviour:
   normalImage: {fileID: 410714787}
   hoverImage: {fileID: 268943825}
   activeImage: {fileID: 1655253442}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 741759153}
+  IsOccupied: 0
   state: 0
 --- !u!224 &102116041
 RectTransform:
@@ -2590,7 +2596,9 @@ MonoBehaviour:
   normalImage: {fileID: 1588612926}
   hoverImage: {fileID: 521988975}
   activeImage: {fileID: 524804532}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 2112181781}
+  IsOccupied: 0
   state: 0
 --- !u!224 &154330897
 RectTransform:
@@ -2934,7 +2942,9 @@ MonoBehaviour:
   normalImage: {fileID: 23386035}
   hoverImage: {fileID: 1795305323}
   activeImage: {fileID: 2110121945}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1566231367}
+  IsOccupied: 0
   state: 0
 --- !u!224 &183446563
 RectTransform:
@@ -3128,7 +3138,9 @@ MonoBehaviour:
   normalImage: {fileID: 1307254158}
   hoverImage: {fileID: 1677516909}
   activeImage: {fileID: 2105008361}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1892079413}
+  IsOccupied: 0
   state: 0
 --- !u!224 &189926519
 RectTransform:
@@ -3622,7 +3634,9 @@ MonoBehaviour:
   normalImage: {fileID: 995749244}
   hoverImage: {fileID: 1472030755}
   activeImage: {fileID: 275821682}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1554860285}
+  IsOccupied: 0
   state: 0
 --- !u!224 &226867272
 RectTransform:
@@ -3816,7 +3830,9 @@ MonoBehaviour:
   normalImage: {fileID: 1632795985}
   hoverImage: {fileID: 1370684499}
   activeImage: {fileID: 716125114}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1169508960}
+  IsOccupied: 0
   state: 0
 --- !u!224 &240788619
 RectTransform:
@@ -4032,7 +4048,9 @@ MonoBehaviour:
   normalImage: {fileID: 206288120}
   hoverImage: {fileID: 1930708030}
   activeImage: {fileID: 897935024}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1980669554}
+  IsOccupied: 0
   state: 0
 --- !u!224 &246701597
 RectTransform:
@@ -4226,7 +4244,9 @@ MonoBehaviour:
   normalImage: {fileID: 1451219051}
   hoverImage: {fileID: 1318493336}
   activeImage: {fileID: 418324558}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 723407370}
+  IsOccupied: 0
   state: 0
 --- !u!224 &254297782
 RectTransform:
@@ -4420,7 +4440,9 @@ MonoBehaviour:
   normalImage: {fileID: 1134767733}
   hoverImage: {fileID: 1477025957}
   activeImage: {fileID: 1302064098}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1231072554}
+  IsOccupied: 0
   state: 0
 --- !u!224 &266783436
 RectTransform:
@@ -4914,7 +4936,9 @@ MonoBehaviour:
   normalImage: {fileID: 751052793}
   hoverImage: {fileID: 987204326}
   activeImage: {fileID: 1159351919}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1303260925}
+  IsOccupied: 0
   state: 0
 --- !u!224 &279000414
 RectTransform:
@@ -5120,7 +5144,9 @@ MonoBehaviour:
   normalImage: {fileID: 1568154028}
   hoverImage: {fileID: 1388794198}
   activeImage: {fileID: 1939100572}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 57268092}
+  IsOccupied: 0
   state: 0
 --- !u!224 &283637620
 RectTransform:
@@ -5239,7 +5265,9 @@ MonoBehaviour:
   normalImage: {fileID: 1710122177}
   hoverImage: {fileID: 1853804088}
   activeImage: {fileID: 1810854185}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1263009098}
+  IsOccupied: 0
   state: 0
 --- !u!224 &288846081
 RectTransform:
@@ -5433,7 +5461,9 @@ MonoBehaviour:
   normalImage: {fileID: 1957139680}
   hoverImage: {fileID: 1137761909}
   activeImage: {fileID: 58634946}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 760811372}
+  IsOccupied: 0
   state: 0
 --- !u!224 &291569527
 RectTransform:
@@ -5938,7 +5968,9 @@ MonoBehaviour:
   normalImage: {fileID: 50613961}
   hoverImage: {fileID: 2034317705}
   activeImage: {fileID: 741840301}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1445518334}
+  IsOccupied: 0
   state: 0
 --- !u!224 &333679210
 RectTransform:
@@ -6212,7 +6244,9 @@ MonoBehaviour:
   normalImage: {fileID: 1661762298}
   hoverImage: {fileID: 2109988980}
   activeImage: {fileID: 1387749416}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 116274678}
+  IsOccupied: 0
   state: 0
 --- !u!224 &339393280
 RectTransform:
@@ -6781,7 +6815,9 @@ MonoBehaviour:
   normalImage: {fileID: 160729949}
   hoverImage: {fileID: 1156587148}
   activeImage: {fileID: 126283395}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 428928035}
+  IsOccupied: 0
   state: 0
 --- !u!224 &402364344
 RectTransform:
@@ -7425,7 +7461,9 @@ MonoBehaviour:
   normalImage: {fileID: 1984343298}
   hoverImage: {fileID: 87754336}
   activeImage: {fileID: 583372005}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1489408510}
+  IsOccupied: 0
   state: 0
 --- !u!224 &442729141
 RectTransform:
@@ -7769,7 +7807,9 @@ MonoBehaviour:
   normalImage: {fileID: 528503506}
   hoverImage: {fileID: 1838096664}
   activeImage: {fileID: 211413177}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 409179885}
+  IsOccupied: 0
   state: 0
 --- !u!224 &458257191
 RectTransform:
@@ -8350,7 +8390,9 @@ MonoBehaviour:
   normalImage: {fileID: 1394905452}
   hoverImage: {fileID: 2089159605}
   activeImage: {fileID: 56891515}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 570291368}
+  IsOccupied: 0
   state: 0
 --- !u!224 &489820008
 RectTransform:
@@ -9905,7 +9947,9 @@ MonoBehaviour:
   normalImage: {fileID: 444714652}
   hoverImage: {fileID: 905114421}
   activeImage: {fileID: 689699540}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1094608493}
+  IsOccupied: 0
   state: 0
 --- !u!224 &683591333
 RectTransform:
@@ -10568,7 +10612,9 @@ MonoBehaviour:
   normalImage: {fileID: 828891351}
   hoverImage: {fileID: 1539105337}
   activeImage: {fileID: 866199754}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1560867584}
+  IsOccupied: 0
   state: 0
 --- !u!224 &727868175
 RectTransform:
@@ -11212,7 +11258,9 @@ MonoBehaviour:
   normalImage: {fileID: 264539515}
   hoverImage: {fileID: 1378590518}
   activeImage: {fileID: 58111980}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1242366815}
+  IsOccupied: 0
   state: 0
 --- !u!224 &770795567
 RectTransform:
@@ -11331,7 +11379,9 @@ MonoBehaviour:
   normalImage: {fileID: 621893958}
   hoverImage: {fileID: 252408024}
   activeImage: {fileID: 433470664}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 21059007}
+  IsOccupied: 0
   state: 0
 --- !u!224 &787879164
 RectTransform:
@@ -11450,7 +11500,9 @@ MonoBehaviour:
   normalImage: {fileID: 1857441646}
   hoverImage: {fileID: 1666179141}
   activeImage: {fileID: 1603644344}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1134576767}
+  IsOccupied: 0
   state: 0
 --- !u!224 &796157305
 RectTransform:
@@ -11944,7 +11996,9 @@ MonoBehaviour:
   normalImage: {fileID: 1047332950}
   hoverImage: {fileID: 1131287959}
   activeImage: {fileID: 2006825364}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 865571858}
+  IsOccupied: 0
   state: 0
 --- !u!224 &836052117
 RectTransform:
@@ -12327,6 +12381,28 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!1 &876990067 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3380224215291974016, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
+  m_PrefabInstance: {fileID: 848846381110867778}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &876990073
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 876990067}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68ef6b8dfc9409c4293251e938943853, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetPanel: Game
+  closeModalFirst: 1
+  modalsToClose:
+  - Revive
+  cooldown: 0.12
 --- !u!1 &880478549
 GameObject:
   m_ObjectHideFlags: 0
@@ -12363,7 +12439,9 @@ MonoBehaviour:
   normalImage: {fileID: 140430941}
   hoverImage: {fileID: 2049218606}
   activeImage: {fileID: 74190932}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 10983372}
+  IsOccupied: 0
   state: 0
 --- !u!224 &880478551
 RectTransform:
@@ -13087,7 +13165,9 @@ MonoBehaviour:
   normalImage: {fileID: 918946333}
   hoverImage: {fileID: 1776750022}
   activeImage: {fileID: 464370680}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1564183679}
+  IsOccupied: 0
   state: 0
 --- !u!224 &933179586
 RectTransform:
@@ -13281,7 +13361,9 @@ MonoBehaviour:
   normalImage: {fileID: 608796409}
   hoverImage: {fileID: 798935853}
   activeImage: {fileID: 179932349}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 361826710}
+  IsOccupied: 0
   state: 0
 --- !u!224 &956896845
 RectTransform:
@@ -13492,7 +13574,9 @@ MonoBehaviour:
   normalImage: {fileID: 1911051194}
   hoverImage: {fileID: 1010351973}
   activeImage: {fileID: 338467098}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1856291427}
+  IsOccupied: 0
   state: 0
 --- !u!224 &966211644
 RectTransform:
@@ -13611,7 +13695,9 @@ MonoBehaviour:
   normalImage: {fileID: 291331699}
   hoverImage: {fileID: 487509886}
   activeImage: {fileID: 1100942647}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1565440816}
+  IsOccupied: 0
   state: 0
 --- !u!224 &971118777
 RectTransform:
@@ -13805,7 +13891,9 @@ MonoBehaviour:
   normalImage: {fileID: 647804207}
   hoverImage: {fileID: 478167324}
   activeImage: {fileID: 1378761339}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 689351446}
+  IsOccupied: 0
   state: 0
 --- !u!224 &978250987
 RectTransform:
@@ -15166,7 +15254,9 @@ MonoBehaviour:
   normalImage: {fileID: 888044696}
   hoverImage: {fileID: 1604478563}
   activeImage: {fileID: 1485363653}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 644485354}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1115021243
 RectTransform:
@@ -15360,7 +15450,9 @@ MonoBehaviour:
   normalImage: {fileID: 1489305285}
   hoverImage: {fileID: 378783203}
   activeImage: {fileID: 281264947}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1100695510}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1132113890
 RectTransform:
@@ -15704,7 +15796,9 @@ MonoBehaviour:
   normalImage: {fileID: 913890299}
   hoverImage: {fileID: 1747817347}
   activeImage: {fileID: 2093776777}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1577417752}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1139342566
 RectTransform:
@@ -16198,7 +16292,9 @@ MonoBehaviour:
   normalImage: {fileID: 474348447}
   hoverImage: {fileID: 1880651118}
   activeImage: {fileID: 239752937}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1357998356}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1202168056
 RectTransform:
@@ -17063,7 +17159,9 @@ MonoBehaviour:
   normalImage: {fileID: 1635162803}
   hoverImage: {fileID: 455883062}
   activeImage: {fileID: 671530679}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 461775747}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1271283505
 RectTransform:
@@ -17182,7 +17280,9 @@ MonoBehaviour:
   normalImage: {fileID: 916874827}
   hoverImage: {fileID: 576740621}
   activeImage: {fileID: 1161318433}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1223055453}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1282997370
 RectTransform:
@@ -17301,7 +17401,9 @@ MonoBehaviour:
   normalImage: {fileID: 741262109}
   hoverImage: {fileID: 673514793}
   activeImage: {fileID: 1483911886}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1548192593}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1288945862
 RectTransform:
@@ -17495,7 +17597,9 @@ MonoBehaviour:
   normalImage: {fileID: 1501886028}
   hoverImage: {fileID: 1326020809}
   activeImage: {fileID: 45742752}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1296771975}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1292366310
 RectTransform:
@@ -19114,7 +19218,9 @@ MonoBehaviour:
   normalImage: {fileID: 2059855734}
   hoverImage: {fileID: 1901579594}
   activeImage: {fileID: 295813565}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 902015660}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1392020596
 RectTransform:
@@ -19308,7 +19414,9 @@ MonoBehaviour:
   normalImage: {fileID: 971562683}
   hoverImage: {fileID: 275143590}
   activeImage: {fileID: 1806902910}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 2970643}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1401913429
 RectTransform:
@@ -19512,7 +19620,9 @@ MonoBehaviour:
   normalImage: {fileID: 1386377333}
   hoverImage: {fileID: 1916738840}
   activeImage: {fileID: 1926225415}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 180454766}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1414430120
 RectTransform:
@@ -19631,7 +19741,9 @@ MonoBehaviour:
   normalImage: {fileID: 61454648}
   hoverImage: {fileID: 67049371}
   activeImage: {fileID: 817471446}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1224993343}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1429070182
 RectTransform:
@@ -21190,7 +21302,9 @@ MonoBehaviour:
   normalImage: {fileID: 874039439}
   hoverImage: {fileID: 746341807}
   activeImage: {fileID: 1463033344}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 588881563}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1528458717
 RectTransform:
@@ -21309,7 +21423,9 @@ MonoBehaviour:
   normalImage: {fileID: 949377563}
   hoverImage: {fileID: 1230812729}
   activeImage: {fileID: 638436050}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 2140377485}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1533715321
 RectTransform:
@@ -21503,7 +21619,9 @@ MonoBehaviour:
   normalImage: {fileID: 387105251}
   hoverImage: {fileID: 1454877171}
   activeImage: {fileID: 826976972}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1222679287}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1542053600
 RectTransform:
@@ -22147,7 +22265,9 @@ MonoBehaviour:
   normalImage: {fileID: 979732099}
   hoverImage: {fileID: 1346240550}
   activeImage: {fileID: 825638237}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 2120428778}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1569124675
 RectTransform:
@@ -22566,7 +22686,9 @@ MonoBehaviour:
   normalImage: {fileID: 1003181986}
   hoverImage: {fileID: 901004104}
   activeImage: {fileID: 1073274939}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 322505072}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1617056762
 RectTransform:
@@ -22835,7 +22957,9 @@ MonoBehaviour:
   normalImage: {fileID: 338207891}
   hoverImage: {fileID: 50939772}
   activeImage: {fileID: 23417989}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 684437032}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1642564262
 RectTransform:
@@ -23329,7 +23453,9 @@ MonoBehaviour:
   normalImage: {fileID: 201939928}
   hoverImage: {fileID: 184100390}
   activeImage: {fileID: 1226529454}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 349155202}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1699958388
 RectTransform:
@@ -23743,7 +23869,9 @@ MonoBehaviour:
   normalImage: {fileID: 364761561}
   hoverImage: {fileID: 204410589}
   activeImage: {fileID: 31023747}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 132079627}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1763585117
 RectTransform:
@@ -24387,7 +24515,9 @@ MonoBehaviour:
   normalImage: {fileID: 93797926}
   hoverImage: {fileID: 1310344820}
   activeImage: {fileID: 1677315858}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 666470696}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1846312713
 RectTransform:
@@ -24731,7 +24861,9 @@ MonoBehaviour:
   normalImage: {fileID: 1233542177}
   hoverImage: {fileID: 1373099101}
   activeImage: {fileID: 1289548071}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1490023586}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1858847605
 RectTransform:
@@ -25150,7 +25282,9 @@ MonoBehaviour:
   normalImage: {fileID: 415287979}
   hoverImage: {fileID: 1054240098}
   activeImage: {fileID: 357735875}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 462314374}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1903945800
 RectTransform:
@@ -25269,7 +25403,9 @@ MonoBehaviour:
   normalImage: {fileID: 2086634984}
   hoverImage: {fileID: 1792165024}
   activeImage: {fileID: 572206466}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1736268973}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1909075712
 RectTransform:
@@ -25913,7 +26049,9 @@ MonoBehaviour:
   normalImage: {fileID: 1889728290}
   hoverImage: {fileID: 1346712284}
   activeImage: {fileID: 604184840}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 415479382}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1976993346
 RectTransform:
@@ -26259,7 +26397,9 @@ MonoBehaviour:
   normalImage: {fileID: 1075056724}
   hoverImage: {fileID: 1436429077}
   activeImage: {fileID: 1409478070}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1058093961}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1987034786
 RectTransform:
@@ -26378,7 +26518,9 @@ MonoBehaviour:
   normalImage: {fileID: 453193133}
   hoverImage: {fileID: 591485127}
   activeImage: {fileID: 766405864}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 297767351}
+  IsOccupied: 0
   state: 0
 --- !u!224 &1994145119
 RectTransform:
@@ -26797,7 +26939,9 @@ MonoBehaviour:
   normalImage: {fileID: 1017868940}
   hoverImage: {fileID: 272867871}
   activeImage: {fileID: 1107184333}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 270197103}
+  IsOccupied: 0
   state: 0
 --- !u!224 &2071852517
 RectTransform:
@@ -26916,7 +27060,9 @@ MonoBehaviour:
   normalImage: {fileID: 23124413}
   hoverImage: {fileID: 1431660858}
   activeImage: {fileID: 1178825939}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 1437990831}
+  IsOccupied: 0
   state: 0
 --- !u!224 &2077363897
 RectTransform:
@@ -27362,7 +27508,9 @@ MonoBehaviour:
   normalImage: {fileID: 325504150}
   hoverImage: {fileID: 225597616}
   activeImage: {fileID: 1365711920}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 702076402}
+  IsOccupied: 0
   state: 0
 --- !u!224 &2097079381
 RectTransform:
@@ -27781,7 +27929,9 @@ MonoBehaviour:
   normalImage: {fileID: 1798045078}
   hoverImage: {fileID: 1386405274}
   activeImage: {fileID: 136884833}
+  lineClearImage: {fileID: 0}
   fruitImage: {fileID: 498146811}
+  IsOccupied: 0
   state: 0
 --- !u!224 &2120246211
 RectTransform:
@@ -28270,7 +28420,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3380224215291974016, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 876990073}
   m_SourcePrefab: {fileID: 100100000, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
 --- !u!114 &908819106134249480
 MonoBehaviour:
@@ -29535,6 +29688,8 @@ MonoBehaviour:
   shapesPanel: {fileID: 2628297390442567469}
   previewMode: 1
   interstitialDelayAfterGameOver: 1
+  reviveWaveCount: 3
+  oneRevivePerRun: 1
 --- !u!222 &5253678781707163977
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -30125,7 +30280,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -687.91394, y: -1223.1531}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!1 &7745243306215968433
 GameObject:
