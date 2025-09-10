@@ -270,3 +270,9 @@ public readonly struct ColClearFxEvent
         this.color = color;
     }
 }
+public readonly struct LanguageChangeRequested
+{
+    public readonly int index;
+    public LanguageChangeRequested(int index) { this.index = index; }
+}
+public readonly struct AllClear { } // AllClear

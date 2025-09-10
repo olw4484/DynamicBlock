@@ -224,7 +224,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             Game.Bus.PublishSticky(new GameOver(score, reason));
             Time.timeScale = 0f;
-            
+
+
+            // 1) 예약
+            //TryQueueInterstitialAfterGameOver();
             // (기존) 광고 흐름 유지가 필요하면 아래 라인 활성화
             TryQueueInterstitialAfterGameOver();
         }

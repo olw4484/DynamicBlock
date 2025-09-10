@@ -71,8 +71,26 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
             {
                 _legacy.gameData.highScore = e.score;
                 _legacy.SaveGame();
+
+                Game.Fx.PlayNewScoreAt();
+            }
+            else
+            {
+                Game.Fx.PlayGameOverAt();
             }
             Debug.Log($"[SaveAdapter] GameOver total={e.score}, High={_legacy.gameData?.highScore}");
+        }, replaySticky: false);
+
+        _bus.Subscribe<LanguageChangeRequested>(e =>
+        {
+            SetLanguageIndex(e.index);
+        }, replaySticky: false);
+
+        _bus.Subscribe<AllClear>(e =>
+        {
+            Game.Fx.PlayAllClear();
+            Debug.Log("[SaveAdapter] ALL CLEAR!");
+            //AllClearCount++;
         }, replaySticky: false);
     }
 

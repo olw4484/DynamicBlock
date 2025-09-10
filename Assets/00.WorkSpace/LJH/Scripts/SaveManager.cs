@@ -16,13 +16,13 @@ public class SaveManager : MonoBehaviour
     {
         filePath = Path.Combine(Application.persistentDataPath, "save.json");
         LoadGame();
-        AfterLoad?.Invoke(gameData);
+
     }
 
     // 게임 데이터 저장
     public void SaveGame()
     {
-        string json = JsonUtility.ToJson(gameData, true);
+        var json = JsonUtility.ToJson(gameData, true);
         File.WriteAllText(filePath, json);
         Debug.Log("저장 완료: " + filePath);
         AfterSave?.Invoke(gameData);
@@ -38,10 +38,10 @@ public class SaveManager : MonoBehaviour
         }
         else
         {
-            // 초기화 (스테이지 100개라고 가정)
             gameData = new GameData();
             gameData.stageCleared = new int[200];
             gameData.stageScores = new int[200];
+            gameData = GameData.NewDefault(200);
         }
         AfterLoad?.Invoke(gameData);
     }

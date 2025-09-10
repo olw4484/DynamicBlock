@@ -142,11 +142,15 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             if (_gameOverTotalText) _gameOverTotalText.text = $"TotalScore : {FormatScore(e.score)}";
             int best = Mathf.Max(e.score, _lastHighScore);
             if (_gameOverBestText) _gameOverBestText.text = $"Best : {FormatScore(best)}";
-            SetPanel("GameOver", true);
+            SetPanel("Revive", true);
         }, replaySticky: true);
 
         // 광고 성공 시 모달 닫기
-        _bus.Subscribe<ContinueGranted>(_ => SetPanel("GameOver", false), replaySticky: false);
+        _bus.Subscribe<ContinueGranted>(_ =>
+        {
+            SetPanel("Revive", false);
+            SetPanel("GameOver", false);
+        }, replaySticky: false);
 
         // 패널 토글 이벤트 구독 (Sticky 재생 켜둠)
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);

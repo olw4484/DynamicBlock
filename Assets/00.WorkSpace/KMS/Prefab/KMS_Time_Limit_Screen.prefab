@@ -1550,7 +1550,7 @@ GameObject:
   - component: {fileID: 6720032486532690315}
   - component: {fileID: 8770351384716598602}
   m_Layer: 5
-  m_Name: Time_Limit_Screen
+  m_Name: KMS_Time_Limit_Screen
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
