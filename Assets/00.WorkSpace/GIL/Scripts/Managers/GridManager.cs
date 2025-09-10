@@ -325,6 +325,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 for (int c = 0; c < cols; c++)
                     if (gridStates[r, c]) return false;  // 하나라도 true(점유)면 비지 않음
             return true;
+        }
         
         private bool PredictCompletedLines(
             List<GridSquare> addedSquares, 
