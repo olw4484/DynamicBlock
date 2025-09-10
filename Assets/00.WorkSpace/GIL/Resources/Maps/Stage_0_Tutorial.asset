@@ -39,4 +39,7 @@ MonoBehaviour:
   scoreGoal: 0
   fruitEnabled: 0000000000
   fruitGoals: 0000000000000000000000000000000000000000
-  alpha: 1
+  alphaMin: 0.5
+  alphaMax: 1.5
+  charlieMin: 0.5
+  charlieMax: 1.5
