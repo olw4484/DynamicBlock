@@ -158,7 +158,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (MapManager.Instance.GameMode == GameMode.Tutorial)
                 {
                     sprite = shapeImageSprites[0];
-                    MapManager.Instance.GameMode = GameMode.Classic;
+                    //MapManager.Instance.GameMode = GameMode.Classic;
                 }
                 else
                 {
@@ -316,17 +316,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 if (!blk) { Debug.LogError("[Revive] Block component missing"); Destroy(go); continue; }
 
                 // 스프라이트 선택 로직도 GenerateAllBlocks와 동일하게
-                Sprite sprite = null;
-                if (MapManager.Instance.GameMode == GameMode.Tutorial)
-                {
-                    sprite = shapeImageSprites[0];
-                    MapManager.Instance.GameMode = GameMode.Classic;
-                }
-                else
-                {
-                    sprite = shapeImageSprites[GetRandomImageIndex()];
-                }
-
+                Sprite sprite = shapeImageSprites[GetRandomImageIndex()];
                 // 프리팹 내 이미지 적용
                 var img = blk.shapePrefab ? blk.shapePrefab.GetComponent<Image>() : null;
                 if (img) img.sprite = sprite;

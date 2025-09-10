@@ -14,7 +14,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [Header("Resources")] 
         [SerializeField] private string resourcesPath = "Shapes";
-        [SerializeField] private List<ShapeData> shapeData;
+        public List<ShapeData> shapeData;
         
         [Header("Fit Info")]
         private readonly List<FitInfo> _lastGeneratedFits = new List<FitInfo>(4);
