@@ -106,6 +106,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             BlockSpawnManager.Instance?.ClearPreview();
             
+            if(MapManager.Instance.GameMode == GameMode.Tutorial) 
+                MapManager.Instance.SetGameMode(GameMode.Classic);
+            
             _isDragging = false;
             
             _shapeTransform.localScale = shapeSelectedScale;
@@ -155,9 +158,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             
             GridManager.Instance.ClearHoverPreview();
-            
-            if(MapManager.Instance.GameMode == GameMode.Tutorial) 
-                MapManager.Instance.GameMode = GameMode.Classic;
         }
         
         private void MoveBlock(PointerEventData eventData)

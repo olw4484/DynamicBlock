@@ -1,3 +1,4 @@
+using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
 
 public sealed class RestartOnClick : MonoBehaviour
@@ -5,9 +6,9 @@ public sealed class RestartOnClick : MonoBehaviour
     public enum RestartMode { SoftReset, ReloadSceneViaEvent, ReloadSceneDirect }
 
     [SerializeField] RestartMode mode = RestartMode.SoftReset;
-    [SerializeField] string[] closePanels = { "Options", "GameOver" }; // ÇÊ¿ä½Ã
-    [SerializeField] string openPanelAfter = "Game";    // SoftResetÀÏ ¶§ ¿­ ÆĞ³Î
-    [SerializeField] string gameplayScene = "Gameplay"; // ÇÏµå ¸®¼Â ´ë»ó ¾À
+    [SerializeField] string[] closePanels = { "Options", "GameOver" }; // ï¿½Ê¿ï¿½ï¿½
+    [SerializeField] string openPanelAfter = "Game";    // SoftResetï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½Ğ³ï¿½
+    [SerializeField] string gameplayScene = "Gameplay"; // ï¿½Ïµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½
     [SerializeField] float cooldown = 0.12f;
 
     float _cool;
@@ -25,6 +26,9 @@ public sealed class RestartOnClick : MonoBehaviour
         {
             case RestartMode.SoftReset:
                 RestartFlow.SoftReset(openPanelAfter, closePanels);
+                // GIL_Add
+                // ì§€ê¸ˆì€ ì†Œí”„íŠ¸ ë¦¬ì…‹ ì‹œì‘ì´ë¼ ì—¬ê¸°ì— í´ë˜ì‹ ë§µ ìƒì„± ì•Œê³ ë¦¬ì¦˜ ì ìš©
+                MapManager.Instance.GenerateClassicStartingMap(minTotalTiles: 30, maxPlacements: 8);
                 break;
             case RestartMode.ReloadSceneViaEvent:
                 RestartFlow.ReloadViaEvent(gameplayScene);

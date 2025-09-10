@@ -1,11 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
 
 public sealed class PanelSwitchOnClick : MonoBehaviour
 {
     [SerializeField] string targetPanel = "Game"; // "Game" or "Main"
-    [SerializeField] bool closeModalFirst = true; // GameOver °°Àº ¸ğ´Ş ¸ÕÀú ²ô±â
+    [SerializeField] bool closeModalFirst = true; // GameOver ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     [SerializeField] string[] modalsToClose = { "GameOver", "Option" };
     [SerializeField] float cooldown = 0.12f;
 
@@ -33,7 +34,11 @@ public sealed class PanelSwitchOnClick : MonoBehaviour
             }
         }
 
-        // Àü¿ª ¸®¼Â + UI ÀüÈ¯ ¿äÃ»(¿øÀÚÀû)
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ + UI ï¿½ï¿½È¯ ï¿½ï¿½Ã»(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
         bus.PublishImmediate(new GameResetRequest(targetPanel));
+        
+        // GIL Add
+        // í´ë˜ì‹ ëª¨ë“œì¼ ê²½ìš° ë§µ ìƒì„± ì•Œê³ ë¦¬ì¦˜ ì‘ë™.
+        MapManager.Instance.GenerateClassicStartingMap();
     }
 }

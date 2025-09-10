@@ -43,7 +43,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             LoadMapData();
         }
-        
+
+        /// <summary>
+        /// 게임 모드 변경, 바꿀 때 이걸 쓰기(추적 용이함)
+        /// </summary>
+        public void SetGameMode(GameMode gameMode)
+        {
+            var currMode = GameMode;
+            GameMode = gameMode;
+            Debug.Log($"[MapManager] 게임 모드 변경 : {currMode} -> {GameMode}");
+        }
         public void PostInit() { }
         
         private void LoadMapData()
@@ -197,8 +206,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     /// 난이도 3~4 블록만 후보, 배치 시 '예약'하여 겹침 방지,
     /// 타일 합이 minTotalTiles 이상 될 때까지 반복.
     /// </summary>
-    public void GenerateClassicStartingMap(int minTotalTiles = 12, int maxPlacements = 5, bool avoidInstantLineClear = true, int perQuadrantTileCap = 8)
+    public void GenerateClassicStartingMap(int minTotalTiles = 30, int maxPlacements = 8, bool avoidInstantLineClear = true, int perQuadrantTileCap = 8)
     {
+        // -1) 클래식 모드가 아니면 즉시 종료
+        if (GameMode != GameMode.Classic) return;
+        
         var grid = GridManager.Instance?.gridSquares;
         if (grid == null) { Debug.LogError("[ClassicStart] gridSquares is null"); return; }
 
