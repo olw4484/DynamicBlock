@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using JetBrains.Annotations;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -25,6 +26,6 @@ public class BlockFxFacade : MonoBehaviour, IFx
     public void PlayRowPerimeter(int row, Color color) => particle?.PlayRowPerimeterParticle(row, color);
     public void PlayColPerimeter(int col, Color color) => particle?.PlayColPerimeterParticle(col, color);
     public void PlayAllClear() => particle?.PlayAllClear();
-    public void PlayNewScore() => particle?.PlayNewScore();
-    public void PlayGameOver() => particle?.PlayGameOver();
+    public void PlayGameOverAt() => particle?.PlayGameOverAt();
+    public void PlayNewScoreAt() => particle?.PlayNewScoreAt();
 }

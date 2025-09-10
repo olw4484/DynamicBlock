@@ -72,11 +72,11 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
                 _legacy.gameData.highScore = e.score;
                 _legacy.SaveGame();
 
-                Game.Fx.PlayNewScore();
+                Game.Fx.PlayNewScoreAt();
             }
             else
             {
-                Game.Fx.PlayGameOver();
+                Game.Fx.PlayGameOverAt();
             }
             Debug.Log($"[SaveAdapter] GameOver total={e.score}, High={_legacy.gameData?.highScore}");
         }, replaySticky: false);

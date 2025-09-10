@@ -9,6 +9,6 @@ public interface IFx
     void PlayRowPerimeter(int row, Color color);
     void PlayColPerimeter(int col, Color color);
     void PlayAllClear();
-    void PlayNewScore();
-    void PlayGameOver();
+    void PlayGameOverAt();
+    void PlayNewScoreAt();
 }
