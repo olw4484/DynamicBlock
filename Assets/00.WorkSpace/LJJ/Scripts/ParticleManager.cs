@@ -46,9 +46,7 @@ public class ParticleManager : MonoBehaviour
         InitializePool();
         RectTransform squareRect = gridSquare.GetComponent<RectTransform>();
         squareSize = squareRect.sizeDelta;
-
-        //squarePos = squareRect.position;
-        //ï¿½Î¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¾Æ¿ï¿½ï¿½Ì¸ï¿½ localPositionï¿½ï¿½ ï¿½Ï°ï¿½ï¿½ï¿½ï¿½Ì¶ï¿½ ï¿½ï¿½ï¿½ï¿½
+        
         squarePos = squareRect.localPosition;
 
         NonPoolInit();
@@ -134,6 +132,7 @@ public class ParticleManager : MonoBehaviour
                 }
 
                 GameObject obj = Instantiate(destroyParticle, gridParent);
+                obj.transform.localScale = new Vector3(5f, 5f, 1f);
                 GameObject obj2 = Instantiate(perimeterParticle, gridParent);
                 obj.SetActive(false);
                 obj2.SetActive(false);
@@ -181,7 +180,7 @@ public class ParticleManager : MonoBehaviour
             _ => s.constant,
         };
     }
-    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ¼Å¬ ï¿½ï¿½ï¿½
+    // ºí·°ÆÄ±« ÆÄÆ¼Å¬
     public void PlayRowParticle(int index, UnityEngine.Color color)
     {
         if (destroyPool.Count == 0)
@@ -191,18 +190,13 @@ public class ParticleManager : MonoBehaviour
         }
 
         ParticleSystem ps = destroyPool.Dequeue();
-        
-        //ps.transform.localScale = new Vector3(6f, 6f, 1f); // ï¿½Ê¿ä¿¡ ï¿½ï¿½ï¿½ï¿½ Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
-
-        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½: ParticleSystemï¿½ï¿½ Main ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½)
         var main = ps.main;
         main.startColor = color;
 
         ps.gameObject.SetActive(true);
         ps.Clear();
         ps.transform.localPosition = RowIndexToWorld(index);
-        ps.transform.localScale = new Vector3(5f, 5f, 1f);
-        ps.transform.rotation = Quaternion.Euler(0f, 0f, 90f); // 90ï¿½ï¿½ È¸ï¿½ï¿½
+        ps.transform.rotation = Quaternion.Euler(0f, 0f, 90f); // 90µµ È¸Àü
 
         Debug.Log($"Row Particle position: {ps.transform.localPosition}");
         ps.Play();
@@ -210,7 +204,6 @@ public class ParticleManager : MonoBehaviour
         StartCoroutine(ReturnToDestroyPool(ps, main.duration));
     }
 
-    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ¼Å¬ ï¿½ï¿½ï¿½
     public void PlayColParticle(int index, UnityEngine.Color color)
     {
         if (destroyPool.Count == 0)
@@ -220,17 +213,12 @@ public class ParticleManager : MonoBehaviour
         }
 
         ParticleSystem ps = destroyPool.Dequeue();
-        
-        //ps.transform.localScale = new Vector3(5f, 5f, 1f); // ï¿½Ê¿ä¿¡ ï¿½ï¿½ï¿½ï¿½ Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
-
-        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½: ParticleSystemï¿½ï¿½ Main ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½)
         var main = ps.main;
         main.startColor = color;
 
         ps.gameObject.SetActive(true);
         ps.Clear();
         ps.transform.localPosition = ColIndexToWorld(index);
-        ps.transform.localScale = new Vector3(5f, 5f, 1f);
 
         Debug.Log($"Col Particle position: {ps.transform.localPosition}");
         ps.Play();
@@ -238,20 +226,17 @@ public class ParticleManager : MonoBehaviour
         StartCoroutine(ReturnToDestroyPool(ps, main.duration));
     }
 
-    // ï¿½ï¿½ï¿½ï¿½ ï¿½×µÎ¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ¼Å¬ ï¿½ï¿½ï¿½
+    // ÆÄ±« ¿¹Á¤ ÆÄÆ¼Å¬ Àç»ý
     public void PlayRowPerimeterParticle(int index, UnityEngine.Color color)
     {
-        if (destroyPool.Count == 0)
+        if (perimeterPool.Count == 0)
         {
             Debug.LogWarning("Particle pool exhausted! Consider increasing pool size.");
             return;
         }
 
-        ParticleSystem ps = destroyPool.Dequeue();
+        ParticleSystem ps = perimeterPool.Dequeue();
 
-        //ps.transform.localScale = new Vector3(6f, 6f, 1f); // ï¿½Ê¿ä¿¡ ï¿½ï¿½ï¿½ï¿½ Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
-
-        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½: ParticleSystemï¿½ï¿½ Main ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½)
         var main = ps.main;
         main.startColor = color;
 
@@ -259,7 +244,7 @@ public class ParticleManager : MonoBehaviour
         ps.Clear();
         ps.transform.localPosition = RowIndexToWorld(index);
         ps.transform.localScale = new Vector3(5f, 5f, 1f);
-        ps.transform.rotation = Quaternion.Euler(0f, 0f, 90f); // 90ï¿½ï¿½ È¸ï¿½ï¿½
+        ps.transform.rotation = Quaternion.Euler(0f, 0f, 90f); // 90µµ È¸Àü
 
         Debug.Log($"Row Particle position: {ps.transform.localPosition}");
         ps.Play();
@@ -267,7 +252,6 @@ public class ParticleManager : MonoBehaviour
         StartCoroutine(ReturnToPerimeterPool(ps, main.duration));
     }
 
-    // ï¿½ï¿½ï¿½ï¿½ ï¿½×µÎ¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ¼Å¬ ï¿½ï¿½ï¿½
     public void PlayColPerimeterParticle(int index, UnityEngine.Color color)
     {
         if (perimeterPool.Count == 0)
@@ -278,9 +262,6 @@ public class ParticleManager : MonoBehaviour
 
         ParticleSystem ps = perimeterPool.Dequeue();
 
-        //ps.transform.localScale = new Vector3(5f, 5f, 1f); // ï¿½Ê¿ä¿¡ ï¿½ï¿½ï¿½ï¿½ Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
-
-        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½: ParticleSystemï¿½ï¿½ Main ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½)
         var main = ps.main;
         main.startColor = color;
 
@@ -297,7 +278,7 @@ public class ParticleManager : MonoBehaviour
 
     public Vector3 RowIndexToWorld(int rowIndex)
     {
-        // ï¿½ß¾ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ X ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ (ï¿½ï¿½: 8Ä­ï¿½Ì¸ï¿½ 3.5Ä­ offset)
+        
         float offsetX = (squareSize.x + spacing.x) * 3.5f;
         float offsetY = -(squareSize.y + spacing.y) * rowIndex;
 
@@ -312,7 +293,7 @@ public class ParticleManager : MonoBehaviour
     public Vector3 ColIndexToWorld(int colIndex)
     {
         float offsetX = (squareSize.x + spacing.x) * colIndex;
-        float offsetY = -(squareSize.y + spacing.y) * 3.5f; // ï¿½ß¾ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+        float offsetY = -(squareSize.y + spacing.y) * 3.5f;
 
         Vector3 offset = new Vector3(offsetX, offsetY, -5f);
         Vector3 worldPos = squarePos + offset;
@@ -322,28 +303,27 @@ public class ParticleManager : MonoBehaviour
         return worldPos;
     }
 
-
-    // ï¿½ï¿½ï¿½ï¿½ Return to pool
+    // ÆÄ±« ÆÄÆ¼Å¬ Return to pool
     private System.Collections.IEnumerator ReturnToDestroyPool(ParticleSystem ps, float delay)
     {
         yield return new WaitForSeconds(delay);
         ps.Stop();
-        ps.transform.rotation = Quaternion.identity; // È¸ï¿½ï¿½ ï¿½Ê±ï¿½È­
+        ps.transform.rotation = Quaternion.identity; // È¸Àü ÃÊ±âÈ­
         ps.gameObject.SetActive(false);
         destroyPool.Enqueue(ps);
     }
 
-    // ï¿½ï¿½ï¿½ï¿½ Return to pool
+    // ÆÄ±« ¿¹Á¤ ÆÄÆ¼Å¬ Return to pool
     private System.Collections.IEnumerator ReturnToPerimeterPool(ParticleSystem ps, float delay)
     {
         yield return new WaitForSeconds(delay);
         ps.Stop();
-        ps.transform.rotation = Quaternion.identity; // È¸ï¿½ï¿½ ï¿½Ê±ï¿½È­
+        ps.transform.rotation = Quaternion.identity; // È¸Àü ÃÊ±âÈ­
         ps.gameObject.SetActive(false);
         destroyPool.Enqueue(ps);
     }
 
-    // ï¿½ï¿½Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ¼Å¬ ï¿½ï¿½ï¿½
+    // Non Pool All Clear Particle
     public void PlayAllClear()
     {
         foreach (var ps in allClearPSs)
@@ -354,7 +334,7 @@ public class ParticleManager : MonoBehaviour
         }
     }
 
-    // ï¿½ï¿½ï¿½ï¿½ï¿½Ú¾ï¿½ ï¿½ï¿½Æ¼Å¬ ï¿½ï¿½ï¿½
+    // Non Pool New Score Particle
     public void PlayNewScore()
     { 
         newScorePS.gameObject.SetActive(true);
@@ -362,7 +342,7 @@ public class ParticleManager : MonoBehaviour
         StartCoroutine(DisableNonPool(newScorePS, 3f));
     }
 
-    // ï¿½ï¿½ï¿½Ó¿ï¿½ï¿½ï¿½ ï¿½ï¿½Æ¼Å¬ ï¿½ï¿½ï¿½
+    // Non Pool Game Over Particle
     public void PlayGameOver()
     { 
         gameOverPS.gameObject.SetActive(true);
@@ -370,7 +350,7 @@ public class ParticleManager : MonoBehaviour
         StartCoroutine(DisableNonPool(gameOverPS, 3f));
     }
 
-    // ï¿½ï¿½Ç® ï¿½ï¿½Æ¼Å¬ ï¿½ï¿½È°ï¿½ï¿½È­
+    // Non Pool Particle Disable
     private IEnumerator DisableNonPool(ParticleSystem ps, float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -384,14 +364,11 @@ public class ParticleManager : MonoBehaviour
 
         var gridRT = gridParent as RectTransform;
 
-        // 1) UI ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ UI ï¿½ï¿½ï¿½ï¿½
         Vector3 uiWorld = gridRT.TransformPoint(uiLocal);
 
-        // 2) UI ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½Å©ï¿½ï¿½ ï¿½È¼ï¿½
         var uiCam = uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : uiCanvas.worldCamera;
         Vector2 screen = RectTransformUtility.WorldToScreenPoint(uiCam, uiWorld);
 
-        // 3) RT ï¿½Ø»ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         if (fxCamera.targetTexture != null)
         {
             float sx = (float)fxCamera.pixelWidth / Screen.width;
@@ -399,11 +376,9 @@ public class ParticleManager : MonoBehaviour
             screen.x *= sx; screen.y *= sy;
         }
 
-        // 4) ï¿½ï¿½Å©ï¿½ï¿½ ï¿½ï¿½ FX ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ zï¿½ï¿½ Ä«ï¿½Þ¶ï¿½ï¿½FXï¿½ï¿½ï¿½ ï¿½Å¸ï¿½)
         float depth = Mathf.Abs(fxRoot.position.z - fxCamera.transform.position.z);
         Vector3 fxWorld = fxCamera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, depth));
 
-        // 5) FX ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ FX ï¿½ï¿½ï¿½ï¿½
         return fxRoot.InverseTransformPoint(fxWorld);
     }
 }
