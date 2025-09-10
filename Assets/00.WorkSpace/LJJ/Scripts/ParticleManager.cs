@@ -489,21 +489,31 @@ public class ParticleManager : MonoBehaviour
     // 2) 단발 FX (비풀, 자동 비활성)
     public void PlayAllClear()
     {
-        for (int i = 0; i < allClearPSs.Count; i++)
+        // 고정 위치/회전값 리스트
+        Vector3[] positions =
         {
-            var ps = allClearPSs[i];
-            var anchor = (allClearPos != null && i < allClearPos.Length) ? allClearPos[i] : null;
-            if (!ps || !anchor) continue;
+        new Vector3(5f, 4f, 0f),
+        new Vector3(-5f, 4f, 0f)
+    };
 
-            var uiWorld = GetRectWorldCenter(anchor);
-            var fxLocal = UiWorldToFxLocal(uiWorld);
+        Vector3[] rotations =
+        {
+        new Vector3(330f, 270f, 0f),
+        new Vector3(330f, 90f, 0f)
+    };
+
+        for (int i = 0; i < positions.Length; i++)
+        {
+            if (i >= allClearPSs.Count) break; // 파티클 개수 초과 방지
+
+            var ps = allClearPSs[i];
+            if (!ps) continue;
 
             var t = ps.transform;
             t.SetParent(fxRoot, false);
-            t.localPosition = fxLocal;
-            t.localRotation = Quaternion.identity;
+            t.localPosition = positions[i];
+            t.localRotation = Quaternion.Euler(rotations[i]);
             ApplyAllClearSize(ps);
-            //t.localScale = Vector3.one;
 
             var param = new FxParams(
                 color: null,
@@ -513,15 +523,9 @@ public class ParticleManager : MonoBehaviour
                 uniformScale: 1f
             );
 
-            // 속도/버스트가 0인 프리팹일 때 기본 폭발값 보정
-            EnsureExplosionFallback(ps);
-
-            PlayOnceCommon(ps, new SpawnTarget(
-                SpawnMode.AnchorRect, a: anchor, rotZ: 0f, unscaledTime: true, dur: LifetimeMax(ps.main)),
-                param, returnToPool: false);
+            ps.Play();
         }
     }
-
     public void PlayNewScoreAt(RectTransform anchor = null, Vector2 pixelOffset = default)
     {
         if (!newScorePS) return;
