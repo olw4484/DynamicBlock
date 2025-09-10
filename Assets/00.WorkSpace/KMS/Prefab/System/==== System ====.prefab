@@ -142,8 +142,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   budgetPerFrame: 8
   defaultCooldownMs: 60
-  audioMgr: {fileID: 0}
-  idTable: []
 --- !u!1 &3488632808665489014
 GameObject:
   m_ObjectHideFlags: 0
@@ -352,10 +350,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fxCamera: {fileID: 0}
-  fxComposite: {fileID: 0}
-  resolutionScale: 1
-  useHdr: 0
-  useMsaa: 0
+  composite: {fileID: 0}
+  rtAsset: {fileID: 8400000, guid: 238d9851dabb2994ea5cfee3a1c46699, type: 2}
+  width: 0
+  height: 0
 --- !u!1 &6777955721716537448
 GameObject:
   m_ObjectHideFlags: 0
@@ -449,14 +447,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   particle: {fileID: 0}
-  effectLane: {fileID: 1869450681150047055}
-  audioFx: {fileID: 6742991968559397522}
-  rowClearFxId: 2000
-  colClearFxId: 2001
-  rowClearSfxId: 1001
-  colClearSfxId: 1002
-  theme: {fileID: 11400000, guid: 4ae746cab0ed39d438fcb6189d4fcd54, type: 2}
-  fxSpawnParent: {fileID: 0}
 --- !u!1 &8617389873866088561
 GameObject:
   m_ObjectHideFlags: 0

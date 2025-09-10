@@ -23,6 +23,7 @@ public static class Game
     public static EffectLane EffectLane { get; private set; }
     public static SoundLane SoundLane { get; private set; }
     public static IAdService Ads { get; private set; }
+    public static IFx Fx { get; private set; }
 
 
     public static bool IsBound { get; private set; }
@@ -55,6 +56,7 @@ public static class Game
         BlockFx = blockFx;
         EffectLane = effectLane;
         SoundLane = soundLane;
+        Fx = blockFx;
         Debug.Log("[Game] Scene facades/lanes bound.");
     }
 
@@ -130,7 +132,7 @@ public static class Game
         UI = ui;
         Scene = scene;
 
-        IsBound = true;
+        IsBound = true; 
         return report;
     }
 

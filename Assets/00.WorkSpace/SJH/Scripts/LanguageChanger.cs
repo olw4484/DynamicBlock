@@ -7,68 +7,61 @@ using UnityEngine.Localization.Settings;
 public class LanguageChanger : MonoBehaviour
 {
 	[SerializeField] private TMP_Dropdown _languageDropDown;
+    [SerializeField] private SaveServiceAdapter _save;
 
-	void Awake()
+    void Awake()
 	{
-		StartCoroutine(InitRoutine());
-	}
+        StartCoroutine(InitRoutine());
+    }
 
-	IEnumerator InitRoutine()
-	{
-		bool hasSaveData = SaveLoadManager.Instance.LoadData();
-		yield return LocalizationSettings.InitializationOperation;
+    IEnumerator InitRoutine()
+    {
+        // Localization 시스템 준비 대기
+        yield return LocalizationSettings.InitializationOperation;
 
-		var locales = LocalizationSettings.AvailableLocales;
-		int targetIndex = 0;
+        // 1) 세이브의 현재 LanguageIndex를 GameDataChanged로부터 받기
+        int initialIndex = 0;
+        bool got = false;
 
-		if (hasSaveData)
-		{
-			// 세이브 있으면 세이브 인덱스 사용
-			int saveIndex = SaveLoadManager.Instance.GameData.LanguageIndex;
-			targetIndex = (saveIndex >= 0 && saveIndex < locales.Locales.Count) ? saveIndex : 0;
-		}
-		else
-		{
-			// 세이브 없으면 OS 언어 사용
-			Locale sys = locales.GetLocale(GetSystemLanguageCode(locales));
-			Debug.LogWarning(sys);
-			if (sys == null) sys = LocalizationSettings.ProjectLocale;
-			targetIndex = Mathf.Max(0, locales.Locales.IndexOf(sys)); // 세이브데이터 없으면 -1
-		}
+        Game.Bus.Subscribe<GameDataChanged>(e =>
+        {
+            if (got) return;               // 최초 1회만 초기화에 사용
+            got = true;
+            initialIndex = e.data != null ? e.data.LanguageIndex : 0;
+            Apply(initialIndex);
+        }, replaySticky: true);
 
-		SaveLoadManager.Instance.GameData.LanguageIndex = targetIndex;
-		SaveLoadManager.Instance.SaveData();
+        // 혹시 이벤트가 아주 늦게 오거나(이례) 못 받는 경우를 대비한 작은 타임아웃
+        float t = 0f;
+        while (!got && t < 1.0f) { t += Time.unscaledDeltaTime; yield return null; }
+        if (!got) Apply(initialIndex);     // fallback
+    }
 
-		var locale = LocalizationSettings.SelectedLocale = locales.Locales[targetIndex];
-		_languageDropDown.SetValueWithoutNotify(targetIndex);
-		_languageDropDown.onValueChanged.AddListener(OnValueChanged);
+    private void Apply(int index)
+    {
+        var locales = LocalizationSettings.AvailableLocales;
+        index = Mathf.Clamp(index, 0, locales.Locales.Count - 1);
 
-		Debug.Log("LanguageChanger 초기화 완료");
-	}
+        // 로케일 적용
+        LocalizationSettings.SelectedLocale = locales.Locales[index];
 
-	public void OnValueChanged(int value)
-	{
-		Debug.Log(value);
-		// 0	en
-		// 1	ko-KR
-		// 2	ja-JP
-		// 3	es
-		// 4	zh
-		var locale = LocalizationSettings.AvailableLocales.Locales[value];
-		LocalizationSettings.SelectedLocale = locale;
-		SaveLoadManager.Instance.GameData.LanguageIndex = value;
-		SaveLoadManager.Instance.SaveData();
+        // 드롭다운 UI 세팅
+        _languageDropDown.SetValueWithoutNotify(index);
+        _languageDropDown.onValueChanged.RemoveAllListeners();
+        _languageDropDown.onValueChanged.AddListener(OnValueChanged);
 
-		//OnLocaleChanged?.Invoke(locale);
-	}
+        Debug.Log($"[LanguageChanger] 초기화 완료 index={index}, locale={locales.Locales[index].Identifier.Code}");
+    }
 
-	string GetSystemLanguageCode(ILocalesProvider locales)
-	{
-		var code = new LocaleIdentifier(Application.systemLanguage).Code;
-		switch (code)
-		{
-			case "ko": return "ko-KR";
-			default: return code;
-		}
-	}
+
+    public void OnValueChanged(int value)
+    {
+        var locales = LocalizationSettings.AvailableLocales;
+        if (value < 0 || value >= locales.Locales.Count) return;
+
+        LocalizationSettings.SelectedLocale = locales.Locales[value];
+
+        Game.Bus.Publish(new LanguageChangeRequested(value));
+        Debug.Log($"[LanguageChanger] 변경 index={value}, locale={locales.Locales[value].Identifier.Code}");
+    }
 }
