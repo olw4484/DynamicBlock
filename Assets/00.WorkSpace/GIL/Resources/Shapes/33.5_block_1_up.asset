@@ -12,12 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d62d8aba34ddfc40babc3026a06656f, type: 3}
   m_Name: 33.5_block_1_up
   m_EditorClassIdentifier: 
-  Id: 
+  Id: 33.5_block_1_up
   rows:
   - columns: 0000010000
   - columns: 0000010000
   - columns: 0000010000
   - columns: 0000010000
   - columns: 0000010000
-  scoreForSpawn: 1
-  chanceForSpawn: 2
+  chanceForSpawn: 5
+  activeBlockCount: 5
+  difficulty: 2

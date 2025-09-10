@@ -13,7 +13,7 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         [Header("Classic Mode")]
         public int chanceForSpawn;
         public int activeBlockCount;
-
+        public int difficulty;
 
         private void OnValidate()
         {

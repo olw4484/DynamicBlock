@@ -18,11 +18,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public int cols = 8;
 
         private int _lineCount;
-        public int LineCount { get; private set; }
 
         private int _gridMask;
         
         private List<GridSquare> _hoverSquares = new();
+        private List<GridSquare> _hoverLineSquares = new();
         
         private EventQueue _bus;
 
@@ -77,34 +77,43 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         public void ClearHoverPreview()
         {
-            if (_hoverSquares.Count == 0) return;
-            foreach (var sq in _hoverSquares)
+            if (_hoverSquares.Count > 0)
             {
-                // 이미 Active(배치 완료)인 칸은 건드리지 않음
-                if (!sq.IsOccupied) sq.SetState(GridState.Normal);
+                foreach (var sq in _hoverSquares)
+                    if (!sq.IsOccupied) sq.SetState(GridState.Normal);
+                _hoverSquares.Clear();
             }
-            _hoverSquares.Clear();
+
+            if (_hoverLineSquares.Count > 0)
+            {
+                foreach (var sq in _hoverLineSquares)
+                    sq.SetLineClearImage(false, null);   // 오버레이 OFF
+                _hoverLineSquares.Clear();
+            }
         }
 
         public void UpdateHoverPreview(List<Transform> shapeBlocks)
         {
-            if (TryGetPlacement(shapeBlocks, out var squares))
-            {
-                // 드래그 중 보여줄 스프라이트(모양) 맞춰주기
-                var sprite = shapeBlocks[0].GetComponent<UnityEngine.UI.Image>()?.sprite;
-                ClearHoverPreview();
+            // 이전 프리뷰 싹 정리
+            ClearHoverPreview();
 
-                foreach (var sq in squares)
-                {
-                    if (sprite != null) sq.SetImage(sprite);
-                    if (!sq.IsOccupied) sq.SetState(GridState.Hover);
-                }
-                _hoverSquares.AddRange(squares);
-            }
-            else
+            if (!TryGetPlacement(shapeBlocks, out var squares))
+                return;
+
+            // 드래그 중 블록 스프라이트
+            var sprite = shapeBlocks[0].GetComponent<UnityEngine.UI.Image>()?.sprite;
+
+            // 놓일 칸 프리뷰(기존 기능 유지)
+            foreach (var sq in squares)
             {
-                ClearHoverPreview();
+                if (sprite != null) sq.SetImage(sprite);   // 빈칸에만 적용(TryGetPlacement에서 Occupied 제외됨)
+                if (!sq.IsOccupied) sq.SetState(GridState.Hover);
             }
+            _hoverSquares.AddRange(squares);
+
+            // 가상 배치 시 완성될 라인들을 오버레이로 표시
+            if (PredictCompletedLines(squares, out var rowsCompleted, out var colsCompleted))
+                ShowLineFollowOverlay(rowsCompleted, colsCompleted, sprite);
         }
 
         public void InitializeGridSquares(List<GridSquare> squareList, int rowCount, int colCount)
@@ -309,12 +318,95 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (_bus != null || !Game.IsBound) return;
             SetDependencies(Game.Bus); // 실제 DI
         }
+
         private bool IsBoardEmpty()
         {
             for (int r = 0; r < rows; r++)
                 for (int c = 0; c < cols; c++)
                     if (gridStates[r, c]) return false;  // 하나라도 true(점유)면 비지 않음
             return true;
+        
+        private bool PredictCompletedLines(
+            List<GridSquare> addedSquares, 
+            out List<int> rowsCompleted, 
+            out List<int> colsCompleted)
+        {
+            rowsCompleted = new();
+            colsCompleted = new();
+            if (gridSquares == null || gridStates == null) return false;
+
+            // 빠른 포함 체크용
+            var added = new HashSet<(int r, int c)>();
+            foreach (var sq in addedSquares) added.Add((sq.RowIndex, sq.ColIndex));
+
+            // 가로 라인
+            for (int r = 0; r < rows; r++)
+            {
+                bool complete = true;
+                for (int c = 0; c < cols; c++)
+                {
+                    if (!gridStates[r, c] && !added.Contains((r, c)))
+                    {
+                        complete = false;
+                        break;
+                    }
+                }
+                if (complete) rowsCompleted.Add(r);
+            }
+
+            // 세로 라인
+            for (int c = 0; c < cols; c++)
+            {
+                bool complete = true;
+                for (int r = 0; r < rows; r++)
+                {
+                    if (!gridStates[r, c] && !added.Contains((r, c)))
+                    {
+                        complete = false;
+                        break;
+                    }
+                }
+                if (complete) colsCompleted.Add(c);
+            }
+
+            return (rowsCompleted.Count + colsCompleted.Count) > 0;
+        }
+        
+        private void ShowLineFollowOverlay(List<int> rowsCompleted, List<int> colsCompleted, Sprite sprite)
+        {
+            if (sprite == null) return;
+
+            var seen = new HashSet<GridSquare>();
+
+            // 가로 라인
+            foreach (int r in rowsCompleted)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    var sq = gridSquares[r, c];
+                    if (sq == null) continue;
+                    if (seen.Add(sq))
+                    {
+                        sq.SetLineClearImage(true, sprite);
+                        _hoverLineSquares.Add(sq);
+                    }
+                }
+            }
+
+            // 세로 라인
+            foreach (int c in colsCompleted)
+            {
+                for (int r = 0; r < rows; r++)
+                {
+                    var sq = gridSquares[r, c];
+                    if (sq == null) continue;
+                    if (seen.Add(sq))
+                    {
+                        sq.SetLineClearImage(true, sprite);
+                        _hoverLineSquares.Add(sq);
+                    }
+                }
+            }
         }
     }
 }

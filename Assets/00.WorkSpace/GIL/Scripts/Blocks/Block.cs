@@ -155,6 +155,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             
             GridManager.Instance.ClearHoverPreview();
+            
+            if(MapManager.Instance.GameMode == GameMode.Tutorial) 
+                MapManager.Instance.GameMode = GameMode.Classic;
         }
         
         private void MoveBlock(PointerEventData eventData)
