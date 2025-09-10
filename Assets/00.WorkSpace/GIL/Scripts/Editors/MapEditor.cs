@@ -21,7 +21,8 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private Button _selectedPaletteButton;
         private bool _isDragging;
         private int _dragValue;
-        
+        private int _cellSize = 47; // 셀 한 변 픽셀 수
+        private Action _rebuildGrid;
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
@@ -56,7 +57,98 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         {
             var root = new VisualElement { name = "map-editor-root" };
             Pad(root, 6);
+            
+            // 레이아웃 컨테이너
+            var container = new VisualElement();
+            container.style.alignItems = Align.FlexStart; // 위쪽 정렬
+            root.Add(container);
 
+            // 패널들
+            var left  = BuildGridPane();           // 그리드
+            var right = BuildSettingPane();        // 셋팅
+
+            // 기본 배치 (가로)
+            container.style.flexDirection = FlexDirection.Row;
+            left.style.marginRight = 8;
+            container.Add(left);
+            container.Add(right);
+            left.style.flexGrow = 0;    
+            left.style.flexShrink = 0;
+            right.style.flexGrow = 1;   // 설정 패널은 남는 폭 사용
+            right.style.minWidth = 280; // 설정 최소폭
+
+            // 반응형 전환
+            const float Breakpoint = 700f;
+            bool isWide = true;
+
+            void ApplyLayout(float width)
+            {
+                bool wide = width >= Breakpoint;
+                if (wide == isWide) return;
+                isWide = wide;
+
+                if (wide)
+                {
+                    _cellSize = 60;
+                    container.style.flexDirection = FlexDirection.Row;
+                    container.Clear();
+                    left.style.marginRight = 8;
+                    left.style.marginBottom = 0;
+                    container.Add(left);
+                    container.Add(right);
+                }
+                else
+                {
+                    _cellSize = 47;
+                    container.style.flexDirection = FlexDirection.Column;
+                    container.Clear();
+                    left.style.marginRight  = 0;
+                    left.style.marginBottom = 8;
+                    container.Add(right);
+                    container.Add(left);
+                }
+                
+                _rebuildGrid?.Invoke();
+            }
+
+            // 폭 변화를 감지해서 적용
+            container.RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                ApplyLayout(e.newRect.width);
+            });
+
+            // 첫 프레임 강제 적용
+            root.schedule.Execute(() =>
+            {
+                float w = container.resolvedStyle.width > 0
+                    ? container.resolvedStyle.width
+                    : root.resolvedStyle.width;
+                ApplyLayout(w);
+            }).StartingIn(0);
+
+            return root;
+        }
+
+        private VisualElement BuildSettingPane()
+        {
+            var panel = new VisualElement { name = "settings-pane" };
+            panel.style.minWidth = 280;
+            
+            // ----- 참조들 미리 선언 -----
+            Toggle tutT = null, scoT = null, fruT = null;
+
+            // 점수 상세(목표 점수)와 과일 표를 모아두는 컨테이너
+            VisualElement scoreDetailRow = null;
+            VisualElement fruitTable     = null;
+            VisualElement fruitBlocksRow = null;
+            
+            // 과일 카운트 참조(ApplyGoalUI에서 on/off)
+            var fruitCounts  = new IntegerField[FruitCount + 1];
+
+            // 중복 갱신 방지 플래그
+            bool isUpdating = false;
+            
+            // TODO : 여기로 설정부분 옮기기
             // 스테이지 이름
             var idField = new TextField { value = _data.id };
             idField.style.unityTextAlign = TextAnchor.MiddleCenter;
@@ -68,8 +160,8 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 MapEditorFunctions.MarkDirty(_data, "Rename Stage");
                 _data.id = e.newValue;
             });
-            root.Add(idField);
-            SpaceV(root, 6);
+            panel.Add(idField);
+            SpaceV(panel, 6);
 
             // 네비게이션 바
             var nav = Row();
@@ -84,42 +176,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     MapEditorFunctions.DeleteCurrent(_data);
                 }
             }));
-            root.Add(nav);
-            SpaceV(root, 6);
-
-            // 본문(세로 배치): 우측패널 → 그리드
-            var container = new VisualElement();
-            root.Add(container);
-
-            var right = BuildSettingPane();   // 목표/팔레트 등
-            var left  = BuildGridPane();      // 맵 칠하기
-
-            container.Add(right);
-            SpaceV(container, 8);
-            container.Add(left);
-
-            return root;
-        }
-
-        private VisualElement BuildSettingPane()
-        {
-            var panel = new VisualElement { name = "settings-pane" };
-            panel.style.minWidth = 280;
-
-            // ----- 참조들 미리 선언 -----
-            Toggle tutT = null, scoT = null, fruT = null;
-
-            // 점수 상세(목표 점수)와 과일 표를 모아두는 컨테이너
-            VisualElement scoreDetailRow = null;
-            VisualElement fruitTable     = null;
-            VisualElement fruitBlocksRow = null;
+            panel.Add(nav);
+            SpaceV(panel, 6);
             
-            // 과일 카운트 참조(ApplyGoalUI에서 on/off)
-            var fruitCounts  = new IntegerField[FruitCount + 1];
-
-            // 중복 갱신 방지 플래그
-            bool isUpdating = false;
-
             var selectModeLbl = new Label("Select Game Mode");
             selectModeLbl.style.fontSize = 20;
             selectModeLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
@@ -345,7 +404,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 SpaceV(panel, 7);
             }
 
-            var textWidth = 75;
+            var textWidth = 50;
             var textFontSize = 15;
             var sliderLength = 200;
             var floatWidth = 35;
@@ -442,11 +501,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             palette.Add(line3);
             panel.Add(palette);
             SpaceV(panel, 8f);
-
-            var paintGridLbl = new Label("Paint Grid");
-            paintGridLbl.style.fontSize = 20;
-            paintGridLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
-            panel.Add(paintGridLbl);
 
             // ---- 라디오 토글처럼 동작하도록 초기화 + 콜백 ----
             tutT.SetValueWithoutNotify(_data.goalKind == MapGoalKind.Tutorial);
@@ -788,29 +842,29 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             wrap.Add(grid);
             SpaceV(wrap, 6);
 
-            // 클리어 버튼
             var tools = Row();
             tools.Add(Button("Clear", () =>
             {
                 MapEditorFunctions.ClearLayout(_data);
-                BuildGrid(); // UI 새로 그림
+                BuildGrid();                          // UI 새로 그림
             }));
             wrap.Add(tools);
 
             BuildGrid();
+            _rebuildGrid = BuildGrid;                
             return wrap;
 
-            // ---- 내부: rows×cols 네모칸 그리기 ----
             void BuildGrid()
             {
                 grid.Clear();
                 grid.style.alignItems = Align.FlexStart;
                 int rows = Mathf.Max(1, _data.rows);
                 int cols = Mathf.Max(1, _data.cols);
-                const int cell = 40; // 셀 한 변 픽셀 수
-                
+                int cell = _cellSize;                 
+
                 MapEditorFunctions.EnsureLayoutSize(_data);
-                // 업 이벤트는 그리드에 한번만 등록.
+
+                // PointerUp는 중복 등록되지 않게 먼저 Clear 후 다시 한 번만
                 grid.RegisterCallback<PointerUpEvent>(e =>
                 {
                     if (!_isDragging) return;
@@ -818,7 +872,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     grid.ReleasePointer(e.pointerId);
                     e.StopPropagation();
                 });
-                
+
                 for (int r = 0; r < rows; r++)
                 {
                     var line = Row();
@@ -835,46 +889,40 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                         ve.style.marginRight = (c == cols - 1) ? 0 : 2;
 
                         var img = new Image { scaleMode = ScaleMode.ScaleToFit };
-                        img.style.width = cell - 2;
+                        img.style.width  = cell - 2;
                         img.style.height = cell - 2;
-                        
+
                         int curVal = (idx1D < _data.layout.Count) ? _data.layout[idx1D] : 0;
                         img.sprite = IndexToSprite(curVal);
-                        
                         ve.Add(img);
 
-                        // 칠하기(토글)
                         ve.RegisterCallback<PointerDownEvent>(e =>
                         {
-                            if (e.button == 1) // 우클릭
+                            if (e.button == 1)
                             {
                                 _isDragging = true;
-                                _dragValue = 0;                          // 항상 지우기
+                                _dragValue = 0;
                                 PaintGridWithValue(idx1D, img, _dragValue);
                                 grid.CapturePointer(e.pointerId);
                                 e.StopPropagation();
                                 return;
                             }
-                            if (e.button != 0) return; // 좌클릭만
+                            if (e.button != 0) return;
                             _isDragging = true;
-                            // 첫 칸에서 토글 규칙으로 '이번 스트로크 값' 결정
                             int brushVal = SpriteToIndex(_brushSprite);
                             int oldVal   = _data.layout[idx1D];
                             _dragValue   = (brushVal == 0 || brushVal == oldVal) ? 0 : brushVal;
-
                             PaintGridWithValue(idx1D, img, _dragValue);
-
-                            // 드래그 캡쳐(밖으로 나가도 Up이 grid로 옴)
                             grid.CapturePointer(e.pointerId);
                             e.StopPropagation();
                         });
-                        
-                        ve.RegisterCallback<PointerEnterEvent>(e =>
+
+                        ve.RegisterCallback<PointerEnterEvent>(_ =>
                         {
                             if (!_isDragging) return;
                             PaintGridWithValue(idx1D, img, _dragValue);
                         });
-                        
+
                         line.Add(ve);
                     }
 
@@ -882,19 +930,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 }
             }
         }
-
-        private void PaintGrid(int idx1D, Image img)
-        {
-            int brushVal = SpriteToIndex(_brushSprite);
-            int oldVal = _data.layout[idx1D];
-            int newVal = (brushVal == 0 || brushVal == oldVal) ? 0 : brushVal;
-
-            _data.layout[idx1D] = newVal;       
-            img.sprite = IndexToSprite(newVal); 
-
-            MapEditorFunctions.MarkDirty(_data, "Paint Cell");
-        }
-        
         private void PaintGridWithValue(int idx1D, Image img, int value)
         {
             _data.layout[idx1D] = value;
@@ -990,6 +1025,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         {
             var b = new Button(() => onClick?.Invoke()) { text = text };
             b.style.minWidth = 56;
+            b.style.minHeight = 23;
             return b;
         }
         private static VisualElement Row()
