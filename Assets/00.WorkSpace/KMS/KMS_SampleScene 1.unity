@@ -30004,6 +30004,10 @@ PrefabInstance:
       propertyPath: _classicBtn
       value: 
       objectReference: {fileID: 993338585}
+    - target: {fileID: 4960349516357863909, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
+      propertyPath: InterstitialTime
+      value: 180
+      objectReference: {fileID: 0}
     - target: {fileID: 6316385883739004828, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: _hudBestText
       value: 
