@@ -4,40 +4,40 @@ using UnityEngine;
 
 public sealed class AudioServiceAdapter : IAudioService
 {
-    public int Order => 50;
-    private AudioManager _am;
+    public int Order => 50; // Scene/BGM 뒤여도 무방 (DI로 직접 참조 줌)
 
-    public void PreInit() { }
-    public void Init()
+    private AudioManager AM
     {
-        _am = AudioManager.Instance;
-        if (_am == null)
-            Debug.LogWarning("[AudioServiceAdapter] AudioManager.Instance is null.");
+        get
+        {
+            var am = AudioManager.Instance ?? Object.FindFirstObjectByType<AudioManager>();
+            if (!am) Debug.LogError("[AudioServiceAdapter] AudioManager not found.");
+            return am;
+        }
     }
+
+    // IManager
+    public void PreInit() { }
+    public void Init() { }
     public void PostInit() { }
-    public void Shutdown() { }
 
-    // BGM/SE 공통
-    public void PlayBgm(AudioClip clip) { if (_am) _am.PlayBGM(clip); }
-    public void StopBgm() { if (_am) _am.StopBGM(); }
-    public void SetBgmVolume(float v) { if (_am) _am.SetBGMVolume(v); }
-    public void PlaySe(AudioClip c, bool v) { if (_am) _am.PlaySE(c, v); }
-    public void SetSeVolume(float v) { if (_am) _am.SetSEVolume(v); }
+    // BGM
+    public void PlayBgm(AudioClip clip) => AM?.PlayBGM(clip);
+    public void StopBgm() => AM?.StopBGM();
+    public void SetBgmVolume(float v) => AM?.SetBGMVolume(v);
 
-    // 도메인 헬퍼
-    public void PlayLineClear(int n) { if (_am) _am.PlayLineClearSE(n); }
-    public void PlayClearCombo(int n) { if (_am) _am.PlayClearComboSE(n); }
-    public void PlayClearAllBlock() { if (_am) _am.PlayClearAllBlockSE(); }
+    // SE (2D)
+    public void PlaySe(AudioClip clip, bool vibrate = false)
+        => AM?.PlaySE(clip, vibrate);
 
-    public void PlayBlockSelect() { if (_am) _am.PlayBlockSelectSE(); }
-    public void PlayBlockPlace() { if (_am) _am.PlayBlockPlaceSE(); }
-    public void PlayStageEnter() { if (_am) _am.PlayStageEnterSE(); }
-    public void PlayButtonClick() { if (_am) _am.PlayButtonClickSE(); }
+    // SE
+    public void PlaySeAt(AudioClip clip, Vector3? worldPos = null, float volumeScale = 1f, float pitch = 1f, bool vibrate = false)
+        => AM?.PlaySE(clip, vibrate);
 
-    public void PlayClassicGameOver() { if (_am) _am.PlayClassicGameOverSE(); }
-    public void PlayClassicNewRecord() { if (_am) _am.PlayClassicNewRecordSE(); }
-    public void PlayAdvenFail() { if (_am) _am.PlayAdvenFailSE(); }
-    public void PlayAdvenClear() { if (_am) _am.PlayAdvenClearSE(); }
-    public void PlayContinueTimeCheck() { if (_am) _am.PlayContinueTimeCheckSE(); }
+    public void SetSeVolume(float v) => AM?.SetSEVolume(v);
+
+    // 패턴형
+    public void PlayLineClear(int lineCount) => AM?.PlayLineClearSE(lineCount);
+    public void PlayClearCombo(int n) => AM?.PlayClearComboSE(n);
 }
 

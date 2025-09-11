@@ -9,21 +9,21 @@ using UnityEngine;
 
 public interface IAudioService : IManager
 {
+    // BGM
     void PlayBgm(AudioClip clip);
     void StopBgm();
     void SetBgmVolume(float v);
+
+    // SE (간단 2D)
     void PlaySe(AudioClip clip, bool vibrate = false);
+
+    // SE (고급/3D)
+    void PlaySeAt(AudioClip clip, Vector3? worldPos = null, float volumeScale = 1f, float pitch = 1f, bool vibrate = false);
+
+    // 볼륨
     void SetSeVolume(float v);
+
+    // 패턴형
     void PlayLineClear(int lineCount);
     void PlayClearCombo(int n);
-    void PlayClearAllBlock();
-    void PlayBlockSelect();
-    void PlayBlockPlace();
-    void PlayStageEnter();
-    void PlayButtonClick();
-    void PlayClassicGameOver();
-    void PlayClassicNewRecord();
-    void PlayAdvenFail();
-    void PlayAdvenClear();
-    void PlayContinueTimeCheck();
 }
