@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using UnityEngine;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
+using System.Text.RegularExpressions;
 
 public enum GameMode{Tutorial, Classic, Adventure}
 
@@ -17,17 +19,21 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public static MapManager Instance;
 
         [Header("Save Tutorial")] 
-        [SerializeField] private SaveManager saveManager;
+        public SaveManager saveManager;
         
         [Header("Map Runtime")]
         [SerializeField] private int defaultMapIndex = 0;
         [SerializeField] private GameObject grid;
+        public GameMode GameMode;
         private MapData[] _mapList;
+        
+        private readonly Dictionary<int, Sprite> _codeToSprite = new();
+        private static readonly Regex s_CodeRegex = new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        
         private Sprite[] _blockSpriteList;
         private Sprite[] _fruitSpriteList;
         private Sprite[] _fruitBackgroundSprite;
 
-        public GameMode GameMode;
         
         private void Awake()
         {
@@ -48,6 +54,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void Init()
         {
             LoadMapData();
+            BuildCodeMaps();
         }
 
         private void Update()
@@ -55,7 +62,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (Input.GetKeyDown(KeyCode.F1))
             {
                 Debug.Log("[MapManager] : 튜토리얼 정보 초기화");
-                GameMode = GameMode.Tutorial;
+                SetGameMode(GameMode.Tutorial);
             }
         }
         
@@ -72,7 +79,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
             GameMode = gameMode;
             Debug.Log($"[MapManager] 게임 모드 변경 : {currMode} -> {GameMode}");
-            
         }
         
         public void PostInit() { }
@@ -84,7 +90,49 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _fruitSpriteList = Resources.LoadAll<Sprite>("BlockWithFruitImages");
             _fruitBackgroundSprite = Resources.LoadAll<Sprite>("FruitBackgroundImage");
         }
+        
+        private void BuildCodeMaps()
+        {
+            _codeToSprite.Clear();
 
+            void AddAll(Sprite[] arr)
+            {
+                if (arr == null) return;
+                foreach (var s in arr)
+                {
+                    if (!s) continue;
+                    var m = s_CodeRegex.Match(s.name);
+                    if (!m.Success) { Debug.LogWarning($"[MapManager] 선행 숫자 없음: {s.name}"); continue; }
+                    int code = int.Parse(m.Groups[1].Value);
+                    if (_codeToSprite.ContainsKey(code))
+                    {
+                        Debug.LogWarning($"[MapManager] 코드 중복 {code}: {_codeToSprite[code]?.name} vs {s.name}");
+                        continue; // 중복은 최초 항목 유지
+                    }
+                    _codeToSprite.Add(code, s);
+                }
+            }
+
+            // 리소스들에서 전부 스캔
+            AddAll(_blockSpriteList);
+            AddAll(_fruitSpriteList);
+            // 필요시 AddAll(_fruitBackgroundSprite); // 보드 타일이면 제외
+        }
+
+        public Sprite GetSpriteForCode(int code)
+        {
+            return code > 0 && _codeToSprite.TryGetValue(code, out var s) ? s : null;
+        }
+
+        public int GetCodeForSprite(Sprite s)
+        {
+            if (!s) return 0;
+            var m = s_CodeRegex.Match(s.name);
+            return m.Success ? int.Parse(m.Groups[1].Value) : 0;
+        }
+        
+        public static bool IsFruitCode(int code) => (code >= 200 && code < 300);
+        
         /// <summary>
         /// 맵 데이터를 토대로 그리드를 칠하기, 게임 시작 -> 블럭 생성 이전에 써야 할듯
         /// 게임 시작 위치를 정확히 모르겠어서 어디서든 코드를 사용하여 바로 붙일 수 있게 해야함.
@@ -113,23 +161,31 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             ApplyMapToCurrentGrid(map);
         }
         
+        /// <summary>
+        /// 현재 클래식 모드 맵 상태를 불러오기, SaveManager에 있는 맵 정보를 그대로 집어넣기
+        /// </summary>
+        public void LoadCurrentClassicMap()
+        {
+            MapData mapData = new();
+            mapData.layout = saveManager.gameData.currentMapLayout;
+            ApplyMapToCurrentGrid(mapData);
+        }
+        
         private void ApplyMapToCurrentGrid(MapData map)
         {
             var gm = GridManager.Instance;
             if (gm == null) { Debug.LogError("[MapManager] GridManager.Instance 없음"); return; }
             var squares = gm.gridSquares;
             if (squares == null) { Debug.LogError("[MapManager] gridSquares 미초기화"); return; }
-
-            int rows = map.rows, cols = map.cols;
+            
+            int rows = Mathf.Min(map.rows, squares.GetLength(0));
+            int cols = Mathf.Min(map.cols, squares.GetLength(1));
             if (map.layout == null || map.layout.Count != rows * cols)
             {
                 Debug.LogError($"[MapManager] 레이아웃 불일치 rows*cols={rows*cols}, layout={map.layout?.Count ?? 0}");
                 return;
             }
 
-            rows = Mathf.Min(rows, squares.GetLength(0));
-            cols = Mathf.Min(cols, squares.GetLength(1));
-            
             for (int r = 0; r < rows; r++)
             {
                 for (int c = 0; c < cols; c++)
@@ -141,45 +197,23 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     // 항상 보이게
                     cell.gameObject.SetActive(true);
 
-                    bool occupied = (code >= 1 && code <= 10); // 1~5: 일반 블록, 6~10: 과일 블록(합쳐진거)
-                    bool hasFruit = (code >= 6 && code <= 10);
-
+                    var sprite = GetSpriteForCode(code);
+                    bool occupied = (code > 0) && (sprite != null);
+                    
+                    // 1) 모델 → 뷰 상태 먼저(여기서 Hover 아님 보장)
+                    gm.gridStates[r, c] = occupied;
+                    cell.SetOccupied(occupied);   // 내부에서 SetState 호출
+                    
                     if (occupied)
                     {
-                        if (hasFruit)
-                        {
-                            // 과일 블록 (6~10): 합친 스프라이트 사용
-                            int f = code - 6; // 0~4
-                            if (map.blockWithFruitIcons != null &&
-                                f < map.blockWithFruitIcons.Length &&
-                                map.blockWithFruitIcons[f] != null)
-                            {
-                                cell.SetImage(map.blockWithFruitIcons[f]);
-                            }
-                            else
-                            {
-                                // 과일데이터 누락 시 경고만 남기고 스킵
-                                Debug.LogWarning($"[MapManager] blockWithFruitIcons[{f}] 없음");
-                            }
-                            cell.SetFruitImage(false, null); // 오버레이는 항상 OFF
-                        }
-                        else
-                        {
-                            // 일반 블록 (1~5)
-                            int i = code - 1; // 0~4
-                            if (map.blockImages != null &&
-                                i < map.blockImages.Length &&
-                                map.blockImages[i] != null)
-                            {
-                                cell.SetImage(map.blockImages[i]);
-                            }
-                            cell.SetFruitImage(false, null); // 오버레이 OFF (잔상 방지)
-                        }
+                        cell.SetImage(sprite);            // active 레이어 + 인덱스 커밋
+                        cell.SetFruitImage(false, null);  // 합성 스프라이트면 오버레이 끔
                     }
                     else
                     {
-                        // 빈 칸 (0)
-                        cell.SetFruitImage(false, null); // 혹시 남은 오버레이 제거
+                        // 완전 비우기
+                        cell.SetImage(null);              // 인덱스 0으로
+                        cell.SetFruitImage(false, null);  // 오버레이 제거
                     }
 
                     // 모델(점유) → 뷰 동기화
@@ -192,33 +226,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         // 블록 규칙성
         // 0     : 빈칸(비활성)
-        // 1..5  : 일반 블록 (index = code-1)
-        // 6..10 : 과일 블록 (index = code-6)
-        private static (string desc, bool isActive) DecodeLayoutCode(MapData data, int code)
+        // 101..105  : 일반 블록 
+        // 201..205 : 일반 + 과일 블록
+        private (string desc, bool isActive) DecodeLayoutCode(int code)
         {
-            if (code == 0)
-                return ("빈칸(구멍)", false);
-
-            if (code >= 1 && code <= 5)
-            {
-                int i = code - 1;
-                string name = (data?.blockImages != null && i < data.blockImages.Length && data.blockImages[i] != null)
-                    ? data.blockImages[i].name : $"idx:{i}";
-                return ($"일반타일({name})", true);
-            }
-
-            if (code >= 6 && code <= 10)
-            {
-                int f = code - 6;
-                string name = (data?.blockWithFruitIcons != null && f < data.blockWithFruitIcons.Length && data.blockWithFruitIcons[f] != null)
-                    ? data.blockWithFruitIcons[f].name : $"fruit:{f}";
-                return ($"과일타일({name})", true);
-            }
-
-            // 정의 외 값은 간단히 알림만
-            return ($"알수없음(code:{code})", true);
+            if (code == 0) return ("빈칸(구멍)", false);
+            var sprite = GetSpriteForCode(code);
+            if (sprite != null) return ($"코드 {code} ({sprite.name})", true);
+            return ($"알 수 없는 코드 {code}", false);
         }
-        
         // 보드 크기 고정(문서 기준 8x8)
     private const int BOARD_SIZE = 8;
 

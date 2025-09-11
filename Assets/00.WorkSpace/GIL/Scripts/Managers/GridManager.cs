@@ -14,6 +14,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public GridSquare[,] gridSquares; // 시각적 표현용
         public bool[,] gridStates;
+        // TODO : MapManager, MapData처럼 이미지 리스트를 받아 넣기,
+        // TODO : 매번 블록을 배치할 때 마다 그리드 이미지 리스트 동기화하기.
+        public List<int> gridImageList;
         public int rows = 8;
         public int cols = 8;
 
@@ -80,7 +83,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (_hoverSquares.Count > 0)
             {
                 foreach (var sq in _hoverSquares)
+                {
                     if (!sq.IsOccupied) sq.SetState(GridState.Normal);
+                    sq.SetPreviewImage(null);                 // Hover 레이어 스프라이트 비움
+                }
                 _hoverSquares.Clear();
             }
 
@@ -106,8 +112,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 놓일 칸 프리뷰(기존 기능 유지)
             foreach (var sq in squares)
             {
-                if (sprite != null) sq.SetImage(sprite);   // 빈칸에만 적용(TryGetPlacement에서 Occupied 제외됨)
-                if (!sq.IsOccupied) sq.SetState(GridState.Hover);
+                if (!sq.IsOccupied) sq.SetState(GridState.Hover); // 상태 먼저
+                sq.SetPreviewImage(sprite);
             }
             _hoverSquares.AddRange(squares);
 
@@ -134,8 +140,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             gridStates[row, col] = occupied;
 
-            if (occupiedImage != null) gridSquares[row, col].SetImage(occupiedImage);
-            gridSquares[row, col].SetOccupied(occupied);
+            var sq = gridSquares[row, col];
+            if (!occupied)
+            {
+                // 완전 비우기: 활성 이미지 제거 + 인덱스 0 으로
+                sq.SetImage(null, changeIndex: true);
+                sq.SetFruitImage(false, null, changeIndex: false);
+                sq.SetOccupied(false);
+                return;
+            }
+
+                // occupied == true: 상태→이미지(커밋) 순서 권장
+            sq.SetOccupied(true);
+            if (occupiedImage != null)
+                sq.SetImage(occupiedImage, changeIndex: true);
         }
 
         private void PrintGridInfo()
@@ -143,6 +161,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             PrintGridSquares();
             PrintGridStates();
             PrintGridOccupiedInfo();
+            PrintGridSpriteIndexInfo();
         }
         
         /// <summary>
@@ -151,7 +170,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void PrintGridStates()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("==== Grid States ====\n");
+            sb.Append("[GridManager] : Grid States\n");
 
             for (int r = 0; r < rows; r++)
             {
@@ -169,7 +188,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void PrintGridSquares()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("==== Grid Squares ====\n");
+            sb.Append("[GridManager] : Grid Squares\n");
 
             for (int r = 0; r < rows; r++)
             {
@@ -187,7 +206,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void PrintGridOccupiedInfo()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("==== Grid Occupied Info ====\n");
+            sb.Append("[GridManager] : Grid Occupied Info\n");
 
             for (int r = 0; r < rows; r++)
             {
@@ -195,6 +214,24 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 for (int c = 0; c < cols; c++)
                 {
                     sb.Append($"{gridSquares[r, c].IsOccupied}\t");
+                }
+                sb.AppendLine();
+            }
+
+            Debug.Log(sb.ToString());
+        }
+        
+        public void PrintGridSpriteIndexInfo()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("[GridManager] : Grid Sprite Index\n");
+
+            for (int r = 0; r < rows; r++)
+            {
+                sb.Append($"Line_{r + 1} :\t");
+                for (int c = 0; c < cols; c++)
+                {
+                    sb.Append($"{gridSquares[r, c].BlockSpriteIndex}\t");
                 }
                 sb.AppendLine();
             }
@@ -376,7 +413,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void ShowLineFollowOverlay(List<int> rowsCompleted, List<int> colsCompleted, Sprite sprite)
         {
             if (sprite == null) return;
-
+            Debug.Log("[GridManager] 라인 제거 로직 발동");
             var seen = new HashSet<GridSquare>();
 
             // 가로 라인
@@ -407,6 +444,33 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         _hoverLineSquares.Add(sq);
                     }
                 }
+            }
+        }
+        
+        public List<int> ExportLayoutCodes()
+        {
+            var list = new List<int>(rows * cols);
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = gridSquares[r, c];
+                    list.Add(cell ? cell.BlockSpriteIndex : 0);
+                }
+            }
+            return list;
+        }
+        
+        public void ValidateGridConsistency()
+        {
+            for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+            {
+                var cell = gridSquares[r, c];
+                bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
+                bool occupiedByState = gridStates[r, c];
+                if (occupiedByIndex != occupiedByState)
+                    Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | index={cell.BlockSpriteIndex} vs state={occupiedByState} | cellState={cell.state}");
             }
         }
     }

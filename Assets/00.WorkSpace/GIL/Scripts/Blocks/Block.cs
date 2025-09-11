@@ -38,6 +38,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             selectedOffset.y += editorOffset;
 #endif
         }
+
+        public ShapeData GetCurrentShapeData() => _currentShapeData;
         
         public void GenerateBlock(ShapeData shapeData)
         {

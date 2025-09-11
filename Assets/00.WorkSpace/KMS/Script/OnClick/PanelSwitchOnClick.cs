@@ -40,5 +40,9 @@ public sealed class PanelSwitchOnClick : MonoBehaviour
         // GIL Add
         // 클래식 모드일 경우 맵 생성 알고리즘 작동.
         MapManager.Instance.GenerateClassicStartingMap();
+        if (MapManager.Instance.GameMode == GameMode.Tutorial)
+        {
+            MapManager.Instance.SetMapDataToGrid(0);
+        }
     }
 }

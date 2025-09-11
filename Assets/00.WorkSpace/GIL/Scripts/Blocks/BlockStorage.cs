@@ -4,6 +4,7 @@ using System.Text;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
+using _00.WorkSpace.GIL.Scripts.Utils;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -41,7 +42,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
-        
+        public List<Block> CurrentBlocks => _currentBlocks;
         private bool _handSpawnedOnce;
         
         // 게임 오버 1회만 발동 가드
@@ -379,7 +380,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 MapManager.Instance.SetGameMode(GameMode.Classic);
             
             CheckGameOver();
-
+            
+            GridManager.Instance.ValidateGridConsistency();
+            GameSnapShot.SaveGridSnapshot();
+            
             if (_currentBlocks.Count == 0)
             {
                 // 리필 실행

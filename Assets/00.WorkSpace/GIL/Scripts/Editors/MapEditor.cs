@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using UnityEditor;
 using UnityEngine;
@@ -16,13 +17,17 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private MapData _data;
         private int _brush; // 현재 브러시 ID
         private const int FruitCount = 5;
-        private Dictionary<Sprite, int> _spriteToIndex;
+        private Dictionary<Sprite, int> _spriteToIndex; // sprite -> code
+        private Dictionary<int, Sprite> _codeToSprite; // code -> sprite
         private Sprite _brushSprite; // 현재 선택된 블록의 스프라이트(지우개는 null)
         private Button _selectedPaletteButton;
         private bool _isDragging;
         private int _dragValue;
         private int _cellSize = 47; // 셀 한 변 픽셀 수
         private Action _rebuildGrid;
+        private static readonly Regex s_CodeRegex =
+            new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
@@ -30,7 +35,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             
             // 아이콘 로드/사이즈 보정
             MapEditorFunctions.EnsureIcons(_data);
-
+            
+            BuildSpriteIndex();
+            
 #if UNITY_EDITOR
             // 파일명 기준으로 id/index 동기화(메뉴 생성 직후 케이스 대응)
             var path = AssetDatabase.GetAssetPath(_data);
@@ -940,53 +947,45 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private void BuildSpriteIndex()
         {
             _spriteToIndex = new Dictionary<Sprite, int>();
-            int baseCount = _data.blockImages?.Length ?? 0;
+            _codeToSprite  = new Dictionary<int, Sprite>();
 
-            // 1..baseCount : 일반 블록
-            if (_data.blockImages != null)
+            void AddAll(Sprite[] arr)
             {
-                for (int i = 0; i < _data.blockImages.Length; i++)
+                if (arr == null) return;
+                foreach (var s in arr)
                 {
-                    var s = _data.blockImages[i];
-                    if (s != null) _spriteToIndex[s] = i + 1;
+                    if (!s) continue;
+                    var m = s_CodeRegex.Match(s.name);
+                    if (!m.Success) { Debug.LogWarning($"[MapEditor] 선행 숫자 없음: {s.name}"); continue; }
+
+                    int code = int.Parse(m.Groups[1].Value);
+
+                    // sprite -> code
+                    _spriteToIndex[s] = code;
+
+                    // code -> sprite (중복 코드면 최초 것 유지)
+                    if (!_codeToSprite.ContainsKey(code))
+                        _codeToSprite.Add(code, s);
                 }
             }
 
-            // baseCount+1.. : 과일 블록
-            if (_data.blockWithFruitIcons != null)
-            {
-                for (int i = 0; i < _data.blockWithFruitIcons.Length; i++)
-                {
-                    var s = _data.blockWithFruitIcons[i];
-                    if (s != null) _spriteToIndex[s] = baseCount + i + 1;
-                }
-            }
+            AddAll(_data.blockImages);
+            AddAll(_data.blockWithFruitIcons);
+
+            // 기존 코드 방식 재생성 
+            MigrateLegacyLayout();
         }
 
         private int SpriteToIndex(Sprite s)
         {
             if (s == null) return 0;
-            return _spriteToIndex != null && _spriteToIndex.TryGetValue(s, out var idx) ? idx : 0;
+            return (_spriteToIndex != null && _spriteToIndex.TryGetValue(s, out var code)) ? code : 0;
         }
 
-        private Sprite IndexToSprite(int v)
+        private Sprite IndexToSprite(int code)
         {
-            if (v <= 0) return null;
-            int baseCount = _data.blockImages?.Length ?? 0;
-
-            if (v <= baseCount)
-            {
-                // 1..baseCount → blockImages
-                return _data.blockImages[v - 1];
-            }
-            else
-            {
-                // baseCount+1.. → blockWithFruitIcons
-                int j = v - baseCount - 1;
-                if (_data.blockWithFruitIcons != null && j >= 0 && j < _data.blockWithFruitIcons.Length)
-                    return _data.blockWithFruitIcons[j];
-                return null;
-            }
+            if (code <= 0) return null;
+            return (_codeToSprite != null && _codeToSprite.TryGetValue(code, out var s)) ? s : null;
         }
         
         private void SetBrushSprite(Sprite sprite, Button sourceBtn)
@@ -996,7 +995,51 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             _selectedPaletteButton = sourceBtn;
             Highlight(_selectedPaletteButton, true);
         }
+        
+        private void MigrateLegacyLayout()
+        {
+            if (_data?.layout == null || _data.layout.Count == 0) return;
 
+            int baseCount  = _data.blockImages?.Length ?? 0;
+            int fruitCount = _data.blockWithFruitIcons?.Length ?? 0;
+            int maxLegacy  = baseCount + fruitCount;
+
+            bool looksLegacy = false;
+            foreach (var v in _data.layout)
+            {
+                if (v > 0 && v <= maxLegacy) { looksLegacy = true; break; }
+            }
+            if (!looksLegacy) return;
+
+            // legacy -> code
+            for (int i = 0; i < _data.layout.Count; i++)
+            {
+                int v = _data.layout[i];
+                if (v <= 0) continue;
+
+                Sprite s = null;
+                if (v <= baseCount)
+                {
+                    // 1..baseCount -> blockImages[v-1]
+                    s = _data.blockImages[v - 1];
+                }
+                else
+                {
+                    // baseCount+1.. -> blockWithFruitIcons[v - baseCount - 1]
+                    int j = v - baseCount - 1;
+                    if (_data.blockWithFruitIcons != null &&
+                        j >= 0 && j < _data.blockWithFruitIcons.Length)
+                        s = _data.blockWithFruitIcons[j];
+                }
+
+                int code = SpriteToIndex(s); // 이제 code는 101/201...
+                _data.layout[i] = code;
+            }
+
+            MapEditorFunctions.MarkDirty(_data, "Migrate legacy layout -> code");
+            Debug.Log("[MapEditor] 레거시 인덱스 레이아웃을 코드(파일명 앞 숫자)로 마이그레이션했습니다.");
+        }
+        
         private void Highlight(Button btn, bool on)
         {
             if (btn == null) return;
