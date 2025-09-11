@@ -76,10 +76,9 @@ public sealed class BgmDirector : IManager
     }
     private void OnSplashDone()
     {
-        var am = AudioManager.Instance ?? Object.FindFirstObjectByType<AudioManager>();
-        if (am && am.BGM_Main != null)
-            _audio.PlayBgm(am.BGM_Main);
-        else
-            Debug.LogWarning("[BGM] BGM_Main 미할당 또는 AudioManager 없음");
+        var am = AudioManager.Instance;
+        if (am != null && !am.IsBgmOn)
+            am.SetBgmOn(true);  // LastOn_BGMVolume로 복구
+        am.PlayBGM(am.BGM_Main);
     }
 }
