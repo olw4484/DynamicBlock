@@ -38,8 +38,8 @@ public class BlockFxFacade : MonoBehaviour, IFx
         if (sprite == blockStorage.shapeImageSprites[0]) return Color.red;
         if (sprite == blockStorage.shapeImageSprites[1]) return Color.yellow;
         if (sprite == blockStorage.shapeImageSprites[2]) return Color.white;
-        if (sprite == blockStorage.shapeImageSprites[3]) return Color.blue;
-        if (sprite == blockStorage.shapeImageSprites[4]) return Color.green;
+        if (sprite == blockStorage.shapeImageSprites[3]) return Color.green;
+        if (sprite == blockStorage.shapeImageSprites[4]) return Color.blue;
         return Color.white;
     }
 }

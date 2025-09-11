@@ -90,13 +90,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     sq.SetLineClearImage(false, null);   // 오버레이 OFF
                 _hoverLineSquares.Clear();
             }
+
+            Game.Fx.StopAllLoop();
         }
 
         public void UpdateHoverPreview(List<Transform> shapeBlocks)
         {
             // 이전 프리뷰 싹 정리
             ClearHoverPreview();
-            Game.Fx.StopAllLoop();
 
             if (!TryGetPlacement(shapeBlocks, out var squares))
                 return;
@@ -270,6 +271,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     SetCellOccupied(row, col, false);
             }
 
+            ClearHoverPreview(); // 클리어 후 남아있는 프리뷰 정리
+
             if (IsBoardEmpty())
             {
                 _bus?.Publish(new AllClear());
@@ -390,9 +393,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (seen.Add(sq))
                     {
                         sq.SetLineClearImage(true, sprite);
+                        
                         _hoverLineSquares.Add(sq);
                     }
                 }
+                Game.Fx.PlayRowPerimeter(r, sprite);
             }
 
             // 세로 라인
@@ -405,9 +410,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (seen.Add(sq))
                     {
                         sq.SetLineClearImage(true, sprite);
+                        
                         _hoverLineSquares.Add(sq);
                     }
                 }
+                Game.Fx.PlayColPerimeter(c, sprite);
             }
         }
     }

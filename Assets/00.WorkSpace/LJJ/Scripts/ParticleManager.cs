@@ -512,8 +512,6 @@ public class ParticleManager : MonoBehaviour
     {
         if (perimeterPool.Count == 0) { Debug.LogWarning("perimeterPool exhausted"); return; }
         var ps = perimeterPool.Dequeue();
-        var main = ps.main;
-        main.startColor = color;
 
         var target = new SpawnTarget(
             SpawnMode.GridRow, idx: rowIndex, rotZ: 90f, unscaledTime: false);
@@ -527,8 +525,6 @@ public class ParticleManager : MonoBehaviour
     {
         if (perimeterPool.Count == 0) { Debug.LogWarning("perimeterPool exhausted"); return; }
         var ps = perimeterPool.Dequeue();
-        var main = ps.main;
-        main.startColor = color;
 
         var target = new SpawnTarget(
             SpawnMode.GridCol, idx: colIndex, rotZ: 0f, unscaledTime: false);
