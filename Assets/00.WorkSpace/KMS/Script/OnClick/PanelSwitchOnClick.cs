@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Utils;
 using UnityEngine;
 
 public sealed class PanelSwitchOnClick : MonoBehaviour
@@ -38,11 +39,32 @@ public sealed class PanelSwitchOnClick : MonoBehaviour
         bus.PublishImmediate(new GameResetRequest(targetPanel));
         
         // GIL Add
-        // 클래식 모드일 경우 맵 생성 알고리즘 작동.
-        MapManager.Instance.GenerateClassicStartingMap();
-        if (MapManager.Instance.GameMode == GameMode.Tutorial)
+        var map = MapManager.Instance;
+
+        if (targetPanel == "Game")
         {
-            MapManager.Instance.SetMapDataToGrid(0);
+            if (!map) return;
+
+            // 튜토리얼은 기존 로직 유지, 그 외는 클래식 진입
+            if (map.GameMode == GameMode.Tutorial)
+            {
+                map.SetMapDataToGrid();
+            }
+            else
+            {
+                map.EnterClassic();
+            }
+        }
+        else if (targetPanel == "Main")
+        {
+            // 1) 먼저 상태 동기화(화면 -> 상태)
+            GridManager.Instance?.SyncStatesFromSquares();
+
+            // 2) 그 다음 저장 
+            GameSnapShot.SaveGridSnapshot();
+
+            // 3) 저장 이후에 유령 인덱스 정리
+            GridManager.Instance?.HealBoardFromStates();
         }
     }
 }

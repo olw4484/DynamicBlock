@@ -21,13 +21,34 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         [HideInInspector] public bool IsOccupied;
         public GridState state;
         
-        [SerializeField, Tooltip("0=empty, 1~5=block, 6~10=block+fruit")]
-        private int _blockSpriteIndex;
+        [SerializeField, Tooltip("0=empty, 101~105=block, 201~205=block+fruit")]
+        private int _blockSpriteIndex = 0;
         public int BlockSpriteIndex => _blockSpriteIndex;
         
         // 정규식 해설 : ^s 앞쪽 공백 무시 , (\d+) 연속된 숫자 캡쳐, (?=_) 바로 뒤에 '_'가 와야함
         private static readonly Regex s_CodeRegex =
             new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        
+        private void Reset()
+        {
+            _blockSpriteIndex = 0;
+            if (activeImage) activeImage.sprite = null;
+            SetOccupied(false); // 상태 Normal
+        }
+        
+        private void OnValidate()
+        {
+            if (Application.isPlaying) return;
+        
+            if (activeImage == null || activeImage.sprite == null)
+            {
+                _blockSpriteIndex = 0;
+            }
+            else
+            {
+                _blockSpriteIndex = ParseSpriteIndex(activeImage.sprite);
+            }
+        }
         
         public void SetState(GridState newState)
         {
@@ -40,8 +61,20 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         // 모든 이미지 변경 -> active 이미지만 바꾸기
         public void SetImage(Sprite sprite, bool changeIndex = true)
         {
-            activeImage.sprite = sprite;
-            if(changeIndex) _blockSpriteIndex = ParseCodeFromName(sprite != null ? sprite.name : null);
+            if (activeImage) activeImage.sprite = sprite;
+            if (changeIndex) _blockSpriteIndex = ParseSpriteIndex(sprite);
+        }
+        
+        public void ClearImage()
+        {
+            SetImage(null, changeIndex: true); // -> index 0
+        }
+
+        private static int ParseSpriteIndex(Sprite s)
+        {
+            if (s == null) return 0;
+            var m = s_CodeRegex.Match(s.name);
+            return (m.Success && int.TryParse(m.Groups[1].Value, out var v)) ? v : 0;
         }
         
         public void SetPreviewImage(Sprite sprite)

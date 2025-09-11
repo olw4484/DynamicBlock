@@ -28,7 +28,7 @@ public sealed class RestartOnClick : MonoBehaviour
                 RestartFlow.SoftReset(openPanelAfter, closePanels);
                 // GIL_Add
                 // 지금은 소프트 리셋 시작이라 여기에 클래식 맵 생성 알고리즘 적용
-                MapManager.Instance.GenerateClassicStartingMap(minTotalTiles: 30, maxPlacements: 8);
+                MapManager.Instance?.EnterClassic(MapManager.ClassicEnterPolicy.ForceNew);
                 break;
             case RestartMode.ReloadSceneViaEvent:
                 RestartFlow.ReloadViaEvent(gameplayScene);
