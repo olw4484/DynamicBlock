@@ -1730,6 +1730,8 @@ MonoBehaviour:
       m_Image: {fileID: 21300000, guid: 0521e054d4ae44a2da52de50f94cf41f, type: 3}
     - m_Text: 60fpps
       m_Image: {fileID: 21300000, guid: b8f68b029dd65417f8fefd1dc991aa31, type: 3}
+    - m_Text: Max
+      m_Image: {fileID: 21300000, guid: b8f68b029dd65417f8fefd1dc991aa31, type: 3}
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -6000,7 +6002,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 8051671014346213938}
+        m_TargetAssemblyTypeName: PanelSwitchOnClick, Assembly-CSharp
+        m_MethodName: Invoke
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!95 &723195817573875714
 Animator:
   serializedVersion: 5
@@ -6696,6 +6710,7 @@ GameObject:
   m_Component:
   - component: {fileID: 299242173759873863}
   - component: {fileID: 7677936483095199689}
+  - component: {fileID: 48795368395281195}
   m_Layer: 5
   m_Name: InGameOptionCanvas_FPSDropdown
   m_TagString: Untagged
@@ -6733,6 +6748,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5429567503599668078}
   m_CullTransparentMesh: 1
+--- !u!114 &48795368395281195
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5429567503599668078}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08f01d7237d8d2749919822976c783ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dropdown: {fileID: 2682048064827610676}
 --- !u!1 &5634205195898737591
 GameObject:
   m_ObjectHideFlags: 0
@@ -8279,7 +8307,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 2381602472546228731}
+        m_TargetAssemblyTypeName: RestartOnClick, Assembly-CSharp
+        m_MethodName: Invoke
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!95 &99864242184688348
 Animator:
   serializedVersion: 5
@@ -8373,7 +8413,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mode: 0
   closePanels:
-  - Options
+  - Game_Options
   - GameOver
   openPanelAfter: Game
   gameplayScene: Gameplay
@@ -9814,6 +9854,7 @@ GameObject:
   - component: {fileID: 3970964993369393058}
   - component: {fileID: 7459657782211219815}
   - component: {fileID: 3765086695523447067}
+  - component: {fileID: 8984969029893048857}
   m_Layer: 5
   m_Name: InGameOptionCanvas_Settings
   m_TagString: Untagged
@@ -9916,6 +9957,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7de81d9cee95ad241a70af48a0a5bb8c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &8984969029893048857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7478191977364439713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1e911856c70efa4b80646dd985cbe89, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bgm: {fileID: 272569377675189022}
+  se: {fileID: 6885815525980310657}
+  vib: {fileID: 7356949140554315798}
+  threshold: 0.5
 --- !u!1 &7530931058732456262
 GameObject:
   m_ObjectHideFlags: 0
