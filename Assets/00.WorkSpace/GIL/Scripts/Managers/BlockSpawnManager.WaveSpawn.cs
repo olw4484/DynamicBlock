@@ -228,6 +228,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 이력 등록(직전 N-1개만 유지)
             RegisterWaveHistory(wave);
             RecomputeFitsForWave(result);
+            
             return result;
         }
     }

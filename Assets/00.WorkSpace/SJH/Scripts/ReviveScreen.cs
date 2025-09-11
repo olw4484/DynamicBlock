@@ -84,8 +84,12 @@ public class ReviveScreen : MonoBehaviour
 
         // 시간 만료 → 포기 이벤트만 발행
         if (BusReady) Game.Bus.PublishImmediate(new GiveUpRequest());
+
         CloseSelf();
-    }
+
+        // 0초 되면 전면 광고 실행
+        if (_remain <= 0f) AdManager.Instance.ShowInterstitial();
+	}
 
     IEnumerator Co_WatchReady(float duration)
     {

@@ -20,6 +20,7 @@ public sealed class PanelSwitchOnClick : MonoBehaviour
         _cool = cooldown;
 
         var bus = Game.Bus;
+        Sfx.ClassicStageEnter();
 
         if (closeModalFirst && modalsToClose != null)
         {
