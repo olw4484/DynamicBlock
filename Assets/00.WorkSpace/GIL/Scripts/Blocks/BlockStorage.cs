@@ -32,8 +32,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private bool _adQueuedForThisGameOver;
         
         [Header("Revive")]
-        [SerializeField] private int  reviveWaveCount         = 3;     // Revive 웨이브 크기
-        [SerializeField] private bool oneRevivePerRun         = true;  // 라운드당 1회 제한
+        [SerializeField] private int  reviveWaveCount = 3;     // Revive 웨이브 크기
+        [SerializeField] private bool oneRevivePerRun = true;  // 라운드당 1회 제한
 
         private bool _reviveUsed;
         private Coroutine _queuedInterstitialCo; 
@@ -41,7 +41,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
-
+        
+        private bool _handSpawnedOnce;
+        
         // 게임 오버 1회만 발동 가드
         bool _gameOverFired;
         System.Action<ContinueGranted> _onContinue;
@@ -69,28 +71,29 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         void Start() { TryBindBus(); }
 
-        // private void Update()
-        // {
-        //     if (Input.GetKeyDown(KeyCode.W))
-        //     {
-        //         DebugCurrentBlocks();
-        //     }
-        // }
-
         void OnEnable()
         {
+            Game.Bus?.Subscribe<GridReady>(_ => {
+                Debug.Log("[Block Storage] : 그리드 셋팅 완료, 블럭 생성 준비");
+                if (_paused || _handSpawnedOnce) return;
+                GenerateAllBlocks();
+                _handSpawnedOnce = true;
+            }, replaySticky:true);
+
+            Game.Bus?.Subscribe<GameResetting>(_ => _handSpawnedOnce = false, replaySticky:false);
+            // 이전 코드인데 없이도 크게 문제 없는 것으로 보임, 혹시 모르니 유지할 예정
             // Game.Bind 이후에만 구독 시도
-            if (Game.IsBound)
-            {
-                _onContinue = _ =>
-                {
-                    _gameOverFired = false;
-                    Time.timeScale = 1f;
-                    // 이어하기 정책에 맞게 블록 재생성/리셋
-                    GenerateAllBlocks();
-                };
-                Game.Bus.Subscribe(_onContinue, replaySticky: false);
-            }
+            // if (Game.IsBound)
+            // {
+            //     _onContinue = _ =>
+            //     {
+            //         _gameOverFired = false;
+            //         Time.timeScale = 1f;
+            //         // 이어하기 정책에 맞게 블록 재생성/리셋
+            //         GenerateAllBlocks();
+            //     };
+            //     Game.Bus.Subscribe(_onContinue, replaySticky: false);
+            // }
         }
 
         void OnDisable()
@@ -102,9 +105,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         #endregion
         
         #region Block Generation
-
+        
         private void GenerateAllBlocks()
         {
+            Debug.Log("[Block Storage] : 블록 생성 시작");
             var blockManager = BlockSpawnManager.Instance;
             Debug.Log($"[Storage] >>> ENTER GenerateAllBlocks | paused={_paused} | " +
                       $"spawnPos={(blockSpawnPosList == null ? -1 : blockSpawnPosList.Count)} | " +
@@ -171,8 +175,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _currentBlocks.Add(block);
             }
 
+            var fitsInfo = spawner.LastGeneratedFits;
+            
             if (previewMode)
-                blockManager.PreviewWaveNonOverlapping(wave, previewSprites);
+                blockManager.PreviewWaveNonOverlapping(wave, fitsInfo, previewSprites);
         }
 
         private int GetRandomImageIndex()
