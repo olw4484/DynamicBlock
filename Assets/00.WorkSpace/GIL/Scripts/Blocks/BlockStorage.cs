@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using _00.WorkSpace.GIL.Scripts.Grids;
@@ -231,7 +231,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (_adQueuedForThisGameOver) return;
             _adQueuedForThisGameOver = true;
             //StartCoroutine(Co_ShowInterstitialAfterGameOver());
-            _queuedInterstitialCo = StartCoroutine(Co_ShowInterstitialAfterGameOver());
+            
+            // SJH : 게임 오버시 전면광고 실행은 ReviveScreen에서 실행
+            //_queuedInterstitialCo = StartCoroutine(Co_ShowInterstitialAfterGameOver());
         }
         
         /// <summary>
