@@ -18,6 +18,8 @@ public class GameData
     public int[] stageCleared;   // 0 = 미클리어, 1 = 클리어
     public int[] stageScores;    // 각 스테이지 최고 점수
 
+    public bool isTutorialPlayed; // 튜토리얼을 실행하였는가?
+    
     public static GameData NewDefault(int stages = 200)
     {
         return new GameData
@@ -28,6 +30,7 @@ public class GameData
             playCount = 0,
             stageCleared = new int[stages],
             stageScores = new int[stages],
+            isTutorialPlayed = false
         };
     }
 }

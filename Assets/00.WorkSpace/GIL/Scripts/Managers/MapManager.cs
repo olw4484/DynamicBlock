@@ -15,6 +15,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     public class MapManager : MonoBehaviour, IManager
     {
         public static MapManager Instance;
+
+        [Header("Save Tutorial")] 
+        [SerializeField] private SaveManager saveManager;
         
         [Header("Map Runtime")]
         [SerializeField] private int defaultMapIndex = 0;
@@ -28,6 +31,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         private void Awake()
         {
+            Debug.Log("[MapManager] : 튜토리얼 정보 초기화는 F1");
             if (Instance != null && Instance != this)
             {
                 Destroy(gameObject); return;
@@ -35,6 +39,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Instance = this;
             
             if(_mapList == null) LoadMapData();
+            saveManager.LoadGame();
+            GameMode = saveManager.gameData.isTutorialPlayed? GameMode.Classic : GameMode.Tutorial;
         }
         public int Order => 13;
         public void PreInit() { }
@@ -44,15 +50,31 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             LoadMapData();
         }
 
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.F1))
+            {
+                Debug.Log("[MapManager] : 튜토리얼 정보 초기화");
+                GameMode = GameMode.Tutorial;
+            }
+        }
+        
         /// <summary>
         /// 게임 모드 변경, 바꿀 때 이걸 쓰기(추적 용이함)
         /// </summary>
         public void SetGameMode(GameMode gameMode)
         {
             var currMode = GameMode;
+            if (currMode == GameMode.Tutorial)
+            {
+                saveManager.gameData.isTutorialPlayed = true;
+                saveManager.SaveGame();
+            }
             GameMode = gameMode;
             Debug.Log($"[MapManager] 게임 모드 변경 : {currMode} -> {GameMode}");
+            
         }
+        
         public void PostInit() { }
         
         private void LoadMapData()
