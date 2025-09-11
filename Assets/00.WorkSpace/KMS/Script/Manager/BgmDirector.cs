@@ -3,7 +3,7 @@ using UnityEngine;
 
 // ================================
 // Script  : BgmDirector.cs
-// Desc    : 씬/상태 이벤트를 구독해 BGM을 라우팅
+// Desc    : 캔버스 패널/씬 이벤트를 구독해 BGM 라우팅
 // ================================
 public sealed class BgmDirector : IManager
 {
@@ -12,7 +12,7 @@ public sealed class BgmDirector : IManager
     private EventQueue _bus;
     private IAudioService _audio;
 
-    private Dictionary<string, AudioClip> _sceneBgm;
+    private Dictionary<string, AudioClip> _bgmByKey;
 
     public void SetDependencies(EventQueue bus, IAudioService audio)
     {
@@ -23,7 +23,6 @@ public sealed class BgmDirector : IManager
     {
         if (_bus == null) Debug.LogError("[BgmDirector] EventQueue 주입 누락");
         if (_audio == null) Debug.LogError("[BgmDirector] IAudioService 주입 누락");
-        // 여기서는 AudioManager.Instance를 건드리지 않음!
     }
 
     public void Init() { }
@@ -31,54 +30,70 @@ public sealed class BgmDirector : IManager
     public void PostInit()
     {
         _bus.Subscribe<AppSplashFinished>(_ => OnSplashDone(), replaySticky: true);
+
+        _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
+
+        // 씬 체인지도 쓰면 활성화
+        // _bus.Subscribe<SceneChanged>(OnSceneChanged, replaySticky: true);
     }
 
-    private void EnsureMap()
+    private void OnPanelToggle(PanelToggle e)
     {
-        if (_sceneBgm != null) return;
+        if (!e.on) return; // 닫힐 때는 무시
 
-        var am = AudioManager.Instance ?? Object.FindFirstObjectByType<AudioManager>();
-        Debug.Log($"[BGM] AM={(am != null)}, Main={(am?.BGM_Main != null)}, Adv={(am?.BGM_Adventure != null)}");
-        if (!am)
+        EnsureMap();
+        if (_bgmByKey == null) return;
+
+        if (_bgmByKey.TryGetValue(e.key, out var clip) && clip)
         {
-            Debug.LogWarning("[BgmDirector] AudioManager 아직 없음. 다음 프레임에 재시도.");
-            return;
+            _audio.PlayBgm(clip);
+            // Debug.Log($"[BGM] Panel='{e.key}' -> {clip.name}");
         }
-
-        _sceneBgm = new Dictionary<string, AudioClip>
+        else
         {
-            ["Title"] = am.BGM_Main,
-            ["Classic"] = am.BGM_Main,
-            ["Adventure"] = am.BGM_Adventure
-        };
+            // 정책 선택: 매핑 없으면 유지 or 정지
+            // _audio.StopBgm();
+        }
     }
 
     private void OnSceneChanged(SceneChanged e)
     {
-        Debug.Log($"[BGM] SceneChanged: {e.sceneName}");
         EnsureMap();
-        if (_sceneBgm == null)
+        if (_bgmByKey == null) return;
+
+        if (_bgmByKey.TryGetValue(e.sceneName, out var clip) && clip)
+            _audio.PlayBgm(clip);
+        // else _audio.StopBgm();
+    }
+
+    private void OnSplashDone()
+    {
+        EnsureMap();
+
+        var am = AudioManager.Instance;
+        if (am != null && !am.IsBgmOn)
+            am.SetBgmOn(true);
+
+        if (am?.BGM_Main) _audio.PlayBgm(am.BGM_Main);
+    }
+
+    private void EnsureMap()
+    {
+        if (_bgmByKey != null) return;
+
+        var am = AudioManager.Instance ?? Object.FindFirstObjectByType<AudioManager>();
+        if (!am)
         {
-            Debug.Log($"[BGM] Has key? {_sceneBgm.ContainsKey(e.sceneName)}");
-            // 아직 AudioManager가 없다면 다음 프레임에 다시 시도
-            // (혹은 여기서 바로 am를 새로 잡고 클립을 직접 고를 수도 있음)
+            Debug.LogWarning("[BgmDirector] AudioManager not found. 재시도 예정.");
             return;
         }
 
-        if (_sceneBgm.TryGetValue(e.sceneName, out var clip) && clip)
+        _bgmByKey = new Dictionary<string, AudioClip>
         {
-            _audio.PlayBgm(clip);
-        }
-        else
-        {
-            _audio.StopBgm(); // 정책: 매핑 없으면 일단 정지(원하면 유지로 변경)
-        }
-    }
-    private void OnSplashDone()
-    {
-        var am = AudioManager.Instance;
-        if (am != null && !am.IsBgmOn)
-            am.SetBgmOn(true);  // LastOn_BGMVolume로 복구
-        am.PlayBGM(am.BGM_Main);
+            ["Main"] = am.BGM_Main,
+            ["Game"] = am.BGM_Adventure,
+            ["Classic"] = am.BGM_Main,      
+            ["Adventure"] = am.BGM_Adventure,
+        };
     }
 }

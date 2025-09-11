@@ -426,26 +426,28 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 1) 보장: 시간 재개
         Time.timeScale = 1f;
 
-        // 모달/Dim/메인 강제 정리 (옵션 등 잔여 제거)
+        // 잔여 모달/Dim 정리
         ForceCloseAllModals();
 
-        // 2) 엔진 쪽 리셋 이벤트
+        // 2) 엔진 리셋 이벤트
         _bus.PublishImmediate(new GameResetting());
         _bus.PublishImmediate(new ComboChanged(0));
         _bus.PublishImmediate(new ScoreChanged(0));
 
         // 3) UI 전환(원자적)
+        string onKey = (req.targetPanel == "Game") ? "Game" : "Main";
+        string offKey = (onKey == "Game") ? "Main" : "Game";
+
         SetPanel("GameOver", false);
-        if (req.targetPanel == "Game")
-        {
-            SetPanel("Main", false);
-            SetPanel("Game", true);
-        }
-        else // "Main"
-        {
-            SetPanel("Game", false);
-            SetPanel("Main", true);
-        }
+        SetPanel(offKey, false);
+        SetPanel(onKey, true);
+
+        // 전환 사실을 이벤트로도 알림 (BgmDirector 등 리스너용)
+        // off는 참고용으로 즉시만, on은 즉시 + Sticky 로 남겨두면 이후 구독자도 인지 가능
+        _bus.PublishImmediate(new PanelToggle(offKey, false));
+        var onEvt = new PanelToggle(onKey, true);
+        _bus.PublishSticky(onEvt, alsoEnqueue: false);
+        _bus.PublishImmediate(onEvt);
 
         NormalizeAllPanelsAlpha();
         ForceMainUIClean();
@@ -453,7 +455,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 4) 완료 알림
         _bus.PublishImmediate(new GameResetDone());
     }
-
     // 모든 모달 강제 종료 + DIM/메인 원복
     private void ForceCloseAllModals()
     {

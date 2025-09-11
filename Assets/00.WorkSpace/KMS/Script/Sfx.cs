@@ -10,7 +10,7 @@ public static class Sfx
         if (!Game.IsBound || Game.AudioFx == null) return;
         Game.AudioFx.EnqueueSound(id);
     }
-
+    public static void PlayId(int id) => Play(id);
     public static void Button() => Play((int)SfxId.ButtonClick);
     public static void BlockPlace() => Play((int)SfxId.BlockPlace);
     public static void BlockSelect() => Play((int)SfxId.BlockSelect);
