@@ -47,6 +47,8 @@ public sealed class SplashCoordinator : MonoBehaviour
                 _bus.PublishSticky(onNext, alsoEnqueue: false);
                 _bus.PublishImmediate(onNext);
             }
+            _bus.PublishImmediate(new AppSplashFinished());
+
         }, replaySticky: false);
     }
 }

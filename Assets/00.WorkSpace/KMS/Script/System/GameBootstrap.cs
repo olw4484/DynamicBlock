@@ -35,10 +35,11 @@ public class GameBootstrap : MonoBehaviour
             throw new System.Exception("[Bootstrap] GridRoot reference missing");
 
         // 순수 C# 매니저
-        var bus = new EventQueue();           // 0
-        var game = new GameManager(bus);       // 10
-        var scene = new SceneFlowManager();     // 20
-        var audio = new AudioServiceAdapter();     // 50
+        var bus = new EventQueue();          // 0
+        var game = new GameManager(bus);      // 10
+        var scene = new SceneFlowManager();    // 20
+        var audio = new AudioServiceAdapter(); // 50
+        var bgm = new BgmDirector();         // 25
 
         // 씬 오브젝트 보장 (없으면 생성)
         var ui = EnsureInScene<UIManager>("UIManager");
@@ -61,12 +62,14 @@ public class GameBootstrap : MonoBehaviour
         scene.SetDependencies(bus);
         if (ui != null) ui.SetDependencies(bus, game);
         if (input != null) input.SetDependencies(bus);
+        bgm.SetDependencies(bus, audio);
 
         // 등록 (Order로 정렬되므로 순서는 크게 무관)
         group.Register(bus);
         group.Register(game);
         group.Register(spawner);
         group.Register(scene);
+        group.Register(bgm);
         group.Register(input);
         group.Register(saveAdapter);
         group.Register(audio);

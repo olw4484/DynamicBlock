@@ -238,6 +238,7 @@ public readonly struct GameResetRequest
 public readonly struct GameResetting { }      // 리셋 시작(입력잠금/모달닫기 등)
 public readonly struct GameResetDone { }      // 리셋 완료(입력해제/패널 복구 등)
 public readonly struct SplashFinish { }        // 스플래시 종료 트리거
+public readonly struct AppSplashFinished { }
 public readonly struct SplashSkipRequest { }   // 사용자가 탭으로 스킵 요청
 public readonly struct PreloadDone { }         // 에셋 프리로드가 끝났을 때 발행
 public readonly struct SoundEvent
