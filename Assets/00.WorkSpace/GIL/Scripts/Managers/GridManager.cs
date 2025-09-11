@@ -96,6 +96,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             // 이전 프리뷰 싹 정리
             ClearHoverPreview();
+            Game.Fx.StopAllLoop();
 
             if (!TryGetPlacement(shapeBlocks, out var squares))
                 return;

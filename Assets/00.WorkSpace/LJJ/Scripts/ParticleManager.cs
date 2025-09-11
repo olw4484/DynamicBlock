@@ -106,6 +106,7 @@ public class ParticleManager : MonoBehaviour
     private readonly Queue<ParticleSystem> destroyPool = new();
     private readonly Queue<ParticleSystem> perimeterPool = new();
     private int fxLayer = -1;
+    private Dictionary<(SpawnMode, int), ParticleSystem> activeLoops = new();
 
     // ================================
     // Unity LifeCycle
@@ -430,6 +431,53 @@ public class ParticleManager : MonoBehaviour
         pool.Enqueue(ps);
     }
 
+    public void PlayLoopCommon(
+        ParticleSystem ps,
+        in SpawnTarget target,
+        in FxParams p,
+        bool returnToPool,
+        Queue<ParticleSystem> poolToReturn = null)
+    {
+        if (ps == null) return;
+
+        ApplyFxParams(ps, p);
+
+        var t = ps.transform;
+        t.SetParent(fxRoot, false);
+        t.localPosition = ToFxLocal(target);
+        t.localRotation = Quaternion.Euler(0f, 0f, target.rotationZ);
+        t.localScale = Vector3.one;
+        if (fxLayer >= 0) LayerUtil.SetLayerRecursive(ps.gameObject, fxLayer);
+
+        var main = ps.main;
+        main.loop = true;
+
+        ps.gameObject.SetActive(true);
+        ps.Clear();
+        ps.Play();
+
+        // 변경: 튜플 키 사용
+        var key = (target.mode, target.index);
+        activeLoops[key] = ps;
+    }
+
+
+    // 모든 루프 일괄 종료
+    // **모든** 재생 중인 루프 파티클 일괄 종료 (파라미터 없음)
+    public void StopAllLoopCommon()
+    {
+        foreach (var kv in activeLoops)
+        {
+            var ps = kv.Value;
+            if (ps == null) continue;
+
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ps.gameObject.SetActive(false);
+            perimeterPool.Enqueue(ps);
+        }
+        activeLoops.Clear();
+    }
+
     // ================================
     // 퍼블릭 API (기존 시그니처 유지)
     // ================================
@@ -464,26 +512,30 @@ public class ParticleManager : MonoBehaviour
     {
         if (perimeterPool.Count == 0) { Debug.LogWarning("perimeterPool exhausted"); return; }
         var ps = perimeterPool.Dequeue();
+        var main = ps.main;
+        main.startColor = color;
 
         var target = new SpawnTarget(
             SpawnMode.GridRow, idx: rowIndex, rotZ: 90f, unscaledTime: false);
 
         var param = new FxParams(color, lineFx: true, applyScalingMode: true);
 
-        PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: perimeterPool);
+        PlayLoopCommon(ps, target, param, returnToPool: true, poolToReturn: perimeterPool);
     }
 
     public void PlayColPerimeterParticle(int colIndex, Color color)
     {
         if (perimeterPool.Count == 0) { Debug.LogWarning("perimeterPool exhausted"); return; }
         var ps = perimeterPool.Dequeue();
+        var main = ps.main;
+        main.startColor = color;
 
         var target = new SpawnTarget(
             SpawnMode.GridCol, idx: colIndex, rotZ: 0f, unscaledTime: false);
 
         var param = new FxParams(color, lineFx: true, applyScalingMode: true);
 
-        PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: perimeterPool);
+        PlayLoopCommon(ps, target, param, returnToPool: true, poolToReturn: perimeterPool);
     }
 
     // 2) 단발 FX (비풀, 자동 비활성)

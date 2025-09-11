@@ -6,8 +6,9 @@ public interface IFx
 {
     void PlayRow(int row, Color color);
     void PlayCol(int col, Color color);
-    void PlayRowPerimeter(int row, Color color);
-    void PlayColPerimeter(int col, Color color);
+    void PlayRowPerimeter(int row, Sprite sprite);
+    void PlayColPerimeter(int col, Sprite sprite);
+    void StopAllLoop();
     void PlayAllClear();
     void PlayGameOverAt();
     void PlayNewScoreAt();

@@ -36411,6 +36411,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1406888178}
     - target: {fileID: 783529534833246912, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
+      propertyPath: perimeterParticle
+      value: 
+      objectReference: {fileID: 1634042616012300, guid: 1fd0b4a9d5aa7e049a14955abe32d4c1, type: 3}
+    - target: {fileID: 783529534833246912, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: usePresetLocalPositions
       value: 1
       objectReference: {fileID: 0}
@@ -37575,6 +37579,10 @@ PrefabInstance:
       propertyPath: particle
       value: 
       objectReference: {fileID: 1229548217}
+    - target: {fileID: 3816109306278304544, guid: 770dea340c7419148b0c4e4795339912, type: 3}
+      propertyPath: blockStorage
+      value: 
+      objectReference: {fileID: 5004697261743460654}
     - target: {fileID: 4502051197479357375, guid: 770dea340c7419148b0c4e4795339912, type: 3}
       propertyPath: gridRoot
       value: 
