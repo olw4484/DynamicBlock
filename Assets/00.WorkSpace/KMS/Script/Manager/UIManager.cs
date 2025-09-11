@@ -144,6 +144,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             int best = Mathf.Max(e.score, _lastHighScore);
             if (_gameOverBestText) _gameOverBestText.text = $"Best : {FormatScore(best)}";
             SetPanel("Revive", true);
+            Game.Audio.PlayContinueTimeCheck();
         }, replaySticky: false);
 
         // 리바이브 패널 OFF
