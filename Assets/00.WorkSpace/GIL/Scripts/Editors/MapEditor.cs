@@ -31,7 +31,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
-            BuildSpriteIndex();
             
             // 아이콘 로드/사이즈 보정
             MapEditorFunctions.EnsureIcons(_data);
@@ -541,11 +540,15 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private void CreateCharlieRow(int textWidth, int textFontSize, int sliderLength, int floatWidth, VisualElement panel)
         {
             var charlieMinRow = Row();
-
+            
+            var charlieDescText = new Label("C : 블록 난이도 기준 가중치");
+            charlieDescText.style.width = textWidth;
+            charlieDescText.style.fontSize = textFontSize;
+            charlieDescText.style.unityFontStyleAndWeight = FontStyle.Bold;
+            
             var charlieMinLbl = new Label("C Min");
             charlieMinLbl.style.width = textWidth;
             charlieMinLbl.style.fontSize = textFontSize;
-            charlieMinLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
 
             var charileMinSlider = new Slider(0f, 2f);
             charileMinSlider.value = _data.charlieMin;
@@ -561,7 +564,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var charlieMaxLbl = new Label("C Max");
             charlieMaxLbl.style.width = textWidth;
             charlieMaxLbl.style.fontSize = textFontSize;
-            charlieMaxLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
 
             var charlieMaxSlider = new Slider(0f, 2f);
             charlieMaxSlider.value = _data.charlieMax;
@@ -637,33 +639,40 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             SetCharlieMax(_data.charlieMax, withUndo:false);
             
             // 조립
-            SpaceH(charlieMinRow, 6);
+            SpaceV(panel);
+            panel.Add(charlieDescText);
+            SpaceV(panel);
+            SpaceH(charlieMinRow);
             charlieMinRow.Add(charlieMinLbl);
-            SpaceH(charlieMinRow, 8);
+            SpaceH(charlieMinRow);
             charlieMinRow.Add(charlieMinField);
-            SpaceH(charlieMinRow, 8);
+            SpaceH(charlieMinRow);
             charlieMinRow.Add(charileMinSlider);
             panel.Add(charlieMinRow);
-            SpaceV(panel, 6);
+            SpaceV(panel);
             
-            SpaceH(charlieMaxRow, 6);
+            SpaceH(charlieMaxRow);
             charlieMaxRow.Add(charlieMaxLbl);
-            SpaceH(charlieMaxRow, 8);
+            SpaceH(charlieMaxRow);
             charlieMaxRow.Add(charlieMaxField);
-            SpaceH(charlieMaxRow, 8);
+            SpaceH(charlieMaxRow);
             charlieMaxRow.Add(charlieMaxSlider);
             panel.Add(charlieMaxRow);
-            SpaceV(panel, 6);
+            SpaceV(panel);
         }
 
         private void CreateAlphaRow(int textWidth, int textFontSize, int sliderLength, int floatWidth, VisualElement panel)
         {
             var alphaMinRow = Row();
-
+            
+            var alphaDescText = new Label("A : 타일 수 기준 가중치 , 저타일 블록 확률 조정");
+            alphaDescText.style.width = textWidth;
+            alphaDescText.style.fontSize = textFontSize;
+            alphaDescText.style.unityFontStyleAndWeight = FontStyle.Bold;
+            
             var alphaMinLbl = new Label("A Min");
             alphaMinLbl.style.width = textWidth;
             alphaMinLbl.style.fontSize = textFontSize;
-            alphaMinLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
 
             var alphaMinSlider = new Slider(0f, 2f);
             alphaMinSlider.value = _data.alphaMin;
@@ -679,7 +688,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var alphaMaxLbl = new Label("A Max");
             alphaMaxLbl.style.width = textWidth;
             alphaMaxLbl.style.fontSize = textFontSize;
-            alphaMaxLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
 
             var alphaMaxSlider = new Slider(0f, 2f);
             alphaMaxSlider.value = _data.alphaMax;
@@ -755,7 +763,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             SetAlphaMax(_data.alphaMax, withUndo:false);
             
             // 조립
-            SpaceH(alphaMinRow, 6);
+            SpaceV(panel);
+            panel.Add(alphaDescText);
+            SpaceV(panel);
+            SpaceH(alphaMinRow);
             alphaMinRow.Add(alphaMinLbl);
             SpaceH(alphaMinRow, 8);
             alphaMinRow.Add(alphaMinField);
@@ -1084,8 +1095,8 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             r.style.flexWrap = Wrap.Wrap;
             return r;
         }
-        private static void SpaceV(VisualElement parent, float h) => parent.Add(new VisualElement { style = { height = h } });
-        private static void SpaceH(VisualElement parent, float w) => parent.Add(new VisualElement { style = { width = w } });
+        private static void SpaceV(VisualElement parent, float h = 6) => parent.Add(new VisualElement { style = { height = h } });
+        private static void SpaceH(VisualElement parent, float w = 8) => parent.Add(new VisualElement { style = { width = w } });
         private static void Pad(VisualElement ve, float all)
         {
             ve.style.paddingLeft = all; ve.style.paddingRight = all;
