@@ -39,15 +39,21 @@ public sealed class OptionAudioBridge : MonoBehaviour
         btnVibration?.onClick.AddListener(ToggleVibration);
     }
 
-    void OnEnable() => RefreshAll();
+    void OnEnable()
+    {
+        if (btnSound) { btnSound.onClick.RemoveListener(ToggleSe); btnSound.onClick.AddListener(ToggleSe); }
+        if (btnBgm) { btnBgm.onClick.RemoveListener(ToggleBgm); btnBgm.onClick.AddListener(ToggleBgm); }
+        if (btnVibration) { btnVibration.onClick.RemoveListener(ToggleVibration); btnVibration.onClick.AddListener(ToggleVibration); }
+
+        RefreshAll();
+    }
     void OnDisable()
     {
-        btnSe?.onClick.RemoveListener(ToggleSe);
-        btnBgm?.onClick.RemoveListener(ToggleBgm);
-        btnVibration?.onClick.RemoveListener(ToggleVibration);
+        if (btnSound) btnSound.onClick.RemoveListener(ToggleSe);
+        if (btnBgm) btnBgm.onClick.RemoveListener(ToggleBgm);
+        if (btnVibration) btnVibration.onClick.RemoveListener(ToggleVibration);
     }
 
-    // === public: 버튼 OnClick에 직접 연결해도 됨 ===
     public void ToggleSe()
     {
         var am = AudioManager.Instance; if (!am) return;
