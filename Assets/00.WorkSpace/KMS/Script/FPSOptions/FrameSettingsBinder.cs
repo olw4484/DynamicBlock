@@ -17,9 +17,17 @@ public sealed class FrameSettingsBinder : MonoBehaviour
         dropdown.SetValueWithoutNotify((int)FrameSettings.Current);
         dropdown.onValueChanged.AddListener(OnChanged);
     }
-
+    void OnEnable()
+    {
+        StartCoroutine(RefreshLater());
+    }
     void OnChanged(int idx)
     {
         FrameSettings.Current = (FrameOption)idx;
+    }
+    IEnumerator RefreshLater()
+    {
+        yield return null;
+        dropdown.SetValueWithoutNotify((int)FrameSettings.Current);
     }
 }

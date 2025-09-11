@@ -13,7 +13,9 @@ public class AudioManager : MonoBehaviour
 {
     const string KeyBgmVol = "BGMVolume";
     const string KeySeVol = "SEVolume";
-    const string KeyVib = "VibrateEnabled";
+    const string KeyBgmLastOn = "LastOn_BGMVolume";
+    const string KeySeLastOn = "LastOn_SEVolume";
+    const string KeyVib = "Vibration";
     public static AudioManager Instance { get; private set; }
     [Header("Audio Settings")]
     [SerializeField] private int sePoolSize = 10; // 동시에 재생 가능한 SE 수
@@ -72,6 +74,7 @@ public class AudioManager : MonoBehaviour
     // 초기화
     private void Awake()
     {
+        Debug.Log($"[AudioManager] Awake: BGMVol={BGMVolume}, SEVol={SEVolume}");
         // 싱글톤 보장
         if (Instance != null && Instance != this)
         {
@@ -132,9 +135,12 @@ public class AudioManager : MonoBehaviour
     // BGM 볼륨 설정 (0~1)
     public void SetBGMVolume(float volume)
     {
+        float prev = BGMVolume;
         BGMVolume = Mathf.Clamp01(volume);
-        PlayerPrefs.SetFloat(KeyBgmVol, BGMVolume);
+        PlayerPrefs.SetFloat("BGMVolume", BGMVolume);
+        if (BGMVolume > 0f) PlayerPrefs.SetFloat("LastOn_BGMVolume", BGMVolume);
         ApplyVolume();
+        Debug.Log($"[BGM] SetBGMVolume {prev} -> {BGMVolume}\n{System.Environment.StackTrace}");
     }
     #endregion
 
@@ -173,10 +179,38 @@ public class AudioManager : MonoBehaviour
     // SE 볼륨 설정 (0~1)
     public void SetSEVolume(float volume)
     {
+        float prev = SEVolume;
         SEVolume = Mathf.Clamp01(volume);
-        PlayerPrefs.SetFloat(KeySeVol, SEVolume);
+        PlayerPrefs.SetFloat("SEVolume", SEVolume);
+        if (SEVolume > 0f) PlayerPrefs.SetFloat("LastOn_SEVolume", SEVolume);
         ApplyVolume();
+        Debug.Log($"[SE ] SetSEVolume {prev} -> {SEVolume}\n{System.Environment.StackTrace}");
     }
+    // ON/OFF 토글 전용
+    public void SetBgmOn(bool on)
+    {
+        if (on)
+        {
+            float last = PlayerPrefs.GetFloat(KeyBgmLastOn, 1f);
+            SetBGMVolume(last);
+        }
+        else
+        {
+            SetBGMVolume(0f);
+        }
+    }
+    public void SetSeOn(bool on)
+    {
+        if (on) 
+        { 
+            SetSEVolume(PlayerPrefs.GetFloat(KeySeLastOn, 1f));
+        }
+        else
+        {
+            SetSEVolume(0f);
+        }
+    }
+
     #endregion
     // 볼륨 적용
     private void ApplyVolume()

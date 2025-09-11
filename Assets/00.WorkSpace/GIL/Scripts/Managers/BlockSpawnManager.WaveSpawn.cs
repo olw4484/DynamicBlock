@@ -19,6 +19,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 튜토리얼일 경우 고정 블록 소환
             if (Map.GameMode == GameMode.Tutorial)
             {
+                Debug.Log("[BlockSpawnManager] : 튜토리얼 블록 생성 시작 ");
                 result.Add(null);
                 result.Add(shapeData[31]);
                 result.Add(null);
@@ -44,7 +45,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 SetLastGeneratedFits(fits);
                 return result;
             }
-            
+            Debug.Log("[BlockSpawnManager] : 일반 블록 Wave 생성 시작 ");
             // 이번 웨이브에서 "소환 실패한 블록" 은 이후 검색에서 제외
             var excludedByPenalty = new HashSet<string>();
             var excludedByDupes = new HashSet<string>();

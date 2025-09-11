@@ -16,7 +16,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         [Header("Block Prefab & Data")] 
         [SerializeField] private GameObject blockPrefab;
-        [SerializeField] private List<Sprite> shapeImageSprites;
+        [SerializeField] public List<Sprite> shapeImageSprites;
         [SerializeField] private string imageDictory = "BlockImages";
 
         [Header("Spawn Positions")] [SerializeField]
@@ -375,7 +375,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void OnBlockPlaced(Block placedBlock)
         {
             _currentBlocks.Remove(placedBlock);
-
+            
+            // 튜토리얼 진행 중이라면: 여기서 클래식으로 전환하고 '즉시 리필'은 건너뜀
+            if (MapManager.Instance.GameMode == GameMode.Tutorial)
+                MapManager.Instance.SetGameMode(GameMode.Classic);
+            
             CheckGameOver();
 
             if (_currentBlocks.Count == 0)
