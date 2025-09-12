@@ -26,7 +26,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         [SerializeField] private Transform shapesPanel;
 
         [Header("Block Placement Helper")] 
-        [SerializeField] private bool previewMode = true;
+        [SerializeField] private bool previewMode = false;
         
         [Header("AD")]
         [SerializeField] private float interstitialDelayAfterGameOver = 1f;

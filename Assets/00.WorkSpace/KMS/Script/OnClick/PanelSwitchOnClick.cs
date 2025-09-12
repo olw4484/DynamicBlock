@@ -70,7 +70,7 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
             // 튜토리얼은 기존 로직 유지, 그 외는 클래식 진입
             if (map.GameMode == GameMode.Tutorial)
             {
-                map.SetMapDataToGrid();
+                map.EnterTutorial();
             }
             else
             {

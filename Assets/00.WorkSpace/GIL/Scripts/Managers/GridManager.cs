@@ -137,7 +137,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _bus?.PublishImmediate(new GridReady(rows, cols));
         }
 
-        private void PrintGridInfo()
+        public void PrintGridInfo()
         {
             PrintGridSquares();
             PrintGridStates();
@@ -314,23 +314,23 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Debug.Log("[Grid] ResetRuntime received");
                 ResetRuntime();
             }, replaySticky: false);
+            
+            ValidateGridConsistency();
         }
 
         public void ResetRuntime()
         {
             if (gridStates == null || gridSquares == null) return;
-
+            
             for (int r = 0; r < rows; r++)
                 for (int c = 0; c < cols; c++)
                 {
                     gridStates[r, c] = false;
                     gridSquares[r, c]?.SetOccupied(false);
                 }
-
+            
             _bus.PublishImmediate(new ComboChanged(0));
             _bus.PublishImmediate(new ScoreChanged(0));
-
-            Debug.Log("[Grid] PublishImmediate(GridReady)");
             _bus.PublishImmediate(new GridReady(rows, cols));
         }
         private void TryBindBus()
@@ -396,7 +396,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void ShowLineFollowOverlay(List<int> rowsCompleted, List<int> colsCompleted, Sprite sprite)
         {
             if (sprite == null) return;
-            Debug.Log("[GridManager] 라인 제거 로직 발동");
             var seen = new HashSet<GridSquare>();
 
             // 가로 라인
@@ -451,6 +450,21 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return list;
         }
         
+        // public void SyncStatesFromSquares()
+        // {
+        //     if (gridSquares == null || gridStates == null) return;
+        //     int rows = gridSquares.GetLength(0);
+        //     int cols = gridSquares.GetLength(1);
+        //     for (int r = 0; r < rows; r++)
+        //     for (int c = 0; c < cols; c++)
+        //     {
+        //         var cell = gridSquares[r, c];
+        //         gridStates[r, c] = cell != null && cell.IsOccupied; // 시각 상태 → 논리 상태
+        //         if (!gridStates[r,c] && cell != null && cell.BlockSpriteIndex != 0)
+        //             gridStates[r,c] = true; // 안전장치
+        //     }
+        // }
+        
         public void SyncStatesFromSquares()
         {
             if (gridSquares == null || gridStates == null) return;
@@ -460,23 +474,31 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int c = 0; c < cols; c++)
             {
                 var cell = gridSquares[r, c];
-                gridStates[r, c] = cell != null && cell.IsOccupied; // 시각 상태 → 논리 상태
-                if (!gridStates[r,c] && cell != null && cell.BlockSpriteIndex != 0)
-                    gridStates[r,c] = true; // 안전장치
+                gridStates[r, c] = (cell != null) && cell.IsOccupied;
             }
         }
         
         public void ValidateGridConsistency()
         {
+            var foundMisMatch = false;
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
             {
-                var cell = gridSquares[r, c];
-                bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
-                bool occupiedByState = gridStates[r, c];
-                if (occupiedByIndex != occupiedByState)
-                    Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | index={cell.BlockSpriteIndex} vs state={occupiedByState} | cellState={cell.state}");
+                if (foundMisMatch) break;
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = gridSquares[r, c];
+                    bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
+                    bool occupiedByState = gridStates[r, c];
+                    if (occupiedByIndex != occupiedByState)
+                    {
+                        Debug.LogWarning($"[GridManager] r={r}, c={c} 불일치 발견 | index={cell.BlockSpriteIndex} vs state={occupiedByState} | cellState={cell.state}");
+                        foundMisMatch = true;
+                        break;
+                    }
+                }
             }
+            Debug.LogWarning($"[GridManager] 그리드 상태 강제 동기화 시작");
+            SyncStatesFromSquares();
         }
         /// <summary>
         /// 보드 전체 정보를 0으로 초기화
