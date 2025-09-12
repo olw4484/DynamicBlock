@@ -142,51 +142,25 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         /// <param name="index">생성할 맵 Index, 0일 경우 튜토리얼, 1 이상일 경우 스테이지 번호</param>
         // 버튼/Start에서 한 줄 사용
-        public void SetMapDataToGrid(int mapIndex = 0)
+        public void SetMapDataToGrid(int index = 0)
         {
-            var gm = GridManager.Instance;
-            if (!gm || gm.gridSquares == null)
+            if (_mapList == null || _mapList.Length == 0) LoadMapData();
+            if (_mapList == null || _mapList.Length == 0)
             {
-                Debug.LogWarning("[MapManager] SetMapDataToGrid: GridManager not ready.");
+                Debug.LogError("[MapManager] Maps 폴더에서 MapData를 찾지 못했습니다.");
                 return;
             }
-
-            // 이전 잔상 제거
-            gm.ResetBoardToEmpty();
-
-            // 코드 -> 스프라이트 매핑 준비(최초 1회만)
-            if (!_codeMapsBuilt) { BuildCodeMaps(); _codeMapsBuilt = true; }
-
-            // 튜토리얼 맵 로드
-            var map = (_mapList != null && mapIndex >= 0 && mapIndex < _mapList.Length)
-                ? _mapList[mapIndex]
-                : null;
-
+            int idx = Mathf.Clamp(index, 0, _mapList.Length - 1);
+            if(idx == 0) idx = defaultMapIndex;
+            
+            var map = _mapList[idx];
             if (map == null)
             {
-                Debug.LogError($"[MapManager] SetMapDataToGrid: map not found for index={mapIndex}");
+                Debug.LogError($"[MapManager] MapData[{idx}]가 null 입니다.");
                 return;
             }
 
-            int rows = Mathf.Min(map.rows, gm.rows);
-            int cols = Mathf.Min(map.cols, gm.cols);
-
-            for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-            {
-                int code = map.layout[r * map.cols + c];
-                if (code > 0 && _codeToSprite.TryGetValue(code, out var sprite) && sprite)
-                    gm.SetCellOccupied(r, c, true, sprite);
-                else
-                    gm.SetCellOccupied(r, c, false);
-            }
-
-            // 셀 표시 → 상태 배열 동기화(안전)
-            gm.SyncStatesFromSquares();
-
-            // 디버깅
-            gm.ValidateGridConsistency();
-            Debug.Log("[MapManager] Tutorial map applied via GridManager.");
+            ApplyMapToCurrentGrid(map);
         }
         
         /// <summary>
@@ -261,9 +235,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Debug.LogError("[ClassicStart] BlockSpawnManager/shapeData missing");
                 return;
             }
-            
-            Debug.Log("[ClassicStartingMap] 클래식 맵 제작 시작");
-            
             var pool = spawner.shapeData.Where(s => s != null && s.difficulty >= 3 && s.difficulty <= 4).ToList();
             if (pool.Count == 0) pool = spawner.shapeData.ToList();
 
@@ -630,31 +601,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             ResumeIfAliveElseLoadSaveElseNew,  // 기본: 라이브 보드 그대로, 없으면 저장 복원, 그것도 없으면 신규
             ForceLoadSave,                     // 항상 저장 복원
             ForceNew                           // Retry/패배: 완전 초기화 -> 신규
-        }
-        
-        public void EnterTutorial(int tutorialMapIndex = 0)
-        {
-            var gm = GridManager.Instance;
-            if (!gm || gm.gridSquares == null)
-            {
-                Debug.LogWarning("[MapManager] EnterTutorial: GridManager not ready.");
-                return;
-            }
-
-            // 1) 보드 비우기
-            gm.ResetBoardToEmpty();
-
-            // 2) 튜토리얼 맵 적용(반드시 GridManager 경유)
-            SetMapDataToGrid(tutorialMapIndex);
-
-            // 3) 상태 동기화
-            gm.SyncStatesFromSquares();
-            gm.ValidateGridConsistency();
-
-            // 4) 스폰러가 손패를 채우도록 GridReady만 발행 (ResetRuntime 사용 X)
-            Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
-
-            Debug.Log("[MapManager] EnterTutorial done (no GameResetRequest).");
         }
     }
 }
