@@ -106,6 +106,7 @@ public class ParticleManager : MonoBehaviour
     private readonly Queue<ParticleSystem> destroyPool = new();
     private readonly Queue<ParticleSystem> perimeterPool = new();
     private int fxLayer = -1;
+    private Dictionary<(SpawnMode, int), ParticleSystem> activeLoops = new();
 
     // ================================
     // Unity LifeCycle
@@ -430,6 +431,53 @@ public class ParticleManager : MonoBehaviour
         pool.Enqueue(ps);
     }
 
+    public void PlayLoopCommon(
+        ParticleSystem ps,
+        in SpawnTarget target,
+        in FxParams p,
+        bool returnToPool,
+        Queue<ParticleSystem> poolToReturn = null)
+    {
+        if (ps == null) return;
+
+        ApplyFxParams(ps, p);
+
+        var t = ps.transform;
+        t.SetParent(fxRoot, false);
+        t.localPosition = ToFxLocal(target);
+        t.localRotation = Quaternion.Euler(0f, 0f, target.rotationZ);
+        t.localScale = Vector3.one;
+        if (fxLayer >= 0) LayerUtil.SetLayerRecursive(ps.gameObject, fxLayer);
+
+        var main = ps.main;
+        main.loop = true;
+
+        ps.gameObject.SetActive(true);
+        ps.Clear();
+        ps.Play();
+
+        // 변경: 튜플 키 사용
+        var key = (target.mode, target.index);
+        activeLoops[key] = ps;
+    }
+
+
+    // 모든 루프 일괄 종료
+    // **모든** 재생 중인 루프 파티클 일괄 종료 (파라미터 없음)
+    public void StopAllLoopCommon()
+    {
+        foreach (var kv in activeLoops)
+        {
+            var ps = kv.Value;
+            if (ps == null) continue;
+
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ps.gameObject.SetActive(false);
+            perimeterPool.Enqueue(ps);
+        }
+        activeLoops.Clear();
+    }
+
     // ================================
     // 퍼블릭 API (기존 시그니처 유지)
     // ================================
@@ -470,7 +518,7 @@ public class ParticleManager : MonoBehaviour
 
         var param = new FxParams(color, lineFx: true, applyScalingMode: true);
 
-        PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: perimeterPool);
+        PlayLoopCommon(ps, target, param, returnToPool: true, poolToReturn: perimeterPool);
     }
 
     public void PlayColPerimeterParticle(int colIndex, Color color)
@@ -483,27 +531,37 @@ public class ParticleManager : MonoBehaviour
 
         var param = new FxParams(color, lineFx: true, applyScalingMode: true);
 
-        PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: perimeterPool);
+        PlayLoopCommon(ps, target, param, returnToPool: true, poolToReturn: perimeterPool);
     }
 
     // 2) 단발 FX (비풀, 자동 비활성)
     public void PlayAllClear()
     {
-        for (int i = 0; i < allClearPSs.Count; i++)
+        // 고정 위치/회전값 리스트
+        Vector3[] positions =
         {
-            var ps = allClearPSs[i];
-            var anchor = (allClearPos != null && i < allClearPos.Length) ? allClearPos[i] : null;
-            if (!ps || !anchor) continue;
+        new Vector3(5f, 4f, 0f),
+        new Vector3(-5f, 4f, 0f)
+    };
 
-            var uiWorld = GetRectWorldCenter(anchor);
-            var fxLocal = UiWorldToFxLocal(uiWorld);
+        Vector3[] rotations =
+        {
+        new Vector3(330f, 270f, 0f),
+        new Vector3(330f, 90f, 0f)
+    };
+
+        for (int i = 0; i < positions.Length; i++)
+        {
+            if (i >= allClearPSs.Count) break; // 파티클 개수 초과 방지
+
+            var ps = allClearPSs[i];
+            if (!ps) continue;
 
             var t = ps.transform;
             t.SetParent(fxRoot, false);
-            t.localPosition = fxLocal;
-            t.localRotation = Quaternion.identity;
+            t.localPosition = positions[i];
+            t.localRotation = Quaternion.Euler(rotations[i]);
             ApplyAllClearSize(ps);
-            //t.localScale = Vector3.one;
 
             var param = new FxParams(
                 color: null,
@@ -513,15 +571,9 @@ public class ParticleManager : MonoBehaviour
                 uniformScale: 1f
             );
 
-            // 속도/버스트가 0인 프리팹일 때 기본 폭발값 보정
-            EnsureExplosionFallback(ps);
-
-            PlayOnceCommon(ps, new SpawnTarget(
-                SpawnMode.AnchorRect, a: anchor, rotZ: 0f, unscaledTime: true, dur: LifetimeMax(ps.main)),
-                param, returnToPool: false);
+            ps.Play();
         }
     }
-
     public void PlayNewScoreAt(RectTransform anchor = null, Vector2 pixelOffset = default)
     {
         if (!newScorePS) return;

@@ -17,6 +17,8 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
     public GameData Data => _legacy.gameData;
 
+    private bool _newBestThisRun = false;
+
     public void SetDependencies(EventQueue bus, SaveManager legacy)
     {
         _bus = bus;
@@ -40,46 +42,34 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
     public void PostInit()
     {
-        _bus.Subscribe<SaveRequested>(_ => _legacy.SaveGame(), replaySticky: false);
-        _bus.Subscribe<LoadRequested>(_ => _legacy.LoadGame(), replaySticky: false);
+        _bus.Subscribe<GameResetRequest>(_ => { _newBestThisRun = false; }, replaySticky: false);
+        _bus.Subscribe<GameResetting>(_ => { _newBestThisRun = false; }, replaySticky: false);
         _bus.Subscribe<ResetRequested>(_ => {
             _legacy.gameData = GameData.NewDefault(DefaultStages);
             _legacy.SaveGame();
         }, replaySticky: false);
 
-        _bus.Subscribe<ScoreChanged>(e =>
-        {
-            // 새 기록이면 바로 반영 + 저장
-            if (_legacy.gameData == null) _legacy.LoadGame();
-
-            if (e.value > _legacy.gameData.highScore)
-            {
-                _legacy.gameData.highScore = e.value;
-                _legacy.SaveGame();          
-                Debug.Log($"[SaveAdapter] NEW HIGH SCORE {e.value} (saved)");
-            }
-            else
-            {
-                Debug.Log($"[SaveAdapter] ScoreChanged={e.value}, High={_legacy.gameData.highScore}");
-            }
-        }, replaySticky: true);
+        //_bus.Subscribe<ScoreChanged>(e =>
+        //{
+        //    if (_legacy.gameData == null) _legacy.LoadGame();
+        //
+        //    if (e.value > _legacy.gameData.highScore)
+        //    {
+        //        _legacy.gameData.highScore = e.value;
+        //        _legacy.SaveGame();
+        //        _newBestThisRun = true;
+        //        Debug.Log($"[SaveAdapter] NEW HIGH SCORE {e.value} (saved)");
+        //    }
+        //}, replaySticky: true);
 
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
             _legacy.UpdateClassicScore(e.score);
 
-            if (_legacy.gameData != null && e.score > _legacy.gameData.highScore)
-            {
-                _legacy.gameData.highScore = e.score;
-                _legacy.SaveGame();
-                Game.Fx.PlayNewScoreAt();
-            }
-            else
-            {
-                Game.Fx.PlayGameOverAt();
-            }
+            if (e.isNewBest) { Game.Fx.PlayNewScoreAt(); Sfx.NewRecord(); }
+            else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
 
-            Debug.Log($"[SaveAdapter] FINAL GameOver total={e.score}, High={_legacy.gameData?.highScore}");
+            Debug.Log($"[SaveAdapter] FINAL total={e.score}, persistedHigh={_legacy.gameData?.highScore}");
         }, replaySticky: false);
 
         _bus.Subscribe<LanguageChangeRequested>(e =>
@@ -94,6 +84,26 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
             //AllClearCount++;
         }, replaySticky: false);
     }
+
+    public int CurrentHighScore => _legacy?.gameData?.highScore ?? 0;
+
+    public void EnsureLoaded()
+    {
+        if (_legacy.gameData == null)
+            _legacy.LoadGame();
+    }
+
+    public int GetPersistedHighScoreFresh()
+    {
+        _legacy.LoadGame(); // AfterLoad로 UI 갱신 이벤트 나갈 수 있음 (정상)
+        return _legacy.gameData?.highScore ?? 0;
+    }
+
+
+    public bool TryUpdateHighScore(int score, bool save = true)
+    => _legacy.TryUpdateHighScore(score, save);
+    public void UpdateClassicScore(int score)
+        => _legacy.UpdateClassicScore(score);
 
     private void TryMigrateLegacyLanguage()
     {

@@ -111,7 +111,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _isDragging = false;
             
             _shapeTransform.localScale = shapeSelectedScale;
-            
+
+            Sfx.BlockSelect();
+
             MoveBlock(eventData);
         }
         
@@ -151,6 +153,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             else
             {
+                Sfx.BlockPlace();
+
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
                 Destroy(gameObject);

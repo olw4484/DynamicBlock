@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using _00.WorkSpace.GIL.Scripts.Grids;
@@ -17,7 +17,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         [Header("Block Prefab & Data")] 
         [SerializeField] private GameObject blockPrefab;
-        [SerializeField] private List<Sprite> shapeImageSprites;
+        [SerializeField] public List<Sprite> shapeImageSprites;
         [SerializeField] private string imageDictory = "BlockImages";
 
         [Header("Spawn Positions")] [SerializeField]
@@ -35,6 +35,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         [Header("Revive")]
         [SerializeField] private int  reviveWaveCount = 3;     // Revive 웨이브 크기
         [SerializeField] private bool oneRevivePerRun = true;  // 라운드당 1회 제한
+
+        private int _persistedHigh = 0;                 // 저장된 하이스코어 캐시
+        [SerializeField] private bool _tieIsNew = false; // 동점도 신기록 취급할지
 
         private bool _reviveUsed;
         private Coroutine _queuedInterstitialCo; 
@@ -238,7 +241,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (_adQueuedForThisGameOver) return;
             _adQueuedForThisGameOver = true;
             //StartCoroutine(Co_ShowInterstitialAfterGameOver());
-            _queuedInterstitialCo = StartCoroutine(Co_ShowInterstitialAfterGameOver());
+            
+            // SJH : 게임 오버시 전면광고 실행은 ReviveScreen에서 실행
+            //_queuedInterstitialCo = StartCoroutine(Co_ShowInterstitialAfterGameOver());
         }
         
         /// <summary>
@@ -439,6 +444,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }, replaySticky: false);
 
             _bus.Subscribe<GiveUpRequest>(_ => { ConfirmGameOver(); }, replaySticky: false);
+            _bus.Subscribe<GameDataChanged>(e =>
+            {
+                _persistedHigh = e.data.highScore;
+                Debug.Log($"[BlockStorage] HighScore cached = {_persistedHigh}");
+            }, replaySticky: true);
         }
 
         public void ResetRuntime()
@@ -487,18 +497,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         void ConfirmGameOverImmediate(string reason)
         {
-            _lastScore = ScoreManager.Instance ? ScoreManager.Instance.Score
-                       : (Game.GM != null ? Game.GM.Score : 0);
-            _lastReason = reason;
+            int final = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
+            bool isNewBest = _tieIsNew ? (final >= _persistedHigh) : (final > _persistedHigh);
 
-            CancelQueuedInterstitialIfAny();
-            Time.timeScale = 0f;
+            Debug.Log($"[GO] final={final}, cachedHigh={_persistedHigh}, isNewBest={isNewBest}");
 
-            Game.Bus.PublishImmediate(new GameOverConfirmed(_lastScore, _lastReason));
+            Game.Bus.PublishImmediate(new GameOverConfirmed(final, isNewBest, reason));
         }
 
         #endregion
-        #region Debug
+            #region Debug
 
         private void DebugCurrentBlocks()
         {

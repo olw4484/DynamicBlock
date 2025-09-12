@@ -11,11 +11,17 @@ using UnityEngine;
 /// </summary>
 public class AudioManager : MonoBehaviour
 {
+    const string KeyBgmVol = "BGMVolume";
+    const string KeySeVol = "SEVolume";
+    const string KeyBgmLastOn = "LastOn_BGMVolume";
+    const string KeySeLastOn = "LastOn_SEVolume";
+    const string KeyVib = "Vibration";
     public static AudioManager Instance { get; private set; }
     [Header("Audio Settings")]
     [SerializeField] private int sePoolSize = 10; // 동시에 재생 가능한 SE 수
     [Range(0f, 1f)] public float BGMVolume = 1f;
     [Range(0f, 1f)] public float SEVolume = 1f;
+    public bool VibrateEnabled = true;
 
     [Header("1001 Click Button")]
     public AudioClip SE_Button;
@@ -68,6 +74,7 @@ public class AudioManager : MonoBehaviour
     // 초기화
     private void Awake()
     {
+        Debug.Log($"[AudioManager] Awake: BGMVol={BGMVolume}, SEVol={SEVolume}");
         // 싱글톤 보장
         if (Instance != null && Instance != this)
         {
@@ -94,6 +101,7 @@ public class AudioManager : MonoBehaviour
         // PlayerPrefs에서 볼륨 불러오기
         BGMVolume = PlayerPrefs.GetFloat("BGMVolume", BGMVolume);
         SEVolume = PlayerPrefs.GetFloat("SEVolume", SEVolume);
+        VibrateEnabled = PlayerPrefs.GetInt(KeyVib, 1) == 1;
         ApplyVolume();
     }
     // 앱 포커스/일시정지 시 BGM 일시정지
@@ -113,10 +121,13 @@ public class AudioManager : MonoBehaviour
     // 동일 BGM이 재생 중이면 무시
     public void PlayBGM(AudioClip clip)
     {
-        if (clip == null) return;
+        if (clip == null) { Debug.LogWarning("[BGM] null clip"); return; }
+        Debug.Log($"[BGM] play {clip.name} vol={BGMVolume}");
         if (bgmSource.clip == clip && bgmSource.isPlaying) return;
         bgmSource.clip = clip;
         bgmSource.volume = BGMVolume;
+        bgmSource.loop = true;
+        bgmSource.mute = false;
         bgmSource.Play();
     }
     // BGM 정지
@@ -124,9 +135,12 @@ public class AudioManager : MonoBehaviour
     // BGM 볼륨 설정 (0~1)
     public void SetBGMVolume(float volume)
     {
+        float prev = BGMVolume;
         BGMVolume = Mathf.Clamp01(volume);
         PlayerPrefs.SetFloat("BGMVolume", BGMVolume);
+        if (BGMVolume > 0f) PlayerPrefs.SetFloat("LastOn_BGMVolume", BGMVolume);
         ApplyVolume();
+        Debug.Log($"[BGM] SetBGMVolume {prev} -> {BGMVolume}\n{System.Environment.StackTrace}");
     }
     #endregion
 
@@ -142,11 +156,15 @@ public class AudioManager : MonoBehaviour
             {
                 src.clip = clip;
                 src.volume = SEVolume;
+                src.mute = false;                
+                src.spatialBlend = 0f;            
                 src.Play();
+                Debug.Log($"[SE] play {clip.name} vol={src.volume}");
                 if (vibrate) TryVibrate();
                 return;
             }
         }
+        Debug.LogWarning("[SE] no free source in pool");
 
         // 풀에 여유가 없으면 새로 생성
         var extra = gameObject.AddComponent<AudioSource>();
@@ -161,10 +179,38 @@ public class AudioManager : MonoBehaviour
     // SE 볼륨 설정 (0~1)
     public void SetSEVolume(float volume)
     {
+        float prev = SEVolume;
         SEVolume = Mathf.Clamp01(volume);
         PlayerPrefs.SetFloat("SEVolume", SEVolume);
+        if (SEVolume > 0f) PlayerPrefs.SetFloat("LastOn_SEVolume", SEVolume);
         ApplyVolume();
+        Debug.Log($"[SE ] SetSEVolume {prev} -> {SEVolume}\n{System.Environment.StackTrace}");
     }
+    // ON/OFF 토글 전용
+    public void SetBgmOn(bool on)
+    {
+        if (on)
+        {
+            float last = PlayerPrefs.GetFloat(KeyBgmLastOn, 1f);
+            SetBGMVolume(last);
+        }
+        else
+        {
+            SetBGMVolume(0f);
+        }
+    }
+    public void SetSeOn(bool on)
+    {
+        if (on) 
+        { 
+            SetSEVolume(PlayerPrefs.GetFloat(KeySeLastOn, 1f));
+        }
+        else
+        {
+            SetSEVolume(0f);
+        }
+    }
+
     #endregion
     // 볼륨 적용
     private void ApplyVolume()
@@ -173,7 +219,11 @@ public class AudioManager : MonoBehaviour
         foreach (var src in sePool)
             src.volume = SEVolume;
     }
-
+    public void SetVibrateEnabled(bool on) 
+    {
+        VibrateEnabled = on;
+        PlayerPrefs.SetInt(KeyVib, on ? 1 : 0);
+    }
     #region Helpers for Game Events
     // 줄 클리어 SE 재생 (1~6줄)
     public void PlayLineClearSE(int lineCount)
@@ -215,11 +265,13 @@ public class AudioManager : MonoBehaviour
     static void TryVibrate()
     {
 #if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
+    if (Instance != null && !Instance.VibrateEnabled) return;
         UnityEngine.Handheld.Vibrate();
 #else
         // 모바일이 아니면 무시 (필요시 로그)
         // Debug.Log("[Vibrate] skipped (not mobile build)");
 #endif
-
     }
+    public bool IsBgmOn => BGMVolume > 0.0001f;
+    public bool IsSeOn => SEVolume > 0.0001f;
 }

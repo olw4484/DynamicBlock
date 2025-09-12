@@ -38,10 +38,12 @@ public class AdManager : MonoBehaviour, IAdService
         if (_classicBtn)
         {
             _classicBtn.onClick.RemoveAllListeners();
-            _classicBtn.onClick.AddListener(() =>
+
+			NextInterstitialTime = DateTime.UtcNow.AddSeconds(InterstitialTime);
+
+			_classicBtn.onClick.AddListener(() =>
             {
                 NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
-                NextInterstitialTime = DateTime.UtcNow.AddSeconds(InterstitialTime);
             });
         }
 
