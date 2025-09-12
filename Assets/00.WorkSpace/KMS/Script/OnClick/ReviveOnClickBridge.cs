@@ -4,6 +4,8 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
 {
     public void OnClickRevive()
     {
+        Game.Audio.PlayButtonClick();
+
         if (!(Game.Ads?.IsRewardedReady() ?? false))
         {
             Game.Ads?.Refresh();
@@ -20,6 +22,7 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
 
     public void OnClickGiveUp()
     {
+        Game.Audio.PlayButtonClick();
         if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest());
     }
 }

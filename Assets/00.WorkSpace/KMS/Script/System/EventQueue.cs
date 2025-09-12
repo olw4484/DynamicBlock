@@ -211,8 +211,10 @@ public readonly struct PlayerDowned
 }
 public readonly struct GameOverConfirmed
 {
-    public readonly int score; public readonly string reason;
-    public GameOverConfirmed(int s, string r) { score = s; reason = r; }
+    public readonly int score;
+    public readonly bool isNewBest;
+    public readonly string reason;
+    public GameOverConfirmed(int s, bool nb, string r) { score = s; isNewBest = nb; reason = r; }
 }
 public readonly struct RevivePerformed { }
 public readonly struct ContinueGranted { }              // 명령 결과

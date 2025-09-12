@@ -31,8 +31,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] private TMP_Text _scoreText;
     [SerializeField] private TMP_Text _comboText;
     [SerializeField] private TMP_Text _hudBestText;
-    [SerializeField] private TMP_Text _gameOverTotalText;
-    [SerializeField] private TMP_Text _gameOverBestText;
+
+    [Header("GameOver Texts (All Canvases)")]
+    [SerializeField] private TMP_Text[] _goTotalTexts; // 모든 Canvas의 TotalScore 라벨들
+    [SerializeField] private TMP_Text[] _goBestTexts;  // 모든 Canvas의 Best 라벨들
 
     [Header("Panels")]
     [SerializeField] private List<PanelEntry> _panels = new();
@@ -58,6 +60,14 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     public int Order => 100;
 
     public void SetDependencies(EventQueue bus, GameManager game) { _bus = bus; _game = game; }
+
+    private static void SetAll(TMP_Text[] arr, string value)
+    {
+        if (arr == null) return;
+        for (int i = 0; i < arr.Length; i++)
+            if (arr[i]) arr[i].text = value;
+    }
+    private static string FormatScore(int v) => v.ToString("#,0");
 
     public void PreInit()
     {
@@ -134,16 +144,19 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         {
             _lastHighScore = e.data.highScore;
             if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+            // 필요 시 GO 화면의 Best도 최신으로 동기화
+            SetAll(_goBestTexts, $"Best : {FormatScore(_lastHighScore)}");
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
         }, replaySticky: true);
 
         // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
-            if (_gameOverTotalText) _gameOverTotalText.text = $"TotalScore : {FormatScore(e.score)}";
+            SetAll(_goTotalTexts, $"TotalScore : {FormatScore(e.score)}");
             int best = Mathf.Max(e.score, _lastHighScore);
-            if (_gameOverBestText) _gameOverBestText.text = $"Best : {FormatScore(best)}";
+            SetAll(_goBestTexts, $"Best : {FormatScore(best)}");
             SetPanel("Revive", true);
+            Game.Audio.PlayContinueTimeCheck();
         }, replaySticky: false);
 
         // 리바이브 패널 OFF
@@ -152,18 +165,24 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             SetPanel("Revive", false);
         }, replaySticky: false);
 
-        // 리바이브 패널 OFF + 결과 패널 ON
+        // 리바이브 패널 OFF + 결과 패널 ON (신기록 여부에 따라 분기)
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
+            SetAll(_goTotalTexts, $"TotalScore : {FormatScore(e.score)}");
+            int best = e.isNewBest ? e.score : _lastHighScore;
+            SetAll(_goBestTexts, $"Best : {FormatScore(best)}");
+
             SetPanel("Revive", false);
-            SetPanel("GameOver", true);
+            SetPanel("GameOver", !e.isNewBest);
+            SetPanel("NewRecord", e.isNewBest);
         }, replaySticky: false);
 
-        // 광고 성공 시 모달 닫기
+        // 광고 성공 시 모달/패널 닫기
         _bus.Subscribe<ContinueGranted>(_ =>
         {
             SetPanel("Revive", false);
             SetPanel("GameOver", false);
+            SetPanel("NewRecord", false);
         }, replaySticky: false);
 
         // 패널 토글 이벤트 구독 (Sticky 재생 켜둠)
@@ -212,6 +231,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on, key));
         if (on) StartCoroutine(FailsafeOpenSnap(key, p.root, cg));
     }
+
     private IEnumerator FadeRoutine(CanvasGroup cg, float target, float dur, bool finalActive, string key)
     {
         // 페이드 중 입력 막기
@@ -233,6 +253,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _fadeJobs.Remove(key);
     }
+
     private IEnumerator FailsafeOpenSnap(string key, GameObject root, CanvasGroup cg)
     {
         yield return null; // 다음 프레임
@@ -406,15 +427,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         return cg != null ? cg : go.AddComponent<CanvasGroup>();
     }
 
-    // 점수 포맷
-    private static string FormatScore(int v) => v.ToString("#,0");
-
     // === 리셋 흐름 ===
     public void ResetRuntime()
     {
         // 모달/Dim/메인 강제 정리 후 기본 패널 상태로
         ForceCloseAllModals();
         SetPanel("GameOver", false);
+        SetPanel("NewRecord", false);
         SetPanel("Game", true);
 
         NormalizeAllPanelsAlpha();
@@ -426,26 +445,28 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 1) 보장: 시간 재개
         Time.timeScale = 1f;
 
-        // 모달/Dim/메인 강제 정리 (옵션 등 잔여 제거)
+        // 잔여 모달/Dim 정리
         ForceCloseAllModals();
 
-        // 2) 엔진 쪽 리셋 이벤트
+        // 2) 엔진 리셋 이벤트
         _bus.PublishImmediate(new GameResetting());
         _bus.PublishImmediate(new ComboChanged(0));
         _bus.PublishImmediate(new ScoreChanged(0));
 
         // 3) UI 전환(원자적)
+        string onKey = (req.targetPanel == "Game") ? "Game" : "Main";
+        string offKey = (onKey == "Game") ? "Main" : "Game";
+
         SetPanel("GameOver", false);
-        if (req.targetPanel == "Game")
-        {
-            SetPanel("Main", false);
-            SetPanel("Game", true);
-        }
-        else // "Main"
-        {
-            SetPanel("Game", false);
-            SetPanel("Main", true);
-        }
+        SetPanel("NewRecord", false);
+        SetPanel(offKey, false);
+        SetPanel(onKey, true);
+
+        // 전환 사실을 이벤트로도 알림
+        _bus.PublishImmediate(new PanelToggle(offKey, false));
+        var onEvt = new PanelToggle(onKey, true);
+        _bus.PublishSticky(onEvt, alsoEnqueue: false);
+        _bus.PublishImmediate(onEvt);
 
         NormalizeAllPanelsAlpha();
         ForceMainUIClean();
@@ -473,6 +494,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         UpdateDimByStack();
         ForceMainUIClean();
     }
+
     private void NormalizeAllPanelsAlpha()
     {
         foreach (var kv in _panelMap)
@@ -490,6 +512,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             ResetChildCanvasGroupsAlpha(p.root);
         }
     }
+
     private void ResetChildCanvasGroupsAlpha(GameObject root)
     {
         if (!root) return;
@@ -502,6 +525,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             g.alpha = 1f;   // 시각만 1로 정규화 (입력은 루트에서 관리)
         }
     }
+
     public bool TryGetPanelRoot(string key, out GameObject root)
     {
         root = null;
@@ -510,6 +534,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         return true;
     }
 }
+
 public readonly struct PanelToggle
 {
     public readonly string key; public readonly bool on;
