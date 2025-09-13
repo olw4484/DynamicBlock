@@ -167,9 +167,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             var fitsInfo = spawner.LastGeneratedFits;
-
-            if (previewMode)
-                blockManager.PreviewWaveNonOverlapping(wave, fitsInfo, previewSprites);
+            
+            Debug.Log("[Block Storage] 블록 생성 완성");
+            
+            // TODO : 프리뷰 모드를 다시 사용하고 싶을 경우 주석 해체
+            //if (previewMode) blockManager.PreviewWaveNonOverlapping(wave, fitsInfo, previewSprites);
         }
 
         private int GetRandomImageIndex()
@@ -366,10 +368,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void OnBlockPlaced(Block placedBlock)
         {
             _currentBlocks.Remove(placedBlock);
-            
-            // 튜토리얼 진행 중이라면: 여기서 클래식으로 전환하고 '즉시 리필'은 건너뜀
-            if (MapManager.Instance.GameMode == GameMode.Tutorial)
-                MapManager.Instance.SetGameMode(GameMode.Classic);
             
             CheckGameOver();
             

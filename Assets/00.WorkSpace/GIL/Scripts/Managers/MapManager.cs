@@ -22,11 +22,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [Header("Save Tutorial")] 
         public SaveManager saveManager;
+        public GameMode GameMode {get; private set;} = GameMode.Tutorial;
         
         [Header("Map Runtime")]
         [SerializeField] private int defaultMapIndex = 0;
         [SerializeField] private GameObject grid;
-        public GameMode GameMode;
         private MapData[] _mapList;
         
         private readonly Dictionary<int, Sprite> _codeToSprite = new();
@@ -49,8 +49,21 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             if(_mapList == null) LoadMapData();
             saveManager.LoadGame();
-            GameMode = saveManager.gameData.isTutorialPlayed? GameMode.Classic : GameMode.Tutorial;
+            Debug.Log("[MapManager] Loaded saveData");
         }
+        
+        private void Start()
+        {
+            // 세이브가 로드된 직후 모드를 반영
+            if (saveManager != null)
+            {
+                // 즉시 한 번
+                ApplySavedGameMode(saveManager.gameData);
+                // 이후에도 로드가 다시 일어날 수 있으니 구독
+                saveManager.AfterLoad += ApplySavedGameMode;
+            }
+        }
+        
         public int Order => 13;
         public void PreInit() { }
 
@@ -69,19 +82,32 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
         }
         
+        private void ApplySavedGameMode(GameData data)
+        {
+            var loaded = (saveManager != null) ? saveManager.GetGameMode() : GameMode.Tutorial;
+            GameMode = loaded;
+            Debug.Log($"[MapManager] Loaded GameMode: {GameMode}");
+        }
+        
         /// <summary>
         /// 게임 모드 변경, 바꿀 때 이걸 쓰기(추적 용이함)
         /// </summary>
-        public void SetGameMode(GameMode gameMode)
+        public void SetGameMode(GameMode mode)
         {
-            var currMode = GameMode;
-            if (currMode == GameMode.Tutorial)
-            {
-                saveManager.gameData.isTutorialPlayed = true;
-                saveManager.SaveGame();
-            }
-            GameMode = gameMode;
-            Debug.Log($"[MapManager] 게임 모드 변경 : {currMode} -> {GameMode}");
+            var prev = GameMode;
+            GameMode = mode;
+
+            if (saveManager != null)
+                saveManager.SetGameMode(mode, save: true);
+
+            Debug.Log($"[MapManager] 게임 모드 변경 : {prev} -> {GameMode}");
+        }
+        
+        // 튜토리얼 종료시 호출 지점에서:
+        public void OnTutorialCompleted()
+        {
+            SetGameMode(GameMode.Classic);
+            // TODO : 튜토리얼을 진행하고 나서 원하는 진입 로직 호출
         }
         
         public void PostInit() { }
@@ -93,6 +119,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _fruitSpriteList = Resources.LoadAll<Sprite>("BlockWithFruitImages");
             _fruitBackgroundSprite = Resources.LoadAll<Sprite>("FruitBackgroundImage");
         }
+        
+        
         
         private void BuildCodeMaps()
         {

@@ -19,16 +19,16 @@ public class SaveManager : MonoBehaviour
 
     }
 
-    // °ÔÀÓ µ¥ÀÌÅÍ ÀúÀå
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     public void SaveGame()
     {
         var json = JsonUtility.ToJson(gameData, true);
         File.WriteAllText(filePath, json);
-        Debug.Log("ÀúÀå ¿Ï·á: " + filePath);
+        Debug.Log("ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½: " + filePath);
         AfterSave?.Invoke(gameData);
     }
 
-    // °ÔÀÓ µ¥ÀÌÅÍ ºÒ·¯¿À±â
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ò·ï¿½ï¿½ï¿½ï¿½ï¿½
     public void LoadGame()
     {
         if (File.Exists(filePath))
@@ -46,7 +46,7 @@ public class SaveManager : MonoBehaviour
         AfterLoad?.Invoke(gameData);
     }
 
-    // ============= Å¬·¡½Ä ¸ðµå =============
+    // ============= Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ =============
     public void UpdateClassicScore(int score)
     {
         gameData.lastScore = score;
@@ -57,12 +57,12 @@ public class SaveManager : MonoBehaviour
         SaveGame();
     }
 
-    // ============= ¾îµåº¥Ã³ ¸ðµå =============
+    // ============= ï¿½ï¿½åº¥Ã³ ï¿½ï¿½ï¿½ =============
     public void ClearStage(int stageIndex, int score)
     {
         if (stageIndex < 0 || stageIndex >= gameData.stageCleared.Length) return;
 
-        gameData.stageCleared[stageIndex] = 1; // Å¬¸®¾î Ã¼Å©
+        gameData.stageCleared[stageIndex] = 1; // Å¬ï¿½ï¿½ï¿½ï¿½ Ã¼Å©
         if (score > gameData.stageScores[stageIndex])
             gameData.stageScores[stageIndex] = score;
 
@@ -79,7 +79,7 @@ public class SaveManager : MonoBehaviour
         return gameData.stageScores[stageIndex];
     }
 
-    /// <summary>ÇöÀç highScoreº¸´Ù Å©¸é °»½ÅÇÏ°í ÀúÀå.</summary>
+    /// <summary>ï¿½ï¿½ï¿½ï¿½ highScoreï¿½ï¿½ï¿½ï¿½ Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½.</summary>
     public bool TryUpdateHighScore(int score, bool save = true)
     {
         if (gameData == null) LoadGame();
@@ -90,5 +90,15 @@ public class SaveManager : MonoBehaviour
             return true;
         }
         return false;
+    }
+    
+    // API: GameMode
+    public GameMode GetGameMode() => gameData != null ? gameData.gameMode : GameMode.Tutorial;
+
+    public void SetGameMode(GameMode mode, bool save = true)
+    {
+        if (gameData == null) gameData = GameData.NewDefault(200);
+        gameData.gameMode = mode;
+        if (save) SaveGame();
     }
 }

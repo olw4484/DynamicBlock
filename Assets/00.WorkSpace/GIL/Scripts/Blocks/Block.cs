@@ -157,6 +157,13 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
+                
+                // TODO : 적절한 튜토리얼 시작 위치 옮기기
+                if (MapManager.Instance.GameMode == GameMode.Tutorial)
+                {
+                    MapManager.Instance.OnTutorialCompleted();
+                }
+                
                 Destroy(gameObject);
             }
             

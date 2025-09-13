@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.Shapes;
@@ -8,26 +9,28 @@ public class GameData
 {
     public int Version = 1;
 
-    public int LanguageIndex; // 0 = ±âº»
+    public int LanguageIndex; // 0 = ï¿½âº»
 
-    // Å¬·¡½Ä ¸ðµå
-    public int highScore;        // ÃÖ°í Á¡¼ö
-    public int lastScore;        // ¸¶Áö¸· ÇÃ·¹ÀÌ Á¡¼ö
-    public int playCount;        // ÇÃ·¹ÀÌ È½¼ö
+    // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
+    public int highScore;        // ï¿½Ö°ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public int lastScore;        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public int playCount;        // ï¿½Ã·ï¿½ï¿½ï¿½ È½ï¿½ï¿½
 
-    // ¾îµåº¥Ã³ ¸ðµå
-    public int[] stageCleared;   // 0 = ¹ÌÅ¬¸®¾î, 1 = Å¬¸®¾î
-    public int[] stageScores;    // °¢ ½ºÅ×ÀÌÁö ÃÖ°í Á¡¼ö
+    // ï¿½ï¿½åº¥Ã³ ï¿½ï¿½ï¿½
+    public int[] stageCleared;   // 0 = ï¿½ï¿½Å¬ï¿½ï¿½ï¿½ï¿½, 1 = Å¬ï¿½ï¿½ï¿½ï¿½
+    public int[] stageScores;    // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö°ï¿½ ï¿½ï¿½ï¿½ï¿½
     
-    // ÀÎ °ÔÀÓ µ¥ÀÌÅÍ
-    public bool isTutorialPlayed; // Æ©Åä¸®¾óÀ» ½ÇÇàÇÏ¿´´Â°¡?
-    // Å¬·¡½Ä ¸ðµå
-    public bool isClassicModePlaying;       // Å¬·¡½Ä ¸ðµå ÇÃ·¹ÀÌ ÁßÀÎ°¡?
-    public List<ShapeData> currentShapes;   // Çö ½ÃÁ¡ ºí·° µ¥ÀÌÅÍ
-    public List<Sprite> currentShapeSprites;// Çö ½ÃÁ¡ ºí·° ½ºÇÁ¶óÀÌÆ®
-    public List<int> currentMapLayout;      // Çö ½ÃÁ¡ ¸Ê »óÅÂ
-    public int currentScore;                // Çö ½ÃÁ¡ Á¡¼ö
-    public int currentCombo;                // Çö ½ÃÁ¡ ¶óÀÎ °õº¸
+    // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    [Obsolete("Use gameMode instead")]
+    public bool isTutorialPlayed; // Æ©ï¿½ä¸®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ï¿½Â°ï¿½?
+    public GameMode gameMode;
+    // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
+    public bool isClassicModePlaying;       // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î°ï¿½?
+    public List<ShapeData> currentShapes;   // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    public List<Sprite> currentShapeSprites;// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®
+    public List<int> currentMapLayout;      // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public int currentScore;                // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public int currentCombo;                // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     public static GameData NewDefault(int stages = 200)
     {
         return new GameData
@@ -38,9 +41,10 @@ public class GameData
             playCount = 0,
             stageCleared = new int[stages],
             stageScores = new int[stages],
-            // ÀÎ °ÔÀÓ µ¥ÀÌÅÍ
+            // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             isTutorialPlayed = false,
-            // Å¬·¡½Ä ¸ðµå
+            gameMode = GameMode.Tutorial,
+            // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
             isClassicModePlaying = false,
             currentShapes = new List<ShapeData>(),
             currentShapeSprites = new List<Sprite>(),
