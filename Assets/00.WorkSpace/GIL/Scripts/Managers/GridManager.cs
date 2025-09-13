@@ -462,6 +462,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 cell.SetFruitImage(false, null, changeIndex: false);  // 과일 오버레이 off
                 cell.SetOccupied(false);                               // Normal
             }
+            
+            Debug.Log("[Grid] PublishImmediate(GridReady)");
+            _bus.PublishImmediate(new GridReady(rows, cols));
         }
         
         public bool HasAnyOccupied()
