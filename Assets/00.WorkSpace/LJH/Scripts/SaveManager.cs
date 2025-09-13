@@ -11,7 +11,9 @@ public class SaveManager : MonoBehaviour
 
     private string filePath;
     public GameData gameData;
-
+    
+    [NonSerialized] public bool skipNextGridSnapshot = false;
+    
     private void Awake()
     {
         filePath = Path.Combine(Application.persistentDataPath, "save.json");
@@ -100,5 +102,11 @@ public class SaveManager : MonoBehaviour
         if (gameData == null) gameData = GameData.NewDefault(200);
         gameData.gameMode = mode;
         if (save) SaveGame();
+    }
+    
+    public void SkipNextSnapshot(string reason = null)
+    {
+        skipNextGridSnapshot = true;
+        Debug.Log($"[Save] Skip next grid snapshot (reason: {reason})");
     }
 }

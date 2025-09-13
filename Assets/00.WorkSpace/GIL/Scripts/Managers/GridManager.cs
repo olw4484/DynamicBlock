@@ -135,7 +135,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _bus?.PublishImmediate(new GridReady(rows, cols));
         }
 
-        private void PrintGridInfo()
+        public void PrintGridInfo()
         {
             PrintGridSquares();
             PrintGridOccupiedInfo();
@@ -307,7 +307,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void ResetRuntime()
         {
             if (gridSquares == null) return;
-
+            
+            Debug.Log("[GridManager] Reset Runtime");
+            
             for (int r = 0; r < rows; r++)
             for (int c = 0; c < cols; c++)
             {

@@ -83,8 +83,6 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         }
         else if (targetPanel == "Main")
         {
-            // 1) 먼저 상태 동기화(화면 -> 상태)
-
             // 2) 그 다음 저장 
             GameSnapShot.SaveGridSnapshot();
 
