@@ -149,13 +149,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             var squares = gm.gridSquares;
 
             for (int r = 0; r < gm.rows; r++)
+            for (int c = 0; c < gm.cols; c++)
             {
-                for (int c = 0; c < gm.cols; c++)
-                {
-                    bool occupied = gm.gridStates[r, c];
-                    squares[r, c].SetOccupied(occupied);
-                }
+                var sq = squares[r, c];
+                if (sq == null) continue;
+
+                // 점유 안 된 칸만 Normal로 되돌리고 프리뷰/라인 오버레이 제거
+                if (!sq.IsOccupied) sq.SetState(GridState.Normal);
+                sq.SetPreviewImage(null);
+                sq.SetLineClearImage(false, null);
             }
+
+            _lastGeneratedFits.Clear();
         }
 
         private void RecomputeFitsForWave(List<ShapeData> wave)

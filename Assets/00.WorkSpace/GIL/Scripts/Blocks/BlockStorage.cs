@@ -78,26 +78,13 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         void OnEnable()
         {
             Game.Bus?.Subscribe<GridReady>(_ => {
-                Debug.Log("[Block Storage] : 그리드 셋팅 완료, 블럭 생성 준비");
                 if (_paused || _handSpawnedOnce) return;
+                Debug.Log("[Block Storage] : 그리드 셋팅 완료, 블럭 생성 준비");
                 GenerateAllBlocks();
                 _handSpawnedOnce = true;
             }, replaySticky:true);
 
             Game.Bus?.Subscribe<GameResetting>(_ => _handSpawnedOnce = false, replaySticky:false);
-            // 이전 코드인데 없이도 크게 문제 없는 것으로 보임, 혹시 모르니 유지할 예정
-            // Game.Bind 이후에만 구독 시도
-            // if (Game.IsBound)
-            // {
-            //     _onContinue = _ =>
-            //     {
-            //         _gameOverFired = false;
-            //         Time.timeScale = 1f;
-            //         // 이어하기 정책에 맞게 블록 재생성/리셋
-            //         GenerateAllBlocks();
-            //     };
-            //     Game.Bus.Subscribe(_onContinue, replaySticky: false);
-            // }
         }
 
         void OnDisable()
@@ -180,7 +167,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             var fitsInfo = spawner.LastGeneratedFits;
-            
+
             if (previewMode)
                 blockManager.PreviewWaveNonOverlapping(wave, fitsInfo, previewSprites);
         }

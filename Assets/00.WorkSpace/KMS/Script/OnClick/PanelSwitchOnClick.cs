@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Utils;
 using UnityEngine;
@@ -70,17 +72,18 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
             // 튜토리얼은 기존 로직 유지, 그 외는 클래식 진입
             if (map.GameMode == GameMode.Tutorial)
             {
-                map.SetMapDataToGrid();
+                StartCoroutine(map.EnterTutorial());
+                //map.RequestTutorialApply( /* index 필요시 */ );
             }
             else
             {
-                map.EnterClassic();
+                StartCoroutine(map.EnterClassicAfterOneFrame());
+                //map.EnterClassic();
             }
         }
         else if (targetPanel == "Main")
         {
             // 1) 먼저 상태 동기화(화면 -> 상태)
-            GridManager.Instance?.SyncStatesFromSquares();
 
             // 2) 그 다음 저장 
             GameSnapShot.SaveGridSnapshot();
@@ -89,7 +92,6 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
             GridManager.Instance?.HealBoardFromStates();
         }
     }
-
     void PlayInvokeSfx()
     {
         switch (sfxMode)

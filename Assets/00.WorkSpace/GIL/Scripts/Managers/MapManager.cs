@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -159,7 +160,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Debug.LogError($"[MapManager] MapData[{idx}]가 null 입니다.");
                 return;
             }
-
+            
+            
+            
             ApplyMapToCurrentGrid(map);
         }
         
@@ -196,7 +199,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 else
                     gm.SetCellOccupied(r, c, false);
             }
-
+            
             gm.ValidateGridConsistency();
         }
         
@@ -298,7 +301,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             ApplyPlacementsToGridViaGridManager(placed);
 
             // 5) 상태 동기화(안전장치)
-            gm.SyncStatesFromSquares();
 
             Debug.Log($"[ClassicStart] placed={placed.Count}, sumTiles={sumTiles}");
         }
@@ -382,12 +384,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             var gm = GridManager.Instance;
             int rows = gm.rows, cols = gm.cols;
-            var occ = new bool[rows, cols];
-
-            for (int r = 0; r < rows; r++)
-                for (int c = 0; c < cols; c++)
-                    occ[r, c] = gm.gridStates[r, c];
-
+            var occ = gm.SnapshotOccupied();
             return occ;
         }
 
@@ -512,6 +509,56 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return cnt;
         }
         
+        bool IsGridFullyReady(GridManager gm)
+        {
+            if (!gm || gm.gridSquares == null) return false;
+            int R = gm.gridSquares.GetLength(0), C = gm.gridSquares.GetLength(1);
+            if (R != gm.rows || C != gm.cols) return false;
+            for (int r = 0; r < R; r++)
+            for (int c = 0; c < C; c++)
+                if (gm.gridSquares[r, c] == null) return false;
+            return true;
+        }
+
+        bool _pendingTutorialApply;
+        int  _pendingIndex;
+
+        public IEnumerator EnterTutorial()
+        {
+            yield return null;
+            
+            RequestTutorialApply();
+        }
+        
+        public void RequestTutorialApply(int index = 0)
+        {
+            _pendingTutorialApply = true;
+            _pendingIndex = index;
+
+            var gm = GridManager.Instance;
+            if (IsGridFullyReady(gm))
+            {
+                SetMapDataToGrid(index);
+                _pendingTutorialApply = false;
+                return;
+            }
+
+            // GridReady(Sticky) 수신 후 1회만 적용
+            Game.Bus?.Subscribe<GridReady>(_ => {
+                if (!_pendingTutorialApply) return;
+                if (!IsGridFullyReady(GridManager.Instance)) return;
+                Debug.Log("[MapManager] Requesting Tutorial Apply");
+                SetMapDataToGrid(_pendingIndex);
+                _pendingTutorialApply = false;
+            }, replaySticky: true);
+        }
+
+        public IEnumerator EnterClassicAfterOneFrame()
+        {
+            yield return null;
+            EnterClassic();
+        }
+        
         public void EnterClassic(ClassicEnterPolicy policy = ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew)
         {
             var gm = GridManager.Instance;
@@ -570,23 +617,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             gm.ResetBoardToEmpty();
 
             // 2) 코드 -> 스프라이트 매핑 준비
-            if (!_codeMapsBuilt) { BuildCodeMaps(); _codeMapsBuilt = true; }
+            if (!_codeMapsBuilt)
+            {
+                BuildCodeMaps();
+                _codeMapsBuilt = true;
+            }
 
             // 3) 클래식 시작 보드 생성 알고리즘 실행
             //    필요 시 파라미터 조정
             GenerateClassicStartingMap();
 
             // 4) 상태/일관성 정리
-            gm.SyncStatesFromSquares();     // 셀 표시 -> 상태 배열 동기화
-            gm.ValidateGridConsistency();   // 디버그 확인
+            gm.ValidateGridConsistency(); // 디버그 확인
 
             // 5) 세이브 상태 세팅 & 저장
             if (saveManager != null && saveManager.gameData != null)
             {
                 saveManager.gameData.isClassicModePlaying = true;
-                saveManager.gameData.currentMapLayout     = gm.ExportLayoutCodes(); // 현재 보드 -> 코드 리스트
-                saveManager.gameData.currentScore         = 0;
-                saveManager.gameData.currentCombo         = 0;
+                saveManager.gameData.currentMapLayout = gm.ExportLayoutCodes(); // 현재 보드 -> 코드 리스트
+                saveManager.gameData.currentScore = 0;
+                saveManager.gameData.currentCombo = 0;
                 saveManager.SaveGame();
             }
 
@@ -596,11 +646,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Debug.Log("[MapManager] StartNewClassicMap: classic board generated.");
         }
         
+
+        
+        
         public enum ClassicEnterPolicy
         {
             ResumeIfAliveElseLoadSaveElseNew,  // 기본: 라이브 보드 그대로, 없으면 저장 복원, 그것도 없으면 신규
             ForceLoadSave,                     // 항상 저장 복원
             ForceNew                           // Retry/패배: 완전 초기화 -> 신규
         }
+        
     }
 }

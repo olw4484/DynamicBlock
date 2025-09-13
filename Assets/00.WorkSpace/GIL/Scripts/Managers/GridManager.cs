@@ -13,7 +13,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public static GridManager Instance { get; private set; }
 
         public GridSquare[,] gridSquares; // 시각적 표현용
-        public bool[,] gridStates;
         // TODO : MapManager, MapData처럼 이미지 리스트를 받아 넣기,
         // TODO : 매번 블록을 배치할 때 마다 그리드 이미지 리스트 동기화하기.
         public List<int> gridImageList;
@@ -128,7 +127,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             rows = rowCount; cols = colCount;
             gridSquares = new GridSquare[rows, cols];
-            gridStates = new bool[rows, cols];
 
             foreach (var sq in squareList)
                 gridSquares[sq.RowIndex, sq.ColIndex] = sq;
@@ -140,30 +138,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void PrintGridInfo()
         {
             PrintGridSquares();
-            PrintGridStates();
             PrintGridOccupiedInfo();
             PrintGridSpriteIndexInfo();
-        }
-        
-        /// <summary>
-        /// gridStates 출력 (X = 비어있음, 0 = 블럭 있음)
-        /// </summary>
-        public void PrintGridStates()
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.Append("[GridManager] : Grid States\n");
-
-            for (int r = 0; r < rows; r++)
-            {
-                sb.Append($"Line_{r + 1} :\t");
-                for (int c = 0; c < cols; c++)
-                {
-                    sb.Append(gridStates[r, c] ? "0 " : "X ");
-                }
-                sb.AppendLine();
-            }
-            
-            Debug.Log(sb.ToString());
         }
         
         public void PrintGridSquares()
@@ -220,6 +196,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Debug.Log(sb.ToString());
         }
         
+        public bool[,] SnapshotOccupied()
+        {
+            var occ = new bool[rows, cols];
+            for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                occ[r, c] = gridSquares[r, c] != null && gridSquares[r, c].IsOccupied;
+            return occ;
+        }
+
+        public bool IsOccupiedAt(int r, int c)
+            => gridSquares[r, c] != null && gridSquares[r, c].IsOccupied;
+        
         public bool CanPlaceShape(List<Transform> shapeBlocks)
         {
             ClearHoverPreview();
@@ -241,7 +229,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private void CheckForCompletedLines(int blockUnits)
         {
-            if (gridSquares == null || gridStates == null) return;
+            if (gridSquares == null ) return;
 
             List<int> completedCols = new();
             List<int> completedRows = new();
@@ -251,7 +239,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {
                 bool complete = true;
                 for (int col = 0; col < cols; col++)
-                    if (!gridStates[row, col]) { complete = false; break; }
+                    if (!IsOccupiedAt(row, col)) { complete = false; break; }
                 if (complete) completedRows.Add(row);
             }
 
@@ -260,7 +248,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {
                 bool complete = true;
                 for (int row = 0; row < rows; row++)
-                    if (!gridStates[row, col]) { complete = false; break; }
+                    if (!IsOccupiedAt(row, col)) { complete = false; break; }
                 if (complete) completedCols.Add(col);
             }
 
@@ -318,20 +306,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void ResetRuntime()
         {
-            if (gridStates == null || gridSquares == null) return;
+            if (gridSquares == null) return;
 
             for (int r = 0; r < rows; r++)
-                for (int c = 0; c < cols; c++)
-                {
-                    gridStates[r, c] = false;
-                    gridSquares[r, c]?.SetOccupied(false);
-                }
+            for (int c = 0; c < cols; c++)
+            {
+                gridSquares[r, c]?.SetOccupied(false);
+            }
 
             _bus.PublishImmediate(new ComboChanged(0));
             _bus.PublishImmediate(new ScoreChanged(0));
-
-            Debug.Log("[Grid] PublishImmediate(GridReady)");
-            _bus.PublishImmediate(new GridReady(rows, cols));
         }
         private void TryBindBus()
         {
@@ -343,7 +327,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             for (int r = 0; r < rows; r++)
                 for (int c = 0; c < cols; c++)
-                    if (gridStates[r, c]) return false;  // 하나라도 true(점유)면 비지 않음
+                    if (IsOccupiedAt(r, c)) return false;  // 하나라도 true(점유)면 비지 않음
             return true;
         }
         
@@ -354,7 +338,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             rowsCompleted = new();
             colsCompleted = new();
-            if (gridSquares == null || gridStates == null) return false;
+            if (gridSquares == null) return false;
 
             // 빠른 포함 체크용
             var added = new HashSet<(int r, int c)>();
@@ -366,7 +350,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 bool complete = true;
                 for (int c = 0; c < cols; c++)
                 {
-                    if (!gridStates[r, c] && !added.Contains((r, c)))
+                    if (!IsOccupiedAt(r, c) && !added.Contains((r, c)))
                     {
                         complete = false;
                         break;
@@ -381,7 +365,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 bool complete = true;
                 for (int r = 0; r < rows; r++)
                 {
-                    if (!gridStates[r, c] && !added.Contains((r, c)))
+                    if (!IsOccupiedAt(r, c) && !added.Contains((r, c)))
                     {
                         complete = false;
                         break;
@@ -441,41 +425,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int c = 0; c < cols; c++)
             {
                 var cell = gridSquares[r, c];
-                int code = (cell != null) ? cell.BlockSpriteIndex : 0;
-
-                // 상태를 신뢰: 비점유면 무조건 0
-                if (!gridStates[r, c]) code = 0;
-
+                int code = (cell != null && cell.IsOccupied) ? cell.BlockSpriteIndex : 0;
                 list.Add(code);
             }
             return list;
         }
-        
-        public void SyncStatesFromSquares()
-        {
-            if (gridSquares == null || gridStates == null) return;
-            int rows = gridSquares.GetLength(0);
-            int cols = gridSquares.GetLength(1);
-            for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-            {
-                var cell = gridSquares[r, c];
-                gridStates[r, c] = cell != null && cell.IsOccupied; // 시각 상태 → 논리 상태
-                if (!gridStates[r,c] && cell != null && cell.BlockSpriteIndex != 0)
-                    gridStates[r,c] = true; // 안전장치
-            }
-        }
-        
+
         public void ValidateGridConsistency()
         {
             for (int r = 0; r < rows; r++)
             for (int c = 0; c < cols; c++)
             {
                 var cell = gridSquares[r, c];
+                if (cell == null) continue;
                 bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
-                bool occupiedByState = gridStates[r, c];
-                if (occupiedByIndex != occupiedByState)
-                    Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | index={cell.BlockSpriteIndex} vs state={occupiedByState} | cellState={cell.state}");
+                bool occupiedBySquare = cell.IsOccupied;
+                if (occupiedByIndex != occupiedBySquare)
+                {
+                    Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | spriteIndex={cell.BlockSpriteIndex} vs square.IsOccupied={occupiedBySquare} | cellState={cell.state}");
+                    Debug.Assert(false, "Grid invariant broken: spriteIndex vs IsOccupied mismatch");
+                }
             }
         }
         /// <summary>
@@ -487,11 +456,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int r = 0; r < rows; r++)
             for (int c = 0; c < cols; c++)
             {
-                gridStates[r, c] = false;
-
                 var cell = gridSquares[r, c];
                 if (!cell) continue;
-
                 cell.SetImage(null, changeIndex: true);               // index=0
                 cell.SetFruitImage(false, null, changeIndex: false);  // 과일 오버레이 off
                 cell.SetOccupied(false);                               // Normal
@@ -500,10 +466,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         public bool HasAnyOccupied()
         {
-            if (gridStates == null) return false;
             for (int r = 0; r < rows; r++)
             for (int c = 0; c < cols; c++)
-                if (gridStates[r, c]) return true;
+                if (IsOccupiedAt(r, c)) return true;
             return false;
         }
 
@@ -516,7 +481,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 var cell = gridSquares[r, c];
                 if (!cell) continue;
 
-                if (!gridStates[r, c])
+                if (!cell.IsOccupied)
                 {
                     cell.SetImage(null, changeIndex: true);              // index=0
                     cell.SetFruitImage(false, null, changeIndex: false);
@@ -527,8 +492,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         public void SetCellOccupied(int r, int c, bool occupied, Sprite sprite = null)
         {
-            gridStates[r, c] = occupied;
-
             var cell = gridSquares[r, c];
             if (!cell) return;
 
