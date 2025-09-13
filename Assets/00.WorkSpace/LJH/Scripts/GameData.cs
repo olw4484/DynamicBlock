@@ -42,7 +42,6 @@ public class GameData
             stageCleared = new int[stages],
             stageScores = new int[stages],
             // �� ���� ������
-            isTutorialPlayed = false,
             gameMode = GameMode.Tutorial,
             // Ŭ���� ���
             isClassicModePlaying = false,

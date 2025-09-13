@@ -24,7 +24,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         private ShapeData _currentShapeData;
 
-        private bool _isDragging;
         private bool _startReady;
 
         private void Awake()
@@ -108,8 +107,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             BlockSpawnManager.Instance?.ClearPreview();
             
-            _isDragging = false;
-            
             _shapeTransform.localScale = shapeSelectedScale;
 
             Sfx.BlockSelect();
@@ -121,7 +118,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             if(TouchGate.GetTouchID() != eventData.pointerId) return;
             
-            _isDragging = true;
             MoveBlock(eventData);
 
             var shapeBlocks = new List<Transform>();
