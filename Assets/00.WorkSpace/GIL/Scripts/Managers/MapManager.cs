@@ -189,9 +189,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
             
-            
-            
             ApplyMapToCurrentGrid(map);
+            StartCoroutine(RestoreScoreNextFrame());
         }
         
         /// <summary>
@@ -202,6 +201,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             MapData mapData = new();
             mapData.layout = saveManager.gameData.currentMapLayout;
             ApplyMapToCurrentGrid(mapData);
+            StartCoroutine(RestoreScoreNextFrame());
         }
         
         private void ApplyMapToCurrentGrid(MapData map)
@@ -630,6 +630,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     }
                     break;
             }
+            
+            
         }
         
         public void StartNewClassicMap()
@@ -673,8 +675,29 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             Debug.Log("[MapManager] StartNewClassicMap: classic board generated.");
         }
-        
 
+        private IEnumerator RestoreScoreNextFrame()
+        {
+            yield return null;
+            RestoreScoreFromSave();
+        }
+        
+        private void RestoreScoreFromSave()
+        {
+            var save = saveManager;
+            var score = ScoreManager.Instance;
+            var gm = GridManager.Instance;
+
+            // 이어하기 조건: 점수가 있거나(플레이 이력) / 보드에 타일이 남아있을 때
+            bool shouldRestore = save.gameData.currentScore > 0 || gm.HasAnyOccupied();
+            if (shouldRestore)
+            {
+                Debug.Log($"[MapManager] Restoring score, Current Score : {save.gameData.currentScore}, Current Combo : {save.gameData.currentCombo}");
+                score.SetFromSave(save.gameData.currentScore, save.gameData.currentCombo);
+            }
+            else
+                score.ResetAll(); // 완전 새 게임이면 0으로
+        }
         
         
         public enum ClassicEnterPolicy

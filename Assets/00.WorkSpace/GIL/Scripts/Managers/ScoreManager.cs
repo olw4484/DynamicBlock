@@ -18,7 +18,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public int Score => _score;
         public int Combo { get; private set; }
 
-        private bool _handHadClear = false; // ÀÌ¹ø ¼¼Æ®(3°³) µ¿¾È ÇÑ ¹øÀÌ¶óµµ ÁÙ Á¦°Å°¡ ÀÖ¾ú´Â°¡
+        private bool _handHadClear = false; // ï¿½Ì¹ï¿½ ï¿½ï¿½Æ®(3ï¿½ï¿½) ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¶ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Å°ï¿½ ï¿½Ö¾ï¿½ï¿½Â°ï¿½
 
         public int comboCount
         {
@@ -45,17 +45,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _bus = bus;
             _bus.Subscribe<GameResetRequest>(_ => ResetRuntime(), replaySticky: false);
 
-            // ¾À ÁøÀÔ Á÷ÈÄ 0 »óÅÂ¸¦ HUD¿¡ º¸Àå
+            // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 0 ï¿½ï¿½ï¿½Â¸ï¿½ HUDï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             PublishScore();
             PublishCombo();
         }
 
-        // =============== Á¡¼ö/ÄÞº¸ API ===============
+        // =============== ï¿½ï¿½ï¿½ï¿½/ï¿½Þºï¿½ API ===============
         public void ResetRuntime()
         {
             _score = 0;
             Combo = 0;
-            _handHadClear = false; // ÄÞº¸ ÃÊ±âÈ­
+            _handHadClear = false; // ï¿½Þºï¿½ ï¿½Ê±ï¿½È­
             PublishScore();
             PublishCombo();
         }
@@ -72,7 +72,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Combo = Mathf.Max(0, value);
 
             if (Combo > 0)
-                Sfx.Combo(Combo); // ÇïÆÛ°¡ 1~8·Î Å¬·¥ÇÁ
+                Sfx.Combo(Combo); // ï¿½ï¿½ï¿½Û°ï¿½ 1~8ï¿½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½
 
             PublishCombo();
         }
@@ -83,12 +83,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (clearedLines < 0) clearedLines = 0;
 
             int comboAtStart = Combo;
-            int baseScore = (comboAtStart + 1) * baseScroe; // º£ÀÌ½º Á¡¼ö
+            int baseScore = (comboAtStart + 1) * baseScroe; // ï¿½ï¿½ï¿½Ì½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
             if (clearedLines == 0)
             {
                 AddScore(blockUnits);
-                // SetCombo(0); // ÄÞº¸ À¯Áö°¡ ÇÊ¿ä ¾øÀ» °æ¿ì ÁÖ¼® ÇØÁ¦
+                // SetCombo(0); // ï¿½Þºï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö¼ï¿½ ï¿½ï¿½ï¿½ï¿½
                 return;
             }
 
@@ -103,7 +103,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _handHadClear = true;
         }
 
-        // ±âÁ¸ API´Â À§ÀÓ
+        // ï¿½ï¿½ï¿½ï¿½ APIï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         [Obsolete("Use ApplyMoveScore(blockUnits, clearedLines).")]
         public void CalculateLineClearScore(int lineCount)
         {
@@ -113,12 +113,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void OnHandRefilled()
         {
             if (!_handHadClear)
-                SetCombo(0);   // ÀÌ¹ø ¼¼Æ®(3°³) µ¿¾È ÇÑ ¹øµµ ÁÙ Á¦°Å°¡ ¾ø¾úÀ¸¸é ÄÞº¸ ¸®¼Â
+                SetCombo(0);   // ï¿½Ì¹ï¿½ ï¿½ï¿½Æ®(3ï¿½ï¿½) ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Å°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Þºï¿½ ï¿½ï¿½ï¿½ï¿½
 
-            _handHadClear = false; // ´ÙÀ½ ¼¼Æ®¸¦ À§ÇØ ÇÃ·¡±× ÃÊ±âÈ­
+            _handHadClear = false; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
         }
 
-        // =============== ³»ºÎ API ===============
+        // =============== ï¿½ï¿½ï¿½ï¿½ API ===============
         void PublishScore()
         {
             if (scoreText) scoreText.text = _score.ToString();
@@ -163,5 +163,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (scoreText) scoreText.text = _score.ToString();
         }
+        
+        public void SetFromSave(int score, int combo, bool publish = true)
+        {
+            _score = Mathf.Max(0, score);
+            comboCount = Mathf.Max(0, combo);
+
+            if (!publish) return;
+
+            // 1) ì¦‰ì‹œ í•œ ë²ˆ (ì´ë¯¸ êµ¬ë… ì¤‘ì¸ ë¦¬ìŠ¤ë„ˆìš©)
+            PublishScore();
+            PublishCombo();
+        }
+
+        // ì„ íƒ: ëª…ì‹œ ì´ˆê¸°í™”ê°€ í•„ìš”í•  ë•Œ ì‚¬ìš©í•  í•¨ìˆ˜
+        public void ResetAll(bool publish = true) => SetFromSave(0, 0, publish);
     }
 }
