@@ -26,8 +26,8 @@ public class GameData
     public GameMode gameMode;
     // Ŭ���� ���
     public bool isClassicModePlaying;       // Ŭ���� ��� �÷��� ���ΰ�?
-    public List<ShapeData> currentShapes;   // �� ���� ���� ������
-    public List<Sprite> currentShapeSprites;// �� ���� ���� ��������Ʈ
+    public List<string> currentShapes;   // �� ���� ���� ������
+    public List<int> currentShapeSprites;// �� ���� ���� ��������Ʈ
     public List<int> currentMapLayout;      // �� ���� �� ����
     public int currentScore;                // �� ���� ����
     public int currentCombo;                // �� ���� ���� ����

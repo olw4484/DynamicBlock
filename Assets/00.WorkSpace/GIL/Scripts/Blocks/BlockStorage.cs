@@ -45,7 +45,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
+        private List<ShapeData> _currentBlocksShapeData = new();
+        private List<Sprite> _currentBlocksSpriteData = new();
         public List<Block> CurrentBlocks => _currentBlocks;
+        public List<ShapeData> CurrentBlocksShapedata => _currentBlocksShapeData;
+        public List<Sprite> CurrentBlocksSpriteData => _currentBlocksSpriteData;
         private bool _handSpawnedOnce;
         
         // 게임 오버 1회만 발동 가드
@@ -119,7 +123,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                     Destroy(_currentBlocks[i].gameObject);
             }
             _currentBlocks.Clear();
-
+            _currentBlocksShapeData.Clear();
+            _currentBlocksSpriteData.Clear();
             var spawner = blockManager;
             if (spawner == null) { Debug.LogError("[Storage] Spawner null"); return; }
 
@@ -164,6 +169,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 previewSprites[i] = sprite;
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
+                _currentBlocksShapeData.Add(shape);
+                _currentBlocksSpriteData.Add(sprite);
+                block.SetSpriteData(sprite);
             }
 
             var fitsInfo = spawner.LastGeneratedFits;
@@ -291,6 +299,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                     if (_currentBlocks[i] != null)
                         Destroy(_currentBlocks[i].gameObject);
                 _currentBlocks.Clear();
+                _currentBlocksShapeData.Clear();
+                _currentBlocksSpriteData.Clear();
             }
             else _currentBlocks = new List<Block>(wave.Count);
 
@@ -324,6 +334,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 // 블록 초기화
                 blk.GenerateBlock(shape);
                 _currentBlocks.Add(blk);
+                _currentBlocksShapeData.Add(blk.GetShapeData());
+                _currentBlocksSpriteData.Add(blk.GetSpriteData());
             }
 
             return previewSprites;
@@ -368,6 +380,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void OnBlockPlaced(Block placedBlock)
         {
             _currentBlocks.Remove(placedBlock);
+            _currentBlocksShapeData.Remove(placedBlock.GetShapeData());
+            _currentBlocksSpriteData.Remove(placedBlock.GetSpriteData());
             
             CheckGameOver();
             
@@ -453,7 +467,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             for (int i = 0; i < _currentBlocks.Count; i++)
                 if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
-
+            _currentBlocksShapeData.Clear();
+            _currentBlocksSpriteData.Clear();
             // 생성은 GridReady에서 재개
         }
 

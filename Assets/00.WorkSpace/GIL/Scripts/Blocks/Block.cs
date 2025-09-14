@@ -23,7 +23,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private Vector3 _startPosition;
         
         private ShapeData _currentShapeData;
-
+        private Sprite _currentSprite;
         private bool _startReady;
 
         private void Awake()
@@ -37,9 +37,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             selectedOffset.y += editorOffset;
 #endif
         }
-
-        public ShapeData GetCurrentShapeData() => _currentShapeData;
         
+        public ShapeData GetShapeData() => _currentShapeData;
+        public Sprite GetSpriteData() => _currentSprite;
+        public Sprite SetSpriteData(Sprite sprite) => _currentSprite = sprite;
         public void GenerateBlock(ShapeData shapeData)
         {
             if (shapeData == null)
@@ -176,7 +177,5 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             _shapeTransform.anchoredPosition = localPos + (selectedOffset / _canvas.scaleFactor);
         }
-        
-        public ShapeData GetShapeData() => _currentShapeData;
     }
 }

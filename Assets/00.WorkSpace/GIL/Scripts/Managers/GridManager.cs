@@ -382,7 +382,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void ShowLineFollowOverlay(List<int> rowsCompleted, List<int> colsCompleted, Sprite sprite)
         {
             if (sprite == null) return;
-            Debug.Log("[GridManager] 라인 제거 로직 발동");
             var seen = new HashSet<GridSquare>();
 
             // 가로 라인
