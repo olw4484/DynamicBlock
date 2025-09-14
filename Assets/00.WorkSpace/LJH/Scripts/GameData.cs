@@ -26,9 +26,11 @@ public class GameData
     public GameMode gameMode;
     // Ŭ���� ���
     public bool isClassicModePlaying;       // Ŭ���� ��� �÷��� ���ΰ�?
-    public List<string> currentShapes;   // �� ���� ���� ������
-    public List<int> currentShapeSprites;// �� ���� ���� ��������Ʈ
+    public List<ShapeData> currentShapes;   // �� ���� ���� ������
+    public List<Sprite> currentShapeSprites;// �� ���� ���� ��������Ʈ
     public List<int> currentMapLayout;      // �� ���� �� ����
+    public List<string> currentShapeNames; // ShapeData.name
+    public List<string> currentSpriteNames; // Sprite.name
     public int currentScore;                // �� ���� ����
     public int currentCombo;                // �� ���� ���� ����
     public static GameData NewDefault(int stages = 200)
@@ -47,7 +49,9 @@ public class GameData
             isClassicModePlaying = false,
             currentShapes = new (),
             currentShapeSprites = new (),
-            currentMapLayout = new List<int>(),
+            currentMapLayout = new (),
+            currentShapeNames = new (),
+            currentSpriteNames = new (),
             currentScore = 0,
             currentCombo = 0
         };

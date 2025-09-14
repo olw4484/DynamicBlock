@@ -65,8 +65,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void LoadImageData()
         {
-            var g = GDS.I;
-            shapeImageSprites = new List<Sprite>(g.BlockSprites);
+            shapeImageSprites = new List<Sprite>(GDS.I.BlockSprites);
         }
         #endregion
         
@@ -126,6 +125,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _currentBlocksShapeData.Clear();
             _currentBlocksSpriteData.Clear();
             var spawner = blockManager;
+            
+            var sm = MapManager.Instance?.saveManager;
+            if (sm != null && sm.TryRestoreBlocksToStorage(this))
+            {
+                Debug.Log("[Storage] Restored blocks from save. Skip random generation.");
+                return;
+            }
+            
             if (spawner == null) { Debug.LogError("[Storage] Spawner null"); return; }
 
             var wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
@@ -178,6 +185,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             Debug.Log("[Block Storage] 블록 생성 완성");
             
+            MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
             // TODO : 프리뷰 모드를 다시 사용하고 싶을 경우 주석 해체
             //if (previewMode) blockManager.PreviewWaveNonOverlapping(wave, fitsInfo, previewSprites);
         }
@@ -337,7 +345,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _currentBlocksShapeData.Add(blk.GetShapeData());
                 _currentBlocksSpriteData.Add(blk.GetSpriteData());
             }
-
+            
+            MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
+            
             return previewSprites;
         }
         private void CancelQueuedInterstitialIfAny() //
@@ -382,6 +392,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _currentBlocks.Remove(placedBlock);
             _currentBlocksShapeData.Remove(placedBlock.GetShapeData());
             _currentBlocksSpriteData.Remove(placedBlock.GetSpriteData());
+            
+            MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
             
             CheckGameOver();
             
@@ -548,5 +560,53 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         }
 
         #endregion
+        
+        // 리스트를 받아 블록 재생성하기
+        public bool RebuildBlocksFromLists(List<ShapeData> shapes, List<Sprite> sprites)
+        {
+            if (shapes == null || sprites == null) return false;
+            int n = Mathf.Min(shapes.Count, sprites.Count);
+            if (n <= 0) return false;
+
+            // 기존 손패 제거
+            if (_currentBlocks != null)
+            {
+                for (int i = _currentBlocks.Count - 1; i >= 0; i--)
+                    if (_currentBlocks[i] != null)
+                        Destroy(_currentBlocks[i].gameObject);
+                _currentBlocks.Clear();
+                _currentBlocksShapeData.Clear();
+                _currentBlocksSpriteData.Clear();
+            }
+            else
+            {
+                _currentBlocks = new List<Block>(n);
+            }
+
+            // 저장된 개수만큼만 복원 (spawn 슬롯보다 적어도 추가 생성하지 않음)
+            int count = Mathf.Min(n, blockSpawnPosList.Count);
+            for (int i = 0; i < count; i++)
+            {
+                var shape  = shapes[i];
+                var sprite = sprites[i];
+                if (!shape) continue;
+
+                var go  = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
+                var blk = go.GetComponent<Block>();
+                if (!blk) { Destroy(go); continue; }
+
+                blk.GenerateBlock(shape);
+
+                var img = blk.shapePrefab ? blk.shapePrefab.GetComponent<Image>() : null;
+                if (img && sprite) img.sprite = sprite;
+                blk.SetSpriteData(sprite);
+
+                _currentBlocks.Add(blk);
+                _currentBlocksShapeData.Add(shape);
+                _currentBlocksSpriteData.Add(sprite);
+            }
+            return _currentBlocks.Count > 0;
+        }
+
     }
 }

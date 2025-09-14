@@ -12,156 +12,105 @@ namespace _00.WorkSpace.GIL.Scripts
     public class GameDataStorage : MonoBehaviour
     {
         private static GameDataStorage _instance;
-        public static GameDataStorage Instance => _instance;
+        public static GameDataStorage Instance
+        {
+            get
+            {
+                if (_instance) return _instance;
+                _instance = FindObjectOfType<GameDataStorage>();
+                if (_instance) { _instance.SafeInit(); return _instance; }
 
-        // Paths (Resources 폴더 내)
+                var prefab = Resources.Load<GameDataStorage>("GameDataStorage");
+                if (prefab)
+                {
+                    _instance = Instantiate(prefab);
+                    _instance.name = "GameDataStorage (Runtime)";
+                    DontDestroyOnLoad(_instance.gameObject);
+                    _instance.SafeInit();
+                    return _instance;
+                }
+
+                var go = new GameObject("GameDataStorage (Auto)");
+                _instance = go.AddComponent<GameDataStorage>();
+                DontDestroyOnLoad(go);
+                _instance.SafeInit();
+                return _instance;
+            }
+        }
+
         [Header("Resources Paths")]
         [SerializeField] private string mapsPath                 = "Maps";
         [SerializeField] private string shapesPath               = "Shapes";
         [SerializeField] private string blockImagesPath          = "BlockImages";
         [SerializeField] private string blockWithFruitImagesPath = "BlockWithFruitImages";
         [SerializeField] private string fruitBackgroundPath      = "FruitBackgroundImage";
-        // 언젠가 쓰일 수 있는 과일 이미지 
-        [SerializeField] private string fruitIconsPath = "FruitIcons";
-        // 필요시 여기에 오디오/아이콘 등 추가
-
-        // Loaded Assets
-        [Header("Loaded Assets (ReadOnly)")]
-        [NonSerialized] public MapData[]    Maps;
-        [NonSerialized] public ShapeData[]  Shapes;
-        [NonSerialized] public Sprite[]     BlockSprites;
-        [NonSerialized] public Sprite[]     BlockWithFruitSprites;
-        [NonSerialized] public Sprite[]     FruitBackgroundSprites;
+        [SerializeField] private string fruitIconsPath           = "FruitIcons";
+        
+        [NonSerialized] public MapData[]   Maps;
+        [NonSerialized] public ShapeData[] Shapes;
+        [NonSerialized] public Sprite[]    BlockSprites;
+        [NonSerialized] public Sprite[]    BlockWithFruitSprites;
+        [NonSerialized] public Sprite[]    FruitBackgroundSprites;
         [NonSerialized] public Sprite[]     FruitIconsSprites;
-
-        // Fast Lookup
-        private Dictionary<string, MapData>   _mapByName;
+        
         private Dictionary<string, ShapeData> _shapeByName;
-        private Dictionary<string, int>       _blockNameToIndex;
-        private Dictionary<string, int>       _blockFruitNameToIndex;
-        private Dictionary<string, int>       _fruitBgNameToIndex;
+        private Dictionary<string, int> _blockNameToIndex;
 
         public bool IsInitialized { get; private set; }
 
         private void Awake()
         {
-            if (_instance && _instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
+            if (_instance && _instance != this) { Destroy(gameObject); return; }
             _instance = this;
             DontDestroyOnLoad(gameObject);
-
             SafeInit();
         }
 
-        private void OnValidate()
-        {
-#if UNITY_EDITOR
-            if (!Application.isPlaying && this == Instance)
-            {
-                SafeInit();
-            }
-#endif
-        }
-
-        private void SafeInit()
+        public void SafeInit()
         {
             if (IsInitialized) return;
-            try
-            {
-                LoadAll();
-                BuildIndexes();
-                IsInitialized = true;
-                Debug.Log($"[GameDataStorage] Initialized. Maps:{Maps.Length} | Shapes:{Shapes.Length} | " +
-                          $"Blocks:{BlockSprites.Length} | BlockWithFruit:{BlockWithFruitSprites.Length} | FruitBG:{FruitBackgroundSprites.Length}");
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[GameDataStorage] Init failed: {e}");
-            }
+            LoadAll();
+            BuildIndexes();
+            IsInitialized = true;
+            Debug.Log($"[GDS] Init OK. Shapes:{Shapes.Length} | Blocks:{BlockSprites.Length}");
         }
 
         private void LoadAll()
         {
-            Maps                   = Resources.LoadAll<MapData>(mapsPath)                ?? Array.Empty<MapData>();
-            Shapes                 = Resources.LoadAll<ShapeData>(shapesPath)            ?? Array.Empty<ShapeData>();
-            BlockSprites           = Resources.LoadAll<Sprite>(blockImagesPath)          ?? Array.Empty<Sprite>();
-            BlockWithFruitSprites  = Resources.LoadAll<Sprite>(blockWithFruitImagesPath) ?? Array.Empty<Sprite>();
-            FruitBackgroundSprites = Resources.LoadAll<Sprite>(fruitBackgroundPath)      ?? Array.Empty<Sprite>();
-            // 과일 이미지 스프라이트에서 뽑아오기
-            FruitIconsSprites      = Resources.LoadAll<Sprite>(fruitIconsPath)           ?? Array.Empty<Sprite>();
-            // 필요시 다른 데이터들도 추가 가능
+            Maps                  = Resources.LoadAll<MapData>(mapsPath)                ?? Array.Empty<MapData>();
+            Shapes                = Resources.LoadAll<ShapeData>(shapesPath)            ?? Array.Empty<ShapeData>();
+            BlockSprites          = Resources.LoadAll<Sprite>(blockImagesPath)          ?? Array.Empty<Sprite>();
+            BlockWithFruitSprites = Resources.LoadAll<Sprite>(blockWithFruitImagesPath) ?? Array.Empty<Sprite>();
+            FruitBackgroundSprites= Resources.LoadAll<Sprite>(fruitBackgroundPath)      ?? Array.Empty<Sprite>();
+            FruitIconsSprites     = Resources.LoadAll<Sprite>(fruitIconsPath)           ?? Array.Empty<Sprite>();
         }
 
         private void BuildIndexes()
         {
-            _mapByName   = new Dictionary<string, MapData>(StringComparer.Ordinal);
-            foreach (var m in Maps) if (m) _mapByName[m.name] = m;
-
-            _shapeByName = new Dictionary<string, ShapeData>(StringComparer.Ordinal);
-            foreach (var s in Shapes) if (s) _shapeByName[s.name] = s;
-
-            _blockNameToIndex = BuildNameToIndex(BlockSprites);
-            _blockFruitNameToIndex = BuildNameToIndex(BlockWithFruitSprites);
-            _fruitBgNameToIndex    = BuildNameToIndex(FruitBackgroundSprites);
-        }
-
-        private static Dictionary<string, int> BuildNameToIndex(IReadOnlyList<Sprite> arr)
-        {
-            var dict = new Dictionary<string, int>(StringComparer.Ordinal);
-            for (int i = 0; i < arr.Count; i++)
+            _shapeByName = Shapes.Where(s => s).ToDictionary(s => s.name, s => s, StringComparer.Ordinal);
+            _blockNameToIndex = new Dictionary<string, int>(StringComparer.Ordinal);
+            for (int i = 0; i < BlockSprites.Length; i++)
             {
-                var s = arr[i];
-                if (!s) continue;
-                if (!dict.ContainsKey(s.name)) dict[s.name] = i;
+                var s = BlockSprites[i];
+                if (s && !_blockNameToIndex.ContainsKey(s.name)) _blockNameToIndex[s.name] = i;
             }
-            return dict;
         }
 
-        // Public APIs
+        public ShapeData GetShapeByName(string name)
+            => (name != null && _shapeByName.TryGetValue(name, out var s)) ? s : null;
 
-        // Maps / Shapes
-        public MapData   GetMapByName(string name)   => name != null && _mapByName.TryGetValue(name, out var m) ? m : null;
-        public ShapeData GetShapeByName(string name) => name != null && _shapeByName.TryGetValue(name, out var s) ? s : null;
+        public int GetBlockSpriteIndex(Sprite s)
+            => (s && _blockNameToIndex.TryGetValue(s.name, out var idx)) ? idx : -1;
 
-        // Block Sprites
-        public Sprite GetBlockSprite(int index) => (index >= 0 && index < BlockSprites.Length) ? BlockSprites[index] : null;
-        public int    GetBlockSpriteIndex(Sprite s) => s && _blockNameToIndex.TryGetValue(s.name, out var i) ? i : -1;
-        public bool   TryGetBlockSpriteByName(string name, out Sprite s)
+        public Sprite GetBlockSpriteByName(string name)
         {
-            s = null;
-            if (name == null) return false;
-            if (_blockNameToIndex.TryGetValue(name, out var i) && i >= 0 && i < BlockSprites.Length)
-            { s = BlockSprites[i]; return true; }
-            return false;
-        }
-
-        // BlockWithFruit Sprites
-        public Sprite GetBlockWithFruitSprite(int index) => (index >= 0 && index < BlockWithFruitSprites.Length) ? BlockWithFruitSprites[index] : null;
-        public int    GetBlockWithFruitSpriteIndex(Sprite s) => s && _blockFruitNameToIndex.TryGetValue(s.name, out var i) ? i : -1;
-
-        // Fruit Background Sprites
-        public Sprite GetFruitBackgroundSprite(int index) => (index >= 0 && index < FruitBackgroundSprites.Length) ? FruitBackgroundSprites[index] : null;
-        public int    GetFruitBackgroundSpriteIndex(Sprite s) => s && _fruitBgNameToIndex.TryGetValue(s.name, out var i) ? i : -1;
-
-        // 유틸
-        public T[] GetAll<T>(string resourcesPath) where T : Object
-            => Resources.LoadAll<T>(resourcesPath);
-
-        public void ReloadAllInEditor()
-        {
-#if UNITY_EDITOR
-            if (Application.isPlaying) return;
-            LoadAll();
-            BuildIndexes();
-            UnityEditor.EditorUtility.SetDirty(this);
-#endif
+            if (name == null) return null;
+            if (_blockNameToIndex.TryGetValue(name, out var i))
+                return (i >= 0 && i < BlockSprites.Length) ? BlockSprites[i] : null;
+            return null;
         }
     }
 
-    // 짧게 쓰는 헬퍼 ( 실험용 )
     public static class GDS
     {
         public static GameDataStorage I => GameDataStorage.Instance;
