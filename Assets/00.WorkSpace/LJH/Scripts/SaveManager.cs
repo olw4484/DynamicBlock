@@ -142,6 +142,11 @@ public class SaveManager : MonoBehaviour
             gameData.currentShapeNames.Add(shapes[i]  ? shapes[i].name : string.Empty);
             gameData.currentSpriteNames.Add(sprites[i] ? sprites[i].name : string.Empty);
         }
+        
+        gameData.currentBlockSlots = storage.CurrentBlocks
+            .Select(b => b ? b.SpawnSlotIndex : -1)
+            .ToList();
+        
         SaveGame();
         Debug.Log($"[Save] Saved current blocks: {n}");
     }
@@ -151,15 +156,33 @@ public class SaveManager : MonoBehaviour
         if (gameData == null || storage == null) return false;
         var shapes  = gameData.currentShapes;
         var sprites = gameData.currentShapeSprites;
-        if (shapes == null || sprites == null) return false;
+        var slots   = gameData.currentBlockSlots;
+        
+        if ((shapes == null || shapes.Count == 0) &&
+            (gameData.currentShapeNames != null && gameData.currentShapeNames.Count > 0))
+        {
+            shapes  = gameData.currentShapeNames
+                .Select(n => GDS.I.GetShapeByName(n))
+                .ToList();
 
-        // 갯수만 맞춰 복원: 부족해도 추가 생성하지 않음
-        int n = Mathf.Min(shapes.Count, sprites.Count);
-        if (n <= 0) return false;
+            sprites = (gameData.currentSpriteNames ?? new List<string>())
+                .Select(n => GDS.I.GetBlockSpriteByName(n))
+                .ToList();
 
-        var subShapes  = shapes.GetRange(0, n);
-        var subSprites = sprites.GetRange(0, n);
-        return storage.RebuildBlocksFromLists(subShapes, subSprites);
+            // 게임 데이터도 채워주기
+            gameData.currentShapes       = shapes;
+            gameData.currentShapeSprites = sprites;
+        }
+        
+        if (shapes != null && sprites != null && slots != null
+            && shapes.Count > 0
+            && shapes.Count == sprites.Count
+            && shapes.Count == slots.Count)
+        {
+            return storage.RebuildBlocksFromLists(shapes, sprites, slots);
+        }
+           
+        return storage.RebuildBlocksFromLists(shapes, sprites);
     }
 
 }

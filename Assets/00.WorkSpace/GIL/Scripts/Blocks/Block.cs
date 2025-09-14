@@ -12,7 +12,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
-
+        
+        [HideInInspector] public int SpawnSlotIndex = -1; // 블록 위치 ( 0 ~ 2 )
+        
         [Header("Pointer")] 
         public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
         public Vector2 selectedOffset = new Vector2(0f, 500f);

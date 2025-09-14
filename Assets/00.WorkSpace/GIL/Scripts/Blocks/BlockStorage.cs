@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using _00.WorkSpace.GIL.Scripts.Grids;
@@ -7,6 +8,7 @@ using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Utils;
 using UnityEngine;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
@@ -161,6 +163,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 var block = go.GetComponent<Block>();
                 if (block == null) { Debug.LogError("[Storage] Block component missing"); Destroy(go); continue; }
 
+                block.SpawnSlotIndex = i;
+                
                 Sprite sprite = null;
                 
                 if (MapManager.Instance.GameMode == GameMode.Tutorial)
@@ -330,7 +334,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 var go = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
                 var blk = go.GetComponent<Block>();
                 if (!blk) { Debug.LogError("[Revive] Block component missing"); Destroy(go); continue; }
-
+                blk.SpawnSlotIndex = i;
+                
                 // 스프라이트 선택 로직도 GenerateAllBlocks와 동일하게
                 Sprite sprite = shapeImageSprites[GetRandomImageIndex()];
                 // 프리팹 내 이미지 적용
@@ -608,5 +613,56 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             return _currentBlocks.Count > 0;
         }
 
+        // 원래 손패 슬롯 유지
+        public bool RebuildBlocksFromLists(List<ShapeData> shapes, List<Sprite> sprites, List<int> slots)
+        {
+            if (shapes == null || sprites == null || slots == null) return false;
+            int n = Mathf.Min(shapes.Count, Math.Min(sprites.Count, slots.Count));
+            if (n <= 0) return false;
+
+            // 기존 손패 제거
+            if (_currentBlocks != null)
+            {
+                for (int i = _currentBlocks.Count - 1; i >= 0; i--)
+                    if (_currentBlocks[i] != null) Destroy(_currentBlocks[i].gameObject);
+                _currentBlocks.Clear();
+                _currentBlocksShapeData.Clear();
+                _currentBlocksSpriteData.Clear();
+            }
+            else
+            {
+                _currentBlocks = new List<Block>(n);
+            }
+
+            // 저장된 슬롯에만 재생성 (부족한 슬롯은 비워둠)
+            for (int k = 0; k < n; k++)
+            {
+                var shape  = shapes[k];
+                var sprite = sprites[k];
+                int slot   = slots[k];
+
+                if (!shape) continue;
+                if (slot < 0 || slot >= blockSpawnPosList.Count) continue;
+
+                var pos = blockSpawnPosList[slot];
+                var go  = Instantiate(blockPrefab, pos.position, Quaternion.identity, shapesPanel);
+                var blk = go.GetComponent<Block>();
+                if (!blk) { Destroy(go); continue; }
+
+                blk.GenerateBlock(shape);
+
+                var img = blk.shapePrefab ? blk.shapePrefab.GetComponent<Image>() : null;
+                if (img && sprite) img.sprite = sprite;
+
+                blk.SetSpriteData(sprite);
+                blk.SpawnSlotIndex = slot;                   // 슬롯 보존
+
+                _currentBlocks.Add(blk);
+                _currentBlocksShapeData.Add(shape);
+                _currentBlocksSpriteData.Add(sprite);
+            }
+
+            return _currentBlocks.Count > 0;
+        }
     }
 }

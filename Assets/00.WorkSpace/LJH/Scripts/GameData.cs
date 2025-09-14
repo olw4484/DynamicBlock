@@ -28,6 +28,7 @@ public class GameData
     public bool isClassicModePlaying;       // Ŭ���� ��� �÷��� ���ΰ�?
     public List<ShapeData> currentShapes;   // �� ���� ���� ������
     public List<Sprite> currentShapeSprites;// �� ���� ���� ��������Ʈ
+    public List<int> currentBlockSlots;
     public List<int> currentMapLayout;      // �� ���� �� ����
     public List<string> currentShapeNames; // ShapeData.name
     public List<string> currentSpriteNames; // Sprite.name
@@ -49,6 +50,7 @@ public class GameData
             isClassicModePlaying = false,
             currentShapes = new (),
             currentShapeSprites = new (),
+            currentBlockSlots = new(),
             currentMapLayout = new (),
             currentShapeNames = new (),
             currentSpriteNames = new (),
