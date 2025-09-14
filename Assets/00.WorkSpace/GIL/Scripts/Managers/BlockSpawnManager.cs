@@ -13,7 +13,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private EventQueue _bus;
 
         [Header("Resources")] 
-        [SerializeField] private string resourcesPath = "Shapes";
         public List<ShapeData> shapeData;
         
         [Header("Fit Info")]
@@ -72,7 +71,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private void LoadResources()
         {
-            shapeData = new List<ShapeData>(Resources.LoadAll<ShapeData>(resourcesPath));
+            shapeData = new List<ShapeData>(GDS.I.Shapes);
         }
     }
     

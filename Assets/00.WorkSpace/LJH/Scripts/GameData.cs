@@ -45,8 +45,8 @@ public class GameData
             gameMode = GameMode.Tutorial,
             // Ŭ���� ���
             isClassicModePlaying = false,
-            currentShapes = new List<ShapeData>(),
-            currentShapeSprites = new List<Sprite>(),
+            currentShapes = new (),
+            currentShapeSprites = new (),
             currentMapLayout = new List<int>(),
             currentScore = 0,
             currentCombo = 0

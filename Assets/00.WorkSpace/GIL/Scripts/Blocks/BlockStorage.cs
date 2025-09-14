@@ -18,7 +18,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         [Header("Block Prefab & Data")] 
         [SerializeField] private GameObject blockPrefab;
         [SerializeField] public List<Sprite> shapeImageSprites;
-        [SerializeField] private string imageDictory = "BlockImages";
 
         [Header("Spawn Positions")] [SerializeField]
         private List<Transform> blockSpawnPosList;
@@ -66,7 +65,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void LoadImageData()
         {
-            shapeImageSprites = new List<Sprite>(Resources.LoadAll<Sprite>(imageDictory));
+            var g = GDS.I;
+            shapeImageSprites = new List<Sprite>(g.BlockSprites);
         }
         #endregion
         

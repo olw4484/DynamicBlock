@@ -114,13 +114,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         private void LoadMapData()
         {
-            _mapList = Resources.LoadAll<MapData>("Maps");
-            _blockSpriteList = Resources.LoadAll<Sprite>("BlockImages");
-            _fruitSpriteList = Resources.LoadAll<Sprite>("BlockWithFruitImages");
-            _fruitBackgroundSprite = Resources.LoadAll<Sprite>("FruitBackgroundImage");
+            var g = GDS.I;
+            _mapList               = g.Maps;
+            _blockSpriteList       = g.BlockSprites;
+            _fruitSpriteList       = g.BlockWithFruitSprites;
+            _fruitBackgroundSprite = g.FruitBackgroundSprites;
         }
-        
-        
         
         private void BuildCodeMaps()
         {

@@ -57,13 +57,27 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
             int total = rows * cols;
             layout ??= new List<int>(total);
 
-            fruitImages = Resources.LoadAll<Sprite>("FruitIcons");
-            blockImages = Resources.LoadAll<Sprite>("BlockImages");
-            blockWithFruitIcons = Resources.LoadAll<Sprite>("BlockWithFruitImages");
-
-            if (layout.Count < total)      layout.AddRange(new int[total - layout.Count]);
-            else if (layout.Count > total) layout.RemoveRange(total, layout.Count - total);
-
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                // 에디터 전용 미리보기
+                fruitImages = Resources.LoadAll<Sprite>("FruitIcons");
+                blockImages = Resources.LoadAll<Sprite>("BlockImages");
+                blockWithFruitIcons = Resources.LoadAll<Sprite>("BlockWithFruitImages");
+            }
+            else
+#endif
+            {
+                // 플레이 중에는 GDS에서만 가져옴
+                var g = GDS.I;
+                if (g != null && g.IsInitialized)
+                {
+                    fruitImages = g.FruitIconsSprites ?? fruitImages;
+                    blockImages = g.BlockSprites ?? blockImages;
+                    blockWithFruitIcons = g.BlockWithFruitSprites ?? blockWithFruitIcons;
+                }
+            }
+            
 #if UNITY_EDITOR
             var path = UnityEditor.AssetDatabase.GetAssetPath(this);
             if (!string.IsNullOrEmpty(path))
