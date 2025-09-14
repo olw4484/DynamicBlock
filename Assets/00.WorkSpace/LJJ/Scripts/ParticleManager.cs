@@ -17,6 +17,7 @@ public class ParticleManager : MonoBehaviour
         public readonly Vector2 screen;            // ScreenPoint 모드
         public readonly Vector3 world;             // WorldPos 모드
         public readonly Vector2 pixelOffset;       // AnchorRect용 추가 오프셋
+        public readonly float rotationY;           // 최종 로컬 Y 회전 (comboParticle 용)
         public readonly float rotationZ;           // 최종 로컬 Z 회전
         public readonly bool unscaled;             // TimeScale 무시 여부
         public readonly float? durationOverride;   // 지속시간 강제 지정
@@ -24,12 +25,13 @@ public class ParticleManager : MonoBehaviour
         public SpawnTarget(
             SpawnMode m, int idx = -1, RectTransform a = null,
             Vector2? scr = null, Vector3? w = null, Vector2? px = null,
-            float rotZ = 0f, bool unscaledTime = false, float? dur = null)
+            float rotY = 0f, float rotZ = 0f, bool unscaledTime = false, float? dur = null)
         {
             mode = m; index = idx; anchor = a;
             screen = scr ?? default;
             world = w ?? default;
             pixelOffset = px ?? default;
+            rotationY = rotY;
             rotationZ = rotZ; unscaled = unscaledTime; durationOverride = dur;
         }
     }
@@ -87,6 +89,7 @@ public class ParticleManager : MonoBehaviour
 
     [Header("Pool Settings")]
     [SerializeField] private GameObject destroyParticle;   // 가로/세로 소거 라인
+    [SerializeField] private GameObject comboParticle; // 콤보용 파티클 (스프라이트 변경)
     [SerializeField] private GameObject perimeterParticle; // 테두리 라인 등
     [SerializeField] private int poolSize = 6;
 
@@ -104,6 +107,7 @@ public class ParticleManager : MonoBehaviour
     private ParticleSystem gameOverPS;
     private readonly List<ParticleSystem> allClearPSs = new();
     private readonly Queue<ParticleSystem> destroyPool = new();
+    private readonly Queue<ParticleSystem> comboPool = new();
     private readonly Queue<ParticleSystem> perimeterPool = new();
     private int fxLayer = -1;
     private Dictionary<(SpawnMode, int), ParticleSystem> activeLoops = new();
@@ -166,6 +170,23 @@ public class ParticleManager : MonoBehaviour
                 if (lineStartSize > 0f) main.startSize = lineStartSize;
 
                 perimeterPool.Enqueue(ps);
+            }
+        }
+
+        if (comboParticle)
+        {
+            for (int i = 0; i < poolSize; i++)
+            {
+                var go = Instantiate(comboParticle, fxRoot);
+                if (fxLayer >= 0) LayerUtil.SetLayerRecursive(go, fxLayer);
+                go.SetActive(false);
+
+                var ps = go.GetComponent<ParticleSystem>();
+                var main = ps.main;
+                main.scalingMode = scalingMode;
+                if (lineStartSize > 0f) main.startSize = lineStartSize;
+
+                comboPool.Enqueue(ps);
             }
         }
     }
@@ -388,7 +409,7 @@ public class ParticleManager : MonoBehaviour
         var t = ps.transform;
         t.SetParent(fxRoot, false);
         t.localPosition = ToFxLocal(target);
-        t.localRotation = Quaternion.Euler(0f, 0f, target.rotationZ);
+        t.localRotation = Quaternion.Euler(0f, target.rotationY, target.rotationZ);
         t.localScale = Vector3.one;
 
         if (fxLayer >= 0) LayerUtil.SetLayerRecursive(ps.gameObject, fxLayer);
@@ -508,6 +529,42 @@ public class ParticleManager : MonoBehaviour
         PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: destroyPool);
     }
 
+    // 콤보용 파티클 재생 (스프라이트 변경)
+    public void PlayComboRowParticle(int rowIndex, Sprite sprite)
+    {
+        Color color = Color.white;
+
+        if (destroyPool.Count == 0) { Debug.LogWarning("comboPool exhausted"); return; }
+        var ps = comboPool.Dequeue();
+
+        var target = new SpawnTarget(
+            SpawnMode.GridRow, idx: rowIndex, rotZ: 0f, unscaledTime: false);
+
+        var param = new FxParams(color, lineFx: true, applyScalingMode: true);
+        var psRenderer = ps.GetComponent<ParticleSystemRenderer>();
+        psRenderer.material.mainTexture = sprite.texture;
+
+        PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: comboPool);
+    }
+
+    public void PlayComboColParticle(int colIndex, Sprite sprite)
+    {
+        Color color = Color.white;
+        if (destroyPool.Count == 0) { Debug.LogWarning("comboPool exhausted"); return; }
+        var ps = comboPool.Dequeue();
+
+        var target = new SpawnTarget(
+            SpawnMode.GridCol, idx: colIndex, rotY: 90f ,rotZ: 90f, unscaledTime: false);
+
+        var param = new FxParams(color, lineFx: true, applyScalingMode: true);
+
+        var psRenderer = ps.GetComponent<ParticleSystemRenderer>();
+        psRenderer.material.mainTexture = sprite.texture;
+
+        PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: comboPool);
+    }
+
+    // 테두리용 파티클 재생 
     public void PlayRowPerimeterParticle(int rowIndex, Color color)
     {
         if (perimeterPool.Count == 0) { Debug.LogWarning("perimeterPool exhausted"); return; }
