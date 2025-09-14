@@ -16,19 +16,7 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: effce7e3d0a6013458d7038842cb01b3
-  m_SerializeEntries:
-  - m_GUID: 428362fe4fe2f6649b25650ff41b44d3
-    m_Address: TextTable_ko-KR
-    m_ReadOnly: 1
-    m_SerializedLabels:
-    - Locale-ko-KR
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 6c1e09e2cb60de940ba7693267324ed2
-    m_Address: LanguageTable_ko-KR
-    m_ReadOnly: 1
-    m_SerializedLabels:
-    - Locale-ko-KR
-    FlaggedDuringContentUpdateRestriction: 0
+  m_SerializeEntries: []
   m_ReadOnly: 1
   m_Settings: {fileID: 11400000, guid: e4032e69d20915141886eb7276a16890, type: 2}
   m_SchemaSet:

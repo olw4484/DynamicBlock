@@ -1,4 +1,4 @@
-using _00.WorkSpace.GIL.Scripts.Managers;
+﻿using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -61,7 +61,7 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
         // 4) 클래식 맵 생성
         if (generateClassicMap)
-            MapManager.Instance.GenerateClassicStartingMap();
+            MapManager.Instance.GenerateClassicStartingMap(minTotalTiles: 30, maxPlacements: 8);
     }
 
     void PlayInvokeSfx()
