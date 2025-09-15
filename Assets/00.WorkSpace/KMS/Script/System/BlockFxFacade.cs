@@ -47,6 +47,12 @@ public class BlockFxFacade : MonoBehaviour, IFx
     public void PlayGameOverAt() => particles?.PlayGameOverAt();
     public void PlayNewScoreAt() => particles?.PlayNewScoreAt();
 
+    public void PlayRowPerimeter(int row, Color color)
+    => particles?.PlayRowPerimeterParticle(row, color);
+
+    public void PlayColPerimeter(int col, Color color)
+    => particles?.PlayColPerimeterParticle(col, color);
+
 
     private Color SpriteToColor(Sprite sprite)
     {
