@@ -162,8 +162,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             
             var idFieldLable = new Label();
             idFieldLable.text = "Stage Name";
+            idFieldLable.style.fontSize = 15;
             idFieldLable.style.unityTextAlign = TextAnchor.MiddleLeft;
-            idFieldLable.style.width = 100;
+            idFieldLable.style.width = 120;
             idFieldLable.style.unityFontStyleAndWeight = FontStyle.Bold;
             
             var idField = new TextField { value = _data.id };
@@ -191,12 +192,14 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var stageNumLabel = new Label();
             stageNumLabel.text = "Stage Number";
             stageNumLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
-            stageNumLabel.style.width = 100;
+            stageNumLabel.style.width = 120;
+            stageNumLabel.style.fontSize = 15;
             stageNumLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
             
             var stageIndexField = new IntegerField();
             stageIndexField.value = _data.mapIndex;
             stageIndexField.style.unityTextAlign = TextAnchor.MiddleCenter;
+            stageIndexField.style.fontSize = 15;
             stageIndexField.style.width = 70;
             stageIndexField.RegisterValueChangedCallback(e =>
             {

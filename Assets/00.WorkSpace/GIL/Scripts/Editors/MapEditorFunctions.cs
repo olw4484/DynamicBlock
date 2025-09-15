@@ -401,13 +401,12 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 EditorGUIUtility.PingObject(prev.obj);
             }
         }
-
+        
         public static void CreateEmptyStageAssetNear(MapData cur)
         {
             var folder = GetAssetFolder(cur);
             if (!AssetDatabase.IsValidFolder(folder))
             {
-                // 폴더 없으면 기본 폴더 생성
                 if (!AssetDatabase.IsValidFolder("Assets/Resources"))
                     AssetDatabase.CreateFolder("Assets", "Resources");
                 if (!AssetDatabase.IsValidFolder("Assets/Resources/Maps"))
@@ -415,16 +414,31 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 folder = "Assets/Resources/Maps";
             }
 
+            // 현재 프로젝트의 mapIndex 중 가장 큰 값 찾기
+            var all = GetAllStages();                 
+            int newIndex = all.Length == 0 ? 1 : all[^1].idx + 1; // 자동 정렬
+
+            // 새 MapData 생성 + 번호/이름 지정
             var so = ScriptableObject.CreateInstance<MapData>();
-            so.id = "Stage_";  // 빈 이름
-            so.mapIndex = 0;   // 번호 고정/배정 없음
-            var newPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/Stage_.asset");
+            so.mapIndex = newIndex;
+            so.id = $"Stage_{newIndex}";
+
+            // 파일명도 즉시 Stage_{index}.asset 로 생성
+            var newPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{so.id}.asset");
             AssetDatabase.CreateAsset(so, newPath);
-            AssetDatabase.SaveAssets(); 
+
+#if UNITY_EDITOR
+            // 에디터 미리보기 스프라이트 채우기(비어 보이는 문제 방지)
+            so.EnsureEditorPreviewSprites();
+            EditorUtility.SetDirty(so);
+#endif
+
+            AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+
             Selection.activeObject = so;
             EditorGUIUtility.PingObject(so);
-            Debug.Log($"[MapEditor] Added empty: {newPath}");
+            Debug.Log($"[MapEditor] Added: {newPath}");
         }
 
         public static void DeleteStageOnly(MapData data)
@@ -447,12 +461,12 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         public static void SaveAndRename(MapData data, TextField idField /* 표시용 필드 동기화 */)
         {
             if (!data) return;
-
+            
             // id/mapIndex 정규화
             var desiredId = $"Stage_{data.mapIndex}";
             data.id = desiredId;
             if (idField != null) idField.SetValueWithoutNotify(desiredId);
-
+            
             // 파일명 변경
             var path = AssetDatabase.GetAssetPath(data);
             if (!string.IsNullOrEmpty(path))
