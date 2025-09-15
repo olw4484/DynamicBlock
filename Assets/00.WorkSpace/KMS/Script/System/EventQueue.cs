@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Unity.Profiling;
 using UnityEngine;
+using _00.WorkSpace.GIL.Scripts.Messages;
 
 // ================================
 // Project : DynamicBlock
@@ -226,11 +227,8 @@ public readonly struct GameDataChanged
     public readonly GameData data;
     public GameDataChanged(GameData d) { data = d; }
 }
-public readonly struct LinesCleared
-{
-    public readonly int rows, cols, total;
-    public LinesCleared(int rows, int cols) { this.rows = rows; this.cols = cols; this.total = rows + cols; }
-}
+
+
 public readonly struct GridReady { public readonly int rows, cols; public GridReady(int r, int c) { rows = r; cols = c; } }
 public readonly struct GameResetRequest
 {
@@ -289,6 +287,47 @@ public readonly struct LanguageChangeRequested
     public readonly int index;
     public LanguageChangeRequested(int index) { this.index = index; }
 }
-public readonly struct AllClear { } // AllClear
+namespace _00.WorkSpace.GIL.Scripts.Messages
+{
+    public readonly struct LinesWillClear
+    {
+        public readonly int[] rows;
+        public readonly int[] cols;
+        public readonly Sprite destroySprite;
+        public int Total => (rows?.Length ?? 0) + (cols?.Length ?? 0);
+
+        public LinesWillClear(int[] rows, int[] cols, Sprite sprite)
+        {
+            this.rows = rows; this.cols = cols; this.destroySprite = sprite;
+        }
+    }
+
+    public readonly struct AllClear
+    {
+        public readonly int bonus;
+        public readonly int combo;
+        public readonly Vector3? fxWorld;
+        public AllClear(int bonus = 50, int combo = 0, Vector3? fxWorld = null)
+        {
+            this.bonus = bonus; this.combo = combo; this.fxWorld = fxWorld;
+        }
+    }
+
+    public readonly struct LinesCleared
+    {
+        public readonly int[] rows;
+        public readonly int[] cols;
+        public readonly int combo;
+        public int Total => (rows?.Length ?? 0) + (cols?.Length ?? 0);
+
+        public LinesCleared(int[] rows, int[] cols, int combo)
+        {
+            this.rows = rows; this.cols = cols; this.combo = combo;
+        }
+    }
+}
+
+
 public readonly struct ReviveRequest { }              // 리바이브 버튼 클릭/보상 수령
 public readonly struct GiveUpRequest { }              // 포기 버튼/타임아웃
+

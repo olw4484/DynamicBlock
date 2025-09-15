@@ -108,6 +108,7 @@ public class ParticleManager : MonoBehaviour
     [SerializeField] private Transform comboParent;
     [SerializeField] private int comboPrewarm = 8;
 
+    public int AllClearCount => allClearPSs?.Count ?? 0;
 
     // ================================
     // Runtime
@@ -253,6 +254,8 @@ public class ParticleManager : MonoBehaviour
             if (gameOverPS) { var m = gameOverPS.main; m.useUnscaledTime = true; m.scalingMode = scalingMode; if (fxScaleFactor != 1f) m.startSizeMultiplier *= fxScaleFactor; }
             go.transform.localScale = Vector3.one;
         }
+
+        Debug.Log($"[Particle] InitializeNonPool done. allClearPSs={allClearPSs.Count}");
     }
 
     // ================================
@@ -637,27 +640,53 @@ public class ParticleManager : MonoBehaviour
     }
 
     // 2) 단발 FX (비풀, 자동 비활성)
+
+    private void EnsureAllClearParticlesFallback(int desired = 2)
+    {
+        if (allClearPSs.Count > 0) return;
+        if (!allClearParticle) { Debug.LogError("[Particle] allClearParticle prefab missing"); return; }
+
+        Debug.LogWarning("[Particle] allClearPSs empty. Creating fallback instances under fxRoot.");
+
+        int n = (allClearPos != null && allClearPos.Length > 0) ? allClearPos.Length : desired;
+        for (int i = 0; i < n; i++)
+        {
+            var go = Instantiate(allClearParticle, fxRoot);
+            if (fxLayer >= 0) LayerUtil.SetLayerRecursive(go, fxLayer);
+            go.SetActive(false);
+
+            var ps = go.GetComponent<ParticleSystem>();
+            if (!ps) { Debug.LogError("[Particle] allClearParticle has no ParticleSystem."); continue; }
+
+            var main = ps.main;
+            main.scalingMode = scalingMode;
+            if (fxScaleFactor != 1f) main.startSizeMultiplier *= fxScaleFactor;
+
+            go.transform.localScale = Vector3.one;
+            allClearPSs.Add(ps);
+        }
+    }
     public void PlayAllClear()
     {
-        // 고정 위치/회전값 리스트
-        Vector3[] positions =
-        {
+        EnsureAllClearParticlesFallback();
+
+        Vector3[] positions = {
         new Vector3(5f, 4f, 0f),
         new Vector3(-5f, 4f, 0f)
     };
-
-        Vector3[] rotations =
-        {
+        Vector3[] rotations = {
         new Vector3(330f, 270f, 0f),
         new Vector3(330f, 90f, 0f)
     };
 
         for (int i = 0; i < positions.Length; i++)
         {
-            if (i >= allClearPSs.Count) break; // 파티클 개수 초과 방지
-
+            if (i >= allClearPSs.Count) break;
             var ps = allClearPSs[i];
             if (!ps) continue;
+
+            var go = ps.gameObject;
+            go.SetActive(true);
 
             var t = ps.transform;
             t.SetParent(fxRoot, false);
@@ -665,17 +694,54 @@ public class ParticleManager : MonoBehaviour
             t.localRotation = Quaternion.Euler(rotations[i]);
             ApplyAllClearSize(ps);
 
-            var param = new FxParams(
-                color: null,
-                lineFx: false,
-                applyScalingMode: true,
-                keepPrefabSize: true,
-                uniformScale: 1f
-            );
+            var m = ps.main;
+            m.useUnscaledTime = true;
+            m.scalingMode = scalingMode;
 
+            ps.Clear(true);
+            ps.Play(true);
+        }
+    }
+
+    public void PlayAllClearAtWorld(Vector3 fxWorldCenter)
+    {
+        EnsureAllClearParticlesFallback();
+
+        if (allClearPSs == null || allClearPSs.Count == 0)
+        {
+            Debug.LogWarning("[Particle] No AllClear particles prepared.");
+            return;
+        }
+
+        Vector3 centerLocal = fxRoot.InverseTransformPoint(fxWorldCenter);
+
+        Vector3[] offsets =
+        {
+        new Vector3( 5f, 4f, 0f),
+        new Vector3(-5f, 4f, 0f)
+    };
+        Vector3[] rotations =
+        {
+        new Vector3(330f, 270f, 0f),
+        new Vector3(330f,  90f, 0f)
+    };
+
+        for (int i = 0; i < allClearPSs.Count && i < offsets.Length; i++)
+        {
+            var ps = allClearPSs[i];
+            if (!ps) continue;
+
+            var t = ps.transform;
+            t.SetParent(fxRoot, false);
+            t.localPosition = centerLocal + offsets[i];
+            t.localRotation = Quaternion.Euler(rotations[i]);
+            ApplyAllClearSize(ps);
+            ps.gameObject.SetActive(true);
+            ps.Clear();
             ps.Play();
         }
     }
+
     public void PlayNewScoreAt(RectTransform anchor = null, Vector2 pixelOffset = default)
     {
         if (!newScorePS) return;

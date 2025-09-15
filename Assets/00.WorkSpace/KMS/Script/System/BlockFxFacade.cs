@@ -9,7 +9,7 @@ public class BlockFxFacade : MonoBehaviour, IFx
 {
     public static IFx Instance { get; private set; }
 
-    [SerializeField] private ParticleManager particle; // 씬의 ParticleManager drag&drop
+    [SerializeField] private ParticleManager particles; // 씬의 ParticleManager drag&drop
     [SerializeField] private BlockStorage blockStorage; // 씬의 BlockStorage drag&drop
     [SerializeField] private List<Sprite> comboSprites; // 콤보 이펙트용 스프라이트들 
 
@@ -21,19 +21,31 @@ public class BlockFxFacade : MonoBehaviour, IFx
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject); // 필요시
+        DontDestroyOnLoad(gameObject);
+
+        if (!particles) particles = FindAnyObjectByType<ParticleManager>();
+        Debug.Log($"[FX] Facade.Awake particles={(particles ? particles.name : "null")}");
     }
 
-    public void PlayRow(int row, Color color) => particle?.PlayRowParticle(row, color);
-    public void PlayCol(int col, Color color) => particle?.PlayColParticle(col, color);
-    public void PlayComboRow(int row, Sprite sprite) => particle?.PlayComboRowParticle(row, ComboSprite(sprite)); //
-    public void PlayComboCol(int col, Sprite sprite) => particle?.PlayComboColParticle(col, ComboSprite(sprite)); //
-    public void PlayRowPerimeter(int row, Sprite sprite) => particle?.PlayRowPerimeterParticle(row, SpriteToColor(sprite));
-    public void PlayColPerimeter(int col, Sprite sprite) => particle?.PlayColPerimeterParticle(col, SpriteToColor(sprite));
-    public void StopAllLoop() => particle?.StopAllLoopCommon();
-    public void PlayAllClear() => particle?.PlayAllClear();
-    public void PlayGameOverAt() => particle?.PlayGameOverAt();
-    public void PlayNewScoreAt() => particle?.PlayNewScoreAt();
+    public void PlayRow(int row, Color color) => particles?.PlayRowParticle(row, color);
+    public void PlayCol(int col, Color color) => particles?.PlayColParticle(col, color);
+    public void PlayComboRow(int row, Sprite sprite) => particles?.PlayComboRowParticle(row, ComboSprite(sprite)); //
+    public void PlayComboCol(int col, Sprite sprite) => particles?.PlayComboColParticle(col, ComboSprite(sprite)); //
+    public void PlayRowPerimeter(int row, Sprite sprite) => particles?.PlayRowPerimeterParticle(row, SpriteToColor(sprite));
+    public void PlayColPerimeter(int col, Sprite sprite) => particles?.PlayColPerimeterParticle(col, SpriteToColor(sprite));
+    public void StopAllLoop() => particles?.StopAllLoopCommon();
+    public void PlayAllClear()
+    {
+        Debug.Log("[FX] Facade.PlayAllClear");
+        particles?.PlayAllClear();
+    }
+    public void PlayAllClearAtWorld(Vector3 world)
+    {
+        Debug.Log($"[FX] Facade.PlayAllClearAtWorld {world}");
+        particles?.PlayAllClearAtWorld(world);
+    }
+    public void PlayGameOverAt() => particles?.PlayGameOverAt();
+    public void PlayNewScoreAt() => particles?.PlayNewScoreAt();
 
 
     private Color SpriteToColor(Sprite sprite)

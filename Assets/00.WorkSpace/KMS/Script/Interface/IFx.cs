@@ -12,6 +12,7 @@ public interface IFx
     void PlayColPerimeter(int col, Sprite sprite);
     void StopAllLoop();
     void PlayAllClear();
+    void PlayAllClearAtWorld(Vector3 pos);
     void PlayGameOverAt();
     void PlayNewScoreAt();
 }
