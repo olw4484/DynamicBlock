@@ -1,7 +1,7 @@
 using System;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
+using _00.WorkSpace.GIL.Scripts.Messages;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -14,6 +14,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private TMP_Text comboText;
 
         [SerializeField] public int baseScroe = 30;
+
+        private EventQueue _bus;
         private int _score = 0;
         public int Score => _score;
         public int Combo { get; private set; }
@@ -26,8 +28,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             set => SetCombo(value);
         }
 
-        EventQueue _bus;
-
         private void Awake()
         {
             if (Instance == null)
@@ -38,12 +38,29 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             UpdateScoreUI();
         }
 
-        void OnEnable() { StartCoroutine(GameBindingUtil.WaitAndRun(() => SetDependencies(Game.Bus))); }
+        void OnEnable()
+        {
+            StartCoroutine(GameBindingUtil.WaitAndRun(() => SetDependencies(Game.Bus)));
+        }
+        private void OnDisable()
+        {
+            _bus?.Unsubscribe<AllClear>(OnAllClear);
+            _bus?.Unsubscribe<GameResetRequest>(OnGameResetReq);
+        }
+
+        private void OnAllClear(AllClear e)
+        {
+            AddScore(e.bonus);
+        }
 
         public void SetDependencies(EventQueue bus)
         {
             _bus = bus;
-            _bus.Subscribe<GameResetRequest>(_ => ResetRuntime(), replaySticky: false);
+            _bus.Unsubscribe<AllClear>(OnAllClear);
+            _bus.Subscribe<AllClear>(OnAllClear, replaySticky: false);
+
+            _bus.Unsubscribe<GameResetRequest>(OnGameResetReq);
+            _bus.Subscribe<GameResetRequest>(OnGameResetReq, replaySticky: false);
 
             // �� ���� ���� 0 ���¸� HUD�� ����
             PublishScore();
@@ -51,6 +68,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
 
         // =============== ����/�޺� API ===============
+        private void OnGameResetReq(GameResetRequest _)
+        {
+            ResetRuntime();
+        }
+
         public void ResetRuntime()
         {
             _score = 0;

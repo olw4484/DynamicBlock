@@ -4,7 +4,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
-using LJJ;
+using _00.WorkSpace.GIL.Scripts.Messages;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -22,10 +22,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private int _lineCount;
 
         private int _gridMask;
-        
+
         private List<GridSquare> _hoverSquares = new();
         private List<GridSquare> _hoverLineSquares = new();
-        
+
         private EventQueue _bus;
 
         private Sprite destroySprite; // 블록 파괴 시 사용할 스프라이트 (이펙트용)
@@ -50,7 +50,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         void OnEnable() { StartCoroutine(GameBindingUtil.WaitAndRun(() => TryBindBus())); }
         void Start() { TryBindBus(); } // 중복 호출 안전
-        
+
         public bool TryGetPlacement(List<Transform> shapeBlocks, out List<GridSquare> targetSquares)
         {
             targetSquares = new List<GridSquare>();
@@ -78,7 +78,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             targetSquares.AddRange(seen);
             return true;
         }
-        
+
         public void ClearHoverPreview()
         {
             if (_hoverSquares.Count > 0)
@@ -94,7 +94,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (_hoverLineSquares.Count > 0)
             {
                 foreach (var sq in _hoverLineSquares)
-                    sq.SetLineClearImage(false, null);   // 오버레이 OFF
+                    sq.SetLineClearImage(false, null);
                 _hoverLineSquares.Clear();
             }
 
@@ -143,7 +143,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             PrintGridOccupiedInfo();
             PrintGridSpriteIndexInfo();
         }
-        
+
         public void PrintGridSquares()
         {
             StringBuilder sb = new StringBuilder();
@@ -210,6 +210,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public bool IsOccupiedAt(int r, int c)
             => gridSquares[r, c] != null && gridSquares[r, c].IsOccupied;
         
+
         public bool CanPlaceShape(List<Transform> shapeBlocks)
         {
             ClearHoverPreview();
@@ -256,22 +257,45 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             _lineCount = completedRows.Count + completedCols.Count;
 
-            if (_bus != null && _lineCount > 0)
-                _bus.Publish(new LinesCleared(completedRows.Count, completedCols.Count));
-
-            // 여기서 콤보 조작/점수 가산을 직접 하지 말고 ScoreManager에 위임
-            ScoreManager.Instance.ApplyMoveScore(blockUnits, _lineCount);
-
-            // 라인 클리어 반영(이펙트/비우기)
-            foreach (int row in completedRows)
+            if (_lineCount > 0)
             {
                 // TODO :오류로 인한 임시 주석 처리
                 //ActiveClearEffectLine(row, true);
                 for (int col = 0; col < cols; col++)
                     SetCellOccupied(row, col, false);
-            }
+                // 1) 예고 이벤트 : FX가 둘레/프리롤에 사용
+                var rowsArr = completedRows.ToArray();
+                var colsArr = completedCols.ToArray();
+                _bus?.PublishImmediate(new _00.WorkSpace.GIL.Scripts.Messages.LinesWillClear(rowsArr, colsArr, destroySprite));
 
-            foreach (int col in completedCols)
+                // 2) 실제 셀 비우기
+                foreach (int r in completedRows)
+                {
+                    for (int c = 0; c < cols; c++)
+                        SetCellOccupied(r, c, false);
+                }
+                foreach (int c in completedCols)
+                {
+                    for (int r = 0; r < rows; r++)
+                        SetCellOccupied(r, c, false);
+                }
+
+                // 프리뷰 싹 정리
+                ClearHoverPreview();
+
+                // 3) 점수/콤보 갱신 후, 실제 클리어 이벤트
+                ScoreManager.Instance.ApplyMoveScore(blockUnits, _lineCount);
+                int comboNow = ScoreManager.Instance.comboCount;
+                _bus?.PublishImmediate(new _00.WorkSpace.GIL.Scripts.Messages.LinesCleared(rowsArr, colsArr, comboNow));
+
+                // 4) 올클리어 체크 => 이벤트
+                if (IsBoardEmpty())
+                {
+                    var center = TryGetBoardCenterWorld();
+                    _bus.PublishImmediate(new _00.WorkSpace.GIL.Scripts.Messages.AllClear(bonus: 50, combo: comboNow, fxWorld: center));
+                }
+            }
+            else
             {
                 // TODO : 오류로 인한 임시 주석 처리
                 //ActiveClearEffectLine(col, false);
@@ -284,36 +308,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (IsBoardEmpty())
             {
                 _bus?.Publish(new AllClear());
+                // 라인클리어 없음 => 점수만 반영
+                ScoreManager.Instance.ApplyMoveScore(blockUnits, 0);
             }
 
             _lineCount = 0;
-        }
-
-        private void ActiveClearEffectLine(int index, bool isRow)
-        {
-            if (Game.Fx == null) return;
-
-            // 콤보가 1보다 크면 콤보 이펙트, 아니면 기본 이펙트
-            if (ScoreManager.Instance.comboCount > 1)
-            {
-                if(isRow) Game.Fx.PlayComboRow(index, destroySprite);
-                else Game.Fx.PlayComboCol(index, destroySprite);
-            }
-            else 
-            {
-                var color = Color.white;
-
-                if (isRow) Game.Fx.PlayRow(index, color);
-                else Game.Fx.PlayCol(index, color);
-            }
-            
         }
 
         public void SetDependencies(EventQueue bus)
         {
             _bus = bus;
             Debug.Log($"[Grid] Bind bus={_bus.GetHashCode()}");
-            _bus.Subscribe<GameResetRequest>(_ => {
+            _bus.Subscribe<GameResetRequest>(_ =>
+            {
                 Debug.Log("[Grid] ResetRuntime received");
                 ResetRuntime();
             }, replaySticky: false);
@@ -347,10 +354,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (IsOccupiedAt(r, c)) return false;  // 하나라도 true(점유)면 비지 않음
             return true;
         }
-        
+
         private bool PredictCompletedLines(
-            List<GridSquare> addedSquares, 
-            out List<int> rowsCompleted, 
+            List<GridSquare> addedSquares,
+            out List<int> rowsCompleted,
             out List<int> colsCompleted)
         {
             rowsCompleted = new();
@@ -393,7 +400,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             return (rowsCompleted.Count + colsCompleted.Count) > 0;
         }
-        
+
         private void ShowLineFollowOverlay(List<int> rowsCompleted, List<int> colsCompleted, Sprite sprite)
         {
             if (sprite == null) return;
@@ -411,7 +418,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (seen.Add(sq))
                     {
                         sq.SetLineClearImage(true, sprite);
-                        
+
                         _hoverLineSquares.Add(sq);
                     }
                 }
@@ -428,7 +435,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (seen.Add(sq))
                     {
                         sq.SetLineClearImage(true, sprite);
-                        
+
                         _hoverLineSquares.Add(sq);
                     }
                 }
@@ -527,6 +534,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 cell.SetFruitImage(false, null, changeIndex: false);
                 cell.SetOccupied(false);
             }
+        private Vector3? TryGetBoardCenterWorld()
+        {
+            if (gridSquares == null || gridSquares[0, 0] == null) return null;
+            var min = gridSquares[0, 0].transform.position;
+            var max = gridSquares[rows - 1, cols - 1].transform.position;
+            return (min + max) * 0.5f;
         }
     }
 }

@@ -50,6 +50,10 @@ public class GameBootstrap : MonoBehaviour
                       ?? new GameObject("SaveManager").AddComponent<SaveManager>();
         DontDestroyOnLoad(legacySave.gameObject);
 
+        // 브리지 보장 및 생성
+        var clearResponder = EnsureInScene<ClearEventResponder>("ClearEventResponder");
+        clearResponder.SetDependencies(bus);
+
         // 어댑터(매니저로 등록)
         var saveAdapter = new SaveServiceAdapter();              // 40
         saveAdapter.SetDependencies(bus, legacySave);
@@ -74,6 +78,7 @@ public class GameBootstrap : MonoBehaviour
         group.Register(saveAdapter);
         group.Register(audio);
         group.Register(ui);
+        group.Register(clearResponder);
 
         // 초기화 & 바인딩
         group.Initialize();
