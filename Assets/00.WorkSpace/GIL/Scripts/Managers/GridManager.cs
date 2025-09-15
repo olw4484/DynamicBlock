@@ -89,7 +89,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (_hoverLineSquares.Count > 0)
             {
                 foreach (var sq in _hoverLineSquares)
-                    sq.SetLineClearImage(false, null);   // 오버레이 OFF
+                    sq.SetLineClearImage(false, null);
                 _hoverLineSquares.Clear();
             }
 
