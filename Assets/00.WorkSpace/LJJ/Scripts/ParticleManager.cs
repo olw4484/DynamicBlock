@@ -281,45 +281,24 @@ public class ParticleManager : MonoBehaviour
         float offsetY = -(squareSize.y + spacing.y) * centerRow;
         return squarePosLocal + new Vector3(offsetX, offsetY, 0f);
     }
-
+    private Vector3 UiWorldToFxLocal_NoProjection(Vector3 uiWorld)
+    {
+        if (!fxRoot) return uiWorld;
+        // x,y는 UI 월드 그대로, z만 fx 평면에 맞춤
+        var fxWorld = new Vector3(uiWorld.x, uiWorld.y, fxRoot.position.z);
+        return fxRoot.InverseTransformPoint(fxWorld);
+    }
     private Vector3 UiLocalToFxLocal(Vector3 uiLocal)
     {
-        if (!gridParent || !uiCanvas || !fxCamera || !fxRoot) return uiLocal;
-
+        if (!gridParent) return uiLocal;
         var gridRT = gridParent as RectTransform;
-        Vector3 uiWorld = gridRT.TransformPoint(uiLocal);
-
-        var uiCam = uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : uiCanvas.worldCamera;
-        Vector2 screen = RectTransformUtility.WorldToScreenPoint(uiCam, uiWorld);
-
-        if (fxCamera.targetTexture != null)
-        {
-            float sx = (float)fxCamera.pixelWidth / Screen.width;
-            float sy = (float)fxCamera.pixelHeight / Screen.height;
-            screen.x *= sx;
-            screen.y *= sy;
-        }
-
-        float depth = Mathf.Abs(fxRoot.position.z - fxCamera.transform.position.z);
-        Vector3 fxWorld = fxCamera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, depth));
-        return fxRoot.InverseTransformPoint(fxWorld);
+        var uiWorld = gridRT.TransformPoint(uiLocal);
+        return UiWorldToFxLocal_NoProjection(uiWorld);
     }
 
     private Vector3 UiWorldToFxLocal(Vector3 uiWorld)
     {
-        var uiCam = uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : uiCanvas.worldCamera;
-        var screen = RectTransformUtility.WorldToScreenPoint(uiCam, uiWorld);
-
-        if (fxCamera.targetTexture != null)
-        {
-            float sx = (float)fxCamera.pixelWidth / Screen.width;
-            float sy = (float)fxCamera.pixelHeight / Screen.height;
-            screen.x *= sx; screen.y *= sy;
-        }
-
-        float depth = Mathf.Abs(fxRoot.position.z - fxCamera.transform.position.z);
-        var fxWorld = fxCamera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, depth));
-        return fxRoot.InverseTransformPoint(fxWorld);
+        return UiWorldToFxLocal_NoProjection(uiWorld);
     }
 
     private Vector3 ToFxLocal(in SpawnTarget t)
@@ -694,12 +673,7 @@ public class ParticleManager : MonoBehaviour
             t.localRotation = Quaternion.Euler(rotations[i]);
             ApplyAllClearSize(ps);
 
-            var m = ps.main;
-            m.useUnscaledTime = true;
-            m.scalingMode = scalingMode;
-
-            ps.Clear(true);
-            ps.Play(true);
+            PlayOnceAndAutoDisable(ps, unscaled: true);
         }
     }
 
@@ -736,9 +710,7 @@ public class ParticleManager : MonoBehaviour
             t.localPosition = centerLocal + offsets[i];
             t.localRotation = Quaternion.Euler(rotations[i]);
             ApplyAllClearSize(ps);
-            ps.gameObject.SetActive(true);
-            ps.Clear();
-            ps.Play();
+            PlayOnceAndAutoDisable(ps, unscaled: true);
         }
     }
 
@@ -885,5 +857,37 @@ public class ParticleManager : MonoBehaviour
             if (lineStartSize > 0f) m.startSize = lineStartSize;
             comboPool.Enqueue(ps);
         }
+    }
+
+    private void PlayOnceAndAutoDisable(ParticleSystem ps, bool unscaled)
+    {
+        if (!ps) return;
+
+        // 본체 + 자식(서브 이미터 포함) 모두 1회 재생 세팅
+        foreach (var s in ps.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            var m = s.main;
+            m.loop = false;
+            m.useUnscaledTime = unscaled;
+            m.stopAction = ParticleSystemStopAction.Disable; // 끝나면 자동 비활성
+
+            // 루프 방지: 상시 방출 끄고, 버스트만 사용
+            var em = s.emission;
+            em.enabled = true;
+            em.rateOverTime = 0f;
+
+            // 만약 프리팹에 버스트가 전혀 없다면 1회 폭발 보정(선택)
+            EnsureExplosionFallback(s);
+
+            m.scalingMode = scalingMode;
+        }
+
+        ps.gameObject.SetActive(true);
+        ps.Clear(true);
+        ps.Play(true);
+
+        // 수명 끝나면 완전히 정지/비활성 (자식까지 고려)
+        var life = LifetimeMax(ps.main);
+        StartCoroutine(WaitAndStop(ps, life, unscaled));
     }
 }
