@@ -27,7 +27,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private Action _rebuildGrid;
         private static readonly Regex s_CodeRegex =
             new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-        
+        private VisualElement _selectBlocksContainer; // Select Blocks에 활성화할 것들
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
@@ -85,17 +85,19 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
             // 반응형 전환
             const float Breakpoint = 700f;
-            bool isWide = true;
+            bool? isWide = null;
 
             void ApplyLayout(float width)
             {
                 bool wide = width >= Breakpoint;
-                if (wide == isWide) return;
+                // 셀 크기는 항상 현재 레이아웃에 맞춰 갱신
+                _cellSize = wide ? 60 : 47;
+                // 레이아웃 전환은 상태 변화가 있을 때만
+                if (isWide.HasValue && wide == isWide.Value) { _rebuildGrid?.Invoke(); return; }
                 isWide = wide;
-
+                
                 if (wide)
                 {
-                    _cellSize = 60;
                     container.style.flexDirection = FlexDirection.Row;
                     container.Clear();
                     left.style.marginRight = 8;
@@ -105,7 +107,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 }
                 else
                 {
-                    _cellSize = 47;
                     container.style.flexDirection = FlexDirection.Column;
                     container.Clear();
                     left.style.marginRight  = 0;

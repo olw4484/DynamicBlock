@@ -17,7 +17,10 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
 
         [Header("Board Size")] [Min(1)] public int rows = 8;
         [Min(1)] public int cols = 8;
-
+        
+        [Header("Fruit Mode Filter")]
+        public List<int> fruitWhitelist = new(); // 활성화 과일 인덱스
+        
         [Header("Icons")] public Sprite[] fruitImages = new Sprite[5];
         public Sprite[] blockImages = new Sprite[5];
         public Sprite[] blockWithFruitIcons = new Sprite[5];
@@ -42,43 +45,16 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
         private void OnEnable()
         {
 #if UNITY_EDITOR
-            if (!Application.isPlaying)
-            {
-                if (fruitImages == null || fruitImages.Length == 0)  fruitImages = Resources.LoadAll<Sprite>("FruitIcons");
-                if (blockImages == null || blockImages.Length == 0)  blockImages = Resources.LoadAll<Sprite>("BlockImages");
-                if (blockWithFruitIcons == null || blockWithFruitIcons.Length == 0)
-                    blockWithFruitIcons = Resources.LoadAll<Sprite>("BlockWithFruitImages");
-            }
+            EnsureEditorPreviewSprites();   // ★ 추가
 #endif
         }
         
         private void OnValidate()
         {
+#if UNITY_EDITOR
             int total = rows * cols;
             layout ??= new List<int>(total);
-
-#if UNITY_EDITOR
-            if (!Application.isPlaying)
-            {
-                // 에디터 전용 미리보기
-                fruitImages = Resources.LoadAll<Sprite>("FruitIcons");
-                blockImages = Resources.LoadAll<Sprite>("BlockImages");
-                blockWithFruitIcons = Resources.LoadAll<Sprite>("BlockWithFruitImages");
-            }
-            else
-#endif
-            {
-                // 플레이 중에는 GDS에서만 가져옴
-                var g = GDS.I;
-                if (g != null && g.IsInitialized)
-                {
-                    fruitImages = g.FruitIconsSprites ?? fruitImages;
-                    blockImages = g.BlockSprites ?? blockImages;
-                    blockWithFruitIcons = g.BlockWithFruitSprites ?? blockWithFruitIcons;
-                }
-            }
-            
-#if UNITY_EDITOR
+            EnsureEditorPreviewSprites();
             var path = UnityEditor.AssetDatabase.GetAssetPath(this);
             if (!string.IsNullOrEmpty(path))
             {
@@ -94,12 +70,19 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
                     }
                 }
             }
-
             UnityEditor.EditorUtility.SetDirty(this);
 #endif
-
-            if (fruitEnabled == null || fruitEnabled.Length != 5) fruitEnabled = new bool[5];
-            if (fruitGoals   == null || fruitGoals.Length   != 5) fruitGoals   = new int[5];
         }
+        
+#if UNITY_EDITOR
+        public void EnsureEditorPreviewSprites()
+        {
+            if (Application.isPlaying) return;
+            fruitImages = Resources.LoadAll<Sprite>("FruitIcons");
+            blockImages = Resources.LoadAll<Sprite>("BlockImages");
+            blockWithFruitIcons = Resources.LoadAll<Sprite>("BlockWithFruitImages");
+        }
+#endif
+
     }
 }

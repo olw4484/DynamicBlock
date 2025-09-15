@@ -84,7 +84,27 @@ public class SaveManager : MonoBehaviour
     {
         return gameData.stageScores[stageIndex];
     }
+    
+    public void ClearCurrentBlocks(bool save = true)
+    {
+        if (gameData == null) return;
 
+        // 런타임 캐시 리스트 비우기 (없으면 새로 만들어 둠)
+        if (gameData.currentShapes == null) gameData.currentShapes = new List<ShapeData>();
+        else gameData.currentShapes.Clear();
+
+        if (gameData.currentShapeSprites == null) gameData.currentShapeSprites = new List<Sprite>();
+        else gameData.currentShapeSprites.Clear();
+
+        // (있다면) 이름/슬롯 리스트도 같이 비우기 — 없는 프로젝트도 예외 없이 통과
+        try { gameData.currentShapeNames?.Clear(); } catch { }
+        try { gameData.currentSpriteNames?.Clear(); } catch { }
+        try { gameData.currentBlockSlots?.Clear(); } catch { }
+
+        if (save) SaveGame();
+        Debug.Log("[Save] Cleared current blocks (by reset).");
+    }
+    
     /// <summary>���� highScore���� ũ�� �����ϰ� ����.</summary>
     public bool TryUpdateHighScore(int score, bool save = true)
     {
