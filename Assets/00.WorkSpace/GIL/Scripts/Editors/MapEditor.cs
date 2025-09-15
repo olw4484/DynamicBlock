@@ -28,7 +28,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private Action _rebuildGrid;
         private static readonly Regex s_CodeRegex =
             new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-        private VisualElement _selectBlocksContainer; // Select Blocks에 활성화할 것들
+
+        private VisualElement _settingsPane;
+        private float _settingsScale = 1f;
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
@@ -74,6 +76,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var left  = BuildGridPane();           // 그리드
             var right = BuildSettingPane();        // 셋팅
 
+            _settingsPane = right;
+            _settingsPane.style.transformOrigin = new TransformOrigin(Length.Percent(0), Length.Percent(0), 0);
+            
             // 기본 배치 (가로)
             container.style.flexDirection = FlexDirection.Row;
             left.style.marginRight = 8;
@@ -93,6 +98,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 bool wide = width >= Breakpoint;
                 // 셀 크기는 항상 현재 레이아웃에 맞춰 갱신
                 _cellSize = wide ? 70 : 47;
+                _settingsScale = wide ? 1.15f : 1.0f;
+                if (_settingsPane != null) 
+                    _settingsPane.style.scale = new Scale(new Vector3(_settingsScale, _settingsScale, 1f));
                 // 레이아웃 전환은 상태 변화가 있을 때만
                 if (isWide.HasValue && wide == isWide.Value) { _rebuildGrid?.Invoke(); return; }
                 isWide = wide;
@@ -161,12 +169,11 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             // 스테이지 이름 수정하는 공간
             var idRow = Row();
             idRow.style.width = 300;
-            
             var idFieldLable = new Label();
-            idFieldLable.text = "Stage Name";
+            idFieldLable.text = "Name";
             idFieldLable.style.fontSize = 15;
             idFieldLable.style.unityTextAlign = TextAnchor.MiddleLeft;
-            idFieldLable.style.width = 120;
+            idFieldLable.style.width = 70;
             idFieldLable.style.unityFontStyleAndWeight = FontStyle.Bold;
             
             var idField = new TextField { value = _data.id };
@@ -192,9 +199,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             stageNumRow.style.width = 300;
 
             var stageNumLabel = new Label();
-            stageNumLabel.text = "Stage Number";
+            stageNumLabel.text = "Number";
             stageNumLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
-            stageNumLabel.style.width = 120;
+            stageNumLabel.style.width = 70;
             stageNumLabel.style.fontSize = 15;
             stageNumLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
             
