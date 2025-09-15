@@ -259,10 +259,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (_lineCount > 0)
             {
-                // TODO :오류로 인한 임시 주석 처리
-                //ActiveClearEffectLine(row, true);
-                for (int col = 0; col < cols; col++)
-                    SetCellOccupied(row, col, false);
                 // 1) 예고 이벤트 : FX가 둘레/프리롤에 사용
                 var rowsArr = completedRows.ToArray();
                 var colsArr = completedCols.ToArray();
@@ -297,21 +293,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
             else
             {
-                // TODO : 오류로 인한 임시 주석 처리
-                //ActiveClearEffectLine(col, false);
-                for (int row = 0; row < rows; row++)
-                    SetCellOccupied(row, col, false);
-            }
-
-            ClearHoverPreview(); // 클리어 후 남아있는 프리뷰 정리
-
-            if (IsBoardEmpty())
-            {
-                _bus?.Publish(new AllClear());
                 // 라인클리어 없음 => 점수만 반영
                 ScoreManager.Instance.ApplyMoveScore(blockUnits, 0);
             }
-
+            
             _lineCount = 0;
         }
 
@@ -517,7 +502,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
             }
         }
-        
+
         public void SetCellOccupied(int r, int c, bool occupied, Sprite sprite = null)
         {
             var cell = gridSquares[r, c];
@@ -534,6 +519,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 cell.SetFruitImage(false, null, changeIndex: false);
                 cell.SetOccupied(false);
             }
+        }
+
         private Vector3? TryGetBoardCenterWorld()
         {
             if (gridSquares == null || gridSquares[0, 0] == null) return null;
