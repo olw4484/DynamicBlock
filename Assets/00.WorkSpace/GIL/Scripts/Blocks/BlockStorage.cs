@@ -89,7 +89,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _handSpawnedOnce = true;
             }, replaySticky:true);
 
-            Game.Bus?.Subscribe<GameResetting>(_ => _handSpawnedOnce = false, replaySticky:false);
+            Game.Bus?.Subscribe<GameResetting>(_ =>
+            {
+                _handSpawnedOnce = false; // 다음 GridReady에서 새 웨이브 생성 허용
+                if (MapManager.Instance.saveManager.gameData.currentScore == 0)
+                {
+                    ClearHand();              // 씬의 손패 오브젝트 제거
+                    MapManager.Instance?.saveManager?.ClearCurrentBlocks(); // 세이브의 손패 데이터도 삭제
+                    GenerateAllBlocks();
+                }
+            }, replaySticky:false);
         }
 
         void OnDisable()
@@ -663,6 +672,22 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             return _currentBlocks.Count > 0;
+        }
+        
+        // === 손패 오브젝트/리스트 즉시 정리 (리셋 시 사용) ===
+        public void ClearHand()
+        {
+            if (_currentBlocks != null)
+            {
+                for (int i = _currentBlocks.Count - 1; i >= 0; i--)
+                    if (_currentBlocks[i] != null)
+                        Destroy(_currentBlocks[i].gameObject);
+                _currentBlocks.Clear();
+            }
+            _currentBlocksShapeData?.Clear();
+            _currentBlocksSpriteData?.Clear();
+
+            Debug.Log("[Storage] Hand cleared by reset.");
         }
     }
 }

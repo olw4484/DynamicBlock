@@ -265,14 +265,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 라인 클리어 반영(이펙트/비우기)
             foreach (int row in completedRows)
             {
-                ActiveClearEffectLine(row, true);
+                // TODO :오류로 인한 임시 주석 처리
+                //ActiveClearEffectLine(row, true);
                 for (int col = 0; col < cols; col++)
                     SetCellOccupied(row, col, false);
             }
 
             foreach (int col in completedCols)
             {
-                ActiveClearEffectLine(col, false);
+                // TODO : 오류로 인한 임시 주석 처리
+                //ActiveClearEffectLine(col, false);
                 for (int row = 0; row < rows; row++)
                     SetCellOccupied(row, col, false);
             }
