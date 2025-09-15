@@ -204,6 +204,26 @@ public class SaveManager : MonoBehaviour
            
         return storage.RebuildBlocksFromLists(shapes, sprites);
     }
+    
+    public void ClearRunState(bool save = true)
+    {
+        if (gameData == null) return;
 
+        // 손패(블록) 비우기
+        ClearCurrentBlocks(false); // 여기서 SaveGame은 하지 않음
+
+        // 그리드/점수/슬롯 등 러닝 상태 전부 초기화
+        gameData.currentMapLayout?.Clear();
+        try { gameData.currentBlockSlots?.Clear(); } catch { }
+        try { gameData.currentShapeNames?.Clear(); } catch { }
+        try { gameData.currentSpriteNames?.Clear(); } catch { }
+
+        gameData.currentScore = 0;
+        gameData.currentCombo = 0;
+        gameData.isClassicModePlaying = false; // 사용 중이면 유지
+
+        if (save) SaveGame();
+        Debug.Log("[Save] ClearRunState: grid/blocks/score cleared.");
+    }
 }
 
