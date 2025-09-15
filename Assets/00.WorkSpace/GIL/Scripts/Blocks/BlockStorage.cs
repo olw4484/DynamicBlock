@@ -308,9 +308,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Game.Bus?.PublishImmediate(new ContinueGranted());
 
             // 4) 손패를 Revive 웨이브로 교체하고, 손패 갱신 훅 호출
-            var previewSprites = ApplyReviveWave(wave);
+            ApplyReviveWave(wave);
             ScoreManager.Instance?.OnHandRefilled();
-            BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
+            //BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
 
             Debug.Log("[Revive] Revive 웨이브 적용 완료, 게임 재개");
             return true;
