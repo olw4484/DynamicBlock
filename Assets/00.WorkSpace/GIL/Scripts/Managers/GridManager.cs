@@ -28,6 +28,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         private EventQueue _bus;
 
+        private Sprite destroySprite; // 블록 파괴 시 사용할 스프라이트 (이펙트용)
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -287,11 +289,22 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private void ActiveClearEffectLine(int index, bool isRow)
         {
-            if (Game.Fx == null) return;              
-            var color = Color.white;              
+            if (Game.Fx == null) return;
 
-            if (isRow) Game.Fx.PlayRow(index, color);
-            else Game.Fx.PlayCol(index, color);
+            // 콤보가 1보다 크면 콤보 이펙트, 아니면 기본 이펙트
+            if (ScoreManager.Instance.comboCount > 1)
+            {
+                if(isRow) Game.Fx.PlayComboRow(index, destroySprite);
+                else Game.Fx.PlayComboCol(index, destroySprite);
+            }
+            else 
+            {
+                var color = Color.white;
+
+                if (isRow) Game.Fx.PlayRow(index, color);
+                else Game.Fx.PlayCol(index, color);
+            }
+            
         }
 
         public void SetDependencies(EventQueue bus)
@@ -382,6 +395,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private void ShowLineFollowOverlay(List<int> rowsCompleted, List<int> colsCompleted, Sprite sprite)
         {
             if (sprite == null) return;
+
+            destroySprite = sprite; // 파괴 예정인 블록 스프라이트 저장 (이펙트용)
             var seen = new HashSet<GridSquare>();
 
             // 가로 라인

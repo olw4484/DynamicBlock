@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Utils;
+using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
 using UnityEngine.EventSystems;
 

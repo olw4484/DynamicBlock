@@ -11,6 +11,7 @@ public class BlockFxFacade : MonoBehaviour, IFx
 
     [SerializeField] private ParticleManager particle; // 씬의 ParticleManager drag&drop
     [SerializeField] private BlockStorage blockStorage; // 씬의 BlockStorage drag&drop
+    [SerializeField] private List<Sprite> comboSprites; // 콤보 이펙트용 스프라이트들 
 
     private void Awake()
     {
@@ -25,6 +26,8 @@ public class BlockFxFacade : MonoBehaviour, IFx
 
     public void PlayRow(int row, Color color) => particle?.PlayRowParticle(row, color);
     public void PlayCol(int col, Color color) => particle?.PlayColParticle(col, color);
+    public void PlayComboRow(int row, Sprite sprite) => particle?.PlayComboRowParticle(row, ComboSprite(sprite)); //
+    public void PlayComboCol(int col, Sprite sprite) => particle?.PlayComboColParticle(col, ComboSprite(sprite)); //
     public void PlayRowPerimeter(int row, Sprite sprite) => particle?.PlayRowPerimeterParticle(row, SpriteToColor(sprite));
     public void PlayColPerimeter(int col, Sprite sprite) => particle?.PlayColPerimeterParticle(col, SpriteToColor(sprite));
     public void StopAllLoop() => particle?.StopAllLoopCommon();
@@ -41,5 +44,16 @@ public class BlockFxFacade : MonoBehaviour, IFx
         if (sprite == blockStorage.shapeImageSprites[3]) return Color.green;
         if (sprite == blockStorage.shapeImageSprites[4]) return Color.blue;
         return Color.white;
+    }
+
+    private Sprite ComboSprite(Sprite sprite)
+    {
+        if (sprite == blockStorage.shapeImageSprites[0]) return comboSprites[0];
+        if (sprite == blockStorage.shapeImageSprites[1]) return comboSprites[1];
+        if (sprite == blockStorage.shapeImageSprites[2]) return comboSprites[2];
+        if (sprite == blockStorage.shapeImageSprites[3]) return comboSprites[3];
+        if (sprite == blockStorage.shapeImageSprites[4]) return comboSprites[4];
+        return null;
+
     }
 }

@@ -25,8 +25,8 @@ MonoBehaviour:
   m_Metadata:
     m_Items: []
   m_ProjectLocaleIdentifier:
-    m_Code: ko
-  m_PreloadBehavior: 1
+    m_Code: en
+  m_PreloadBehavior: 3
   m_InitializeSynchronously: 0
   references:
     version: 2
