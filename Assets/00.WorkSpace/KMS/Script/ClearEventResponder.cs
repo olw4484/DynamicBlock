@@ -88,6 +88,5 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
 
         Game.Audio?.PlayLineClear(6);
         Game.Audio?.PlayClearCombo(Mathf.Min(e.combo + 1, 8));
-        //Game.UI?.ShowAllClearBanner(e.combo, e.bonus);
     }
 }
