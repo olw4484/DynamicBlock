@@ -38,6 +38,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private bool _codeMapsBuilt = false;
         
+        private bool _pendingClassicEnter;
+        private ClassicEnterPolicy _pendingClassicPolicy;
+        
         private void Awake()
         {
             Debug.Log("[MapManager] : 튜토리얼 정보 초기화는 F1");
@@ -228,6 +231,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
             
             gm.ValidateGridConsistency();
+            
+            Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
+            Debug.Log("[Map] PublishImmediate(GridReady) after applying map.");
         }
         
         // 블록 규칙성
@@ -579,11 +585,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 _pendingTutorialApply = false;
             }, replaySticky: true);
         }
-
+        
         public IEnumerator EnterClassicAfterOneFrame()
         {
             yield return null;
-            EnterClassic();
+            RequestClassicEnter();
+            //EnterClassic();
         }
         
         public void EnterClassic(ClassicEnterPolicy policy = ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew)
@@ -633,6 +640,31 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
         }
         
+        public void RequestClassicEnter(ClassicEnterPolicy policy = ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew)
+        {
+            _pendingClassicEnter  = true;
+            _pendingClassicPolicy = policy;
+
+            var gm = GridManager.Instance;
+            if (IsGridFullyReady(gm))
+            {
+                EnterClassic(policy);
+                _pendingClassicEnter = false;
+                return;
+            }
+
+            // GridReady
+            Game.Bus?.Subscribe<GridReady>(_ =>
+            {
+                if (!_pendingClassicEnter) return;
+                if (!IsGridFullyReady(GridManager.Instance)) return;
+
+                Debug.Log("[MapManager] Requesting Classic Enter");
+                EnterClassic(_pendingClassicPolicy);
+                _pendingClassicEnter = false;
+            }, replaySticky: true);
+        }
+        
         public void StartNewClassicMap()
         {
             var gm = GridManager.Instance;
@@ -658,7 +690,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             // 4) 상태/일관성 정리
             gm.ValidateGridConsistency(); // 디버그 확인
-
+            
+            Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
+            Debug.Log("[Map] PublishImmediate(GridReady) after classic board generated.");
+            
             // 5) 세이브 상태 세팅 & 저장
             if (saveManager != null && saveManager.gameData != null)
             {

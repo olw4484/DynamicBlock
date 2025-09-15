@@ -96,7 +96,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 {
                     ClearHand();              // 씬의 손패 오브젝트 제거
                     MapManager.Instance?.saveManager?.ClearCurrentBlocks(); // 세이브의 손패 데이터도 삭제
-                    GenerateAllBlocks();
+                    
+                    if (GridManager.Instance && GridManager.Instance.HasAnyOccupied())
+                        GenerateAllBlocks();
                 }
             }, replaySticky:false);
         }
@@ -125,13 +127,18 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 Debug.LogWarning("[Storage] GenerateAllBlocks EARLY-RETURN: paused==true");
                 return;
             }
-
-            // 안전 정리
-            for (int i = 0; i < _currentBlocks.Count; i++)
+            
+            // 안전 정리, 미리 생성하기
+            var gm = GridManager.Instance;
+            if (MapManager.Instance != null && gm != null && !gm.HasAnyOccupied())
             {
-                if (_currentBlocks[i]) 
-                    Destroy(_currentBlocks[i].gameObject);
+                Debug.Log("[Storage] Board empty → build classic starting map first");
+                MapManager.Instance.StartNewClassicMap(); // 동기 실행, 즉시 셀 찍힘
             }
+
+            for (int i = 0; i < _currentBlocks.Count; i++)
+                if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
+            
             _currentBlocks.Clear();
             _currentBlocksShapeData.Clear();
             _currentBlocksSpriteData.Clear();

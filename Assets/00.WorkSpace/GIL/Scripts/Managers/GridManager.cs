@@ -473,8 +473,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 cell.SetOccupied(false);                               // Normal
             }
             
-            Debug.Log("[Grid] PublishImmediate(GridReady)");
-            _bus.PublishImmediate(new GridReady(rows, cols));
+            Debug.Log("[Grid] Cleared (no GridReady here)");
+            _bus?.PublishImmediate(new GridCleared(rows, cols)); // 새 이벤트
         }
         
         public bool HasAnyOccupied()

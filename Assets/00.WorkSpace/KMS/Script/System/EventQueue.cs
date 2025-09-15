@@ -331,3 +331,5 @@ namespace _00.WorkSpace.GIL.Scripts.Messages
 public readonly struct ReviveRequest { }              // 리바이브 버튼 클릭/보상 수령
 public readonly struct GiveUpRequest { }              // 포기 버튼/타임아웃
 
+public readonly struct GridCleared { public readonly int rows, cols; public GridCleared(int r,int c){rows=r;cols=c;} }
+
