@@ -1,9 +1,14 @@
 using _00.WorkSpace.GIL.Scripts.Messages;
 using UnityEngine;
+using System.Collections;
+
+public enum SfxPolicy { Layered, ComboOverridesLine, Staggered } // 겹침, 콤보우선, 지연
 
 [AddComponentMenu("FX/ClearEventResponder")]
 public sealed class ClearEventResponder : MonoBehaviour, IManager
 {
+
+
     [Header("Preview")]
     [SerializeField] private bool enablePerimeterPreview = true;
     [SerializeField] private Color perimeterColor = new Color(1f, 1f, 1f, 1f);
@@ -11,6 +16,10 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
 
     [Header("Line FX Colors")]
     [SerializeField] private Color normalLineColor = Color.white;
+
+    [Header("SFX Policy")]
+    [SerializeField] private SfxPolicy sfxPolicy = SfxPolicy.Staggered;
+    [SerializeField, Range(0f, 0.5f)] private float comboDelay = 0.12f; // 지연 정책일 때
 
     private Coroutine _perimeterTimeout;
     private EventQueue _bus;
@@ -75,7 +84,7 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
         // 1) 예고 루프 정지
         Game.BlockFx?.StopAllLoop();
 
-        // 2) 실제 라인 클리어 단발 FX
+        // 2) 라인 파티클
         bool combo = e.combo > 1;
         if (Game.Fx != null)
         {
@@ -88,17 +97,44 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
         }
 
         // 3) SFX
-        int total = (e.rows?.Length ?? 0) + (e.cols?.Length ?? 0);
-        Game.Audio?.PlayLineClear(Mathf.Clamp(total, 1, 6));
-        if (e.combo > 1) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
+        int total = Mathf.Clamp((e.rows?.Length ?? 0) + (e.cols?.Length ?? 0), 1, 6);
+
+        switch (sfxPolicy)
+        {
+            case SfxPolicy.Layered:
+                // 둘 다 동시에 (간단하지만 약간 마스킹 가능)
+                Game.Audio?.PlayLineClear(total);
+                if (combo) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
+                break;
+
+            case SfxPolicy.ComboOverridesLine:
+                // 콤보 있을 땐 콤보만, 아니면 라인만
+                if (combo) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
+                else Game.Audio?.PlayLineClear(total);
+                break;
+
+            case SfxPolicy.Staggered:
+                // 라인 먼저, 콤보는 살짝 뒤에
+                Game.Audio?.PlayLineClear(total);
+                if (combo) StartCoroutine(PlayComboSfxAfter(comboDelay, e.combo));
+                break;
+        }
     }
 
+    private IEnumerator PlayComboSfxAfter(float delay, int combo)
+    {
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+        Game.Audio?.PlayClearCombo(Mathf.Min(combo, 8));
+    }
+
+    // AllClear는 유지
     private void OnAllClear(_00.WorkSpace.GIL.Scripts.Messages.AllClear e)
     {
         Game.BlockFx?.StopAllLoop();
         if (e.fxWorld.HasValue) Game.BlockFx?.PlayAllClearAtWorld(e.fxWorld.Value);
         else Game.BlockFx?.PlayAllClear();
 
+        // 올클은 둘 다 재생해도 이득(희소 이벤트)
         Game.Audio?.PlayLineClear(6);
         Game.Audio?.PlayClearCombo(Mathf.Min(e.combo + 1, 8));
     }
