@@ -1,10 +1,12 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using _00.WorkSpace.GIL.Scripts.Maps;
+using UnityEngine.UIElements;
 
 namespace _00.WorkSpace.GIL.Scripts.Editors
 {
@@ -354,6 +356,137 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             MarkDirty(data, "Toggle Fruit Enable");
         }
 
+        // 새로운 기능 Add/Delete/Save/Navigate
+        private static string GetAssetFolder(MapData data)
+        {
+            var path = AssetDatabase.GetAssetPath(data);
+            if (string.IsNullOrEmpty(path)) return "Assets/Resources/Maps";
+            return Path.GetDirectoryName(path).Replace('\\','/');
+        }
+
+        private static (int idx, string path, MapData obj)[] GetAllStages()
+        {
+            var guids = AssetDatabase.FindAssets("t:MapData");
+            var list  = new List<(int,string,MapData)>(guids.Length);
+            foreach (var g in guids)
+            {
+                var p = AssetDatabase.GUIDToAssetPath(g);
+                var o = AssetDatabase.LoadAssetAtPath<MapData>(p);
+                if (o) list.Add((o.mapIndex, p, o));
+            }
+            // mapIndex 기준 정렬
+            return list.OrderBy(t => t.Item1).ToArray();
+        }
+
+        public static void NavigateToExisting(MapData cur, int dir /* -1 prev, +1 next */)
+        {
+            var all = GetAllStages();
+            if (all.Length == 0) return;
+
+            int curIdx = cur ? cur.mapIndex : all[0].idx;
+
+            // 현재보다 큰(혹은 작은) 첫 항목, 없으면 순환
+            if (dir > 0)
+            {
+                var next = all.FirstOrDefault(t => t.idx > curIdx);
+                if (next.obj == null) next = all.First(); // 순환: 처음으로
+                Selection.activeObject = next.obj;
+                EditorGUIUtility.PingObject(next.obj);
+            }
+            else
+            {
+                var prev = all.LastOrDefault(t => t.idx < curIdx);
+                if (prev.obj == null) prev = all.Last();  // 순환: 끝으로
+                Selection.activeObject = prev.obj;
+                EditorGUIUtility.PingObject(prev.obj);
+            }
+        }
+
+        public static void CreateEmptyStageAssetNear(MapData cur)
+        {
+            var folder = GetAssetFolder(cur);
+            if (!AssetDatabase.IsValidFolder(folder))
+            {
+                // 폴더 없으면 기본 폴더 생성
+                if (!AssetDatabase.IsValidFolder("Assets/Resources"))
+                    AssetDatabase.CreateFolder("Assets", "Resources");
+                if (!AssetDatabase.IsValidFolder("Assets/Resources/Maps"))
+                    AssetDatabase.CreateFolder("Assets/Resources", "Maps");
+                folder = "Assets/Resources/Maps";
+            }
+
+            var so = ScriptableObject.CreateInstance<MapData>();
+            so.id = "Stage_";  // 빈 이름
+            so.mapIndex = 0;   // 번호 고정/배정 없음
+            var newPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/Stage_.asset");
+            AssetDatabase.CreateAsset(so, newPath);
+            AssetDatabase.SaveAssets(); 
+            AssetDatabase.Refresh();
+            Selection.activeObject = so;
+            EditorGUIUtility.PingObject(so);
+            Debug.Log($"[MapEditor] Added empty: {newPath}");
+        }
+
+        public static void DeleteStageOnly(MapData data)
+        {
+            var path = AssetDatabase.GetAssetPath(data);
+            if (string.IsNullOrEmpty(path)) return;
+
+            // 다음 선택 대상으로 이동 준비(있으면 다음, 없으면 이전)
+            var all = GetAllStages();
+            var next = all.FirstOrDefault(t => t.idx > data.mapIndex).obj
+                       ?? all.LastOrDefault(t => t.idx < data.mapIndex).obj;
+
+            AssetDatabase.DeleteAsset(path);
+            AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
+            Debug.Log($"[MapEditor] Deleted: {path}");
+
+            if (next) { Selection.activeObject = next; EditorGUIUtility.PingObject(next); }
+        }
+
+        public static void SaveAndRename(MapData data, TextField idField /* 표시용 필드 동기화 */)
+        {
+            if (!data) return;
+
+            // id/mapIndex 정규화
+            var desiredId = $"Stage_{data.mapIndex}";
+            data.id = desiredId;
+            if (idField != null) idField.SetValueWithoutNotify(desiredId);
+
+            // 파일명 변경
+            var path = AssetDatabase.GetAssetPath(data);
+            if (!string.IsNullOrEmpty(path))
+            {
+                var folder = Path.GetDirectoryName(path).Replace('\\','/');
+                var targetPath = $"{folder}/{desiredId}.asset";
+
+                if (path != targetPath)
+                {
+                    // 이름 충돌 처리: 동일 이름이 있으면 유니크 경로로 이동
+                    var finalPath = AssetDatabase.GenerateUniqueAssetPath(targetPath);
+                    var err = AssetDatabase.MoveAsset(path, finalPath);
+                    if (!string.IsNullOrEmpty(err))
+                    {
+                        // Move 실패 시 RenameAsset로 시도(동일 폴더 내 이름 바꾸기)
+                        var nameOnly = Path.GetFileNameWithoutExtension(finalPath);
+                        var err2 = AssetDatabase.RenameAsset(path, nameOnly);
+                        if (!string.IsNullOrEmpty(err2))
+                            Debug.LogError($"[MapEditor] Rename failed: {err2}");
+                        else
+                            Debug.Log($"[MapEditor] Renamed: {path} -> {nameOnly}.asset");
+                    }
+                    else
+                    {
+                        Debug.Log($"[MapEditor] Saved & moved: {path} -> {finalPath}");
+                    }
+                }
+            }
+
+            EditorUtility.SetDirty(data);
+            AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
+        }
+
+        
         
 
         // Menu: 재정렬/잔여 정리

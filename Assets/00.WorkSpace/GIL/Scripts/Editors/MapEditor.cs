@@ -155,31 +155,78 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             bool isUpdating = false;
             
             // TODO : 여기로 설정부분 옮기기
-            // 스테이지 이름
+            
+            // 스테이지 이름 수정하는 공간
+            var idRow = Row();
+            idRow.style.width = 300;
+            
+            var idFieldLable = new Label();
+            idFieldLable.text = "Stage Name";
+            idFieldLable.style.unityTextAlign = TextAnchor.MiddleLeft;
+            idFieldLable.style.width = 100;
+            idFieldLable.style.unityFontStyleAndWeight = FontStyle.Bold;
+            
             var idField = new TextField { value = _data.id };
             idField.style.unityTextAlign = TextAnchor.MiddleCenter;
-            idField.style.width = 340;
-            idField.style.fontSize = 25;
-            idField.style.unityFontStyleAndWeight = FontStyle.Bold;
+            idField.style.width = 200;
+            idField.style.fontSize = 20;
             idField.RegisterValueChangedCallback(e =>
             {
                 MapEditorFunctions.MarkDirty(_data, "Rename Stage");
                 _data.id = e.newValue;
+                
+                
             });
-            panel.Add(idField);
-            SpaceV(panel, 6);
+            
+            // 조립
+            idRow.Add(idFieldLable);
+            idRow.Add(idField);
+            panel.Add(idRow);
+            SpaceV(panel);
+            
+            // 맵 번호 수정하는 공간
+            var stageNumRow = Row();
+            stageNumRow.style.width = 300;
+
+            var stageNumLabel = new Label();
+            stageNumLabel.text = "Stage Number";
+            stageNumLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
+            stageNumLabel.style.width = 100;
+            stageNumLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            
+            var stageIndexField = new IntegerField();
+            stageIndexField.value = _data.mapIndex;
+            stageIndexField.style.unityTextAlign = TextAnchor.MiddleCenter;
+            stageIndexField.style.width = 70;
+            stageIndexField.RegisterValueChangedCallback(e =>
+            {
+                MapEditorFunctions.MarkDirty(_data, "Rename Stage Index");
+                _data.mapIndex = e.newValue;
+                
+                //idField 값도 동기화하기
+                var newId = $"Stage_{_data.mapIndex}";
+                _data.id = newId;
+                idField.SetValueWithoutNotify(newId);
+            });
+            
+            // stageNumber 조립
+            stageNumRow.Add(stageNumLabel);
+            stageNumRow.Add(stageIndexField);
+            panel.Add(stageNumRow);
+            SpaceV(panel);
+            
 
             // 네비게이션 바
             var nav = Row();
-            nav.Add(Button("<", () => { MapEditorFunctions.NavigateClamped(_data, -1); }));
-            nav.Add(Button(">", () => { MapEditorFunctions.NavigateClamped(_data, +1); }));
-            nav.Add(Button("Add", () => { MapEditorFunctions.AddAfterCurrent(_data); }));
-            nav.Add(Button("Save", () => { MapEditorFunctions.Save(_data); }));
+            nav.Add(Button("<", () => { MapEditorFunctions.NavigateToExisting(_data, -1); }));
+            nav.Add(Button(">", () => { MapEditorFunctions.NavigateToExisting(_data, +1); }));
+            nav.Add(Button("Add", () => { MapEditorFunctions.CreateEmptyStageAssetNear(_data); }));
+            nav.Add(Button("Save", () => { MapEditorFunctions.SaveAndRename(_data, idField); }));
             nav.Add(Button("Delete", () =>
             {
                 if (EditorUtility.DisplayDialog("Delete Stage", $"Delete '{_data?.id}'?\n(This cannot be undone)", "Delete", "Cancel"))
                 {
-                    MapEditorFunctions.DeleteCurrent(_data);
+                    MapEditorFunctions.DeleteStageOnly(_data);
                 }
             }));
             panel.Add(nav);
