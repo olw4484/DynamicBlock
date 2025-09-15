@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static UnityEditor.Localization.LocalizationTableCollection;
 
 public class ParticleManager : MonoBehaviour
 {
@@ -61,6 +62,7 @@ public class ParticleManager : MonoBehaviour
 
     private readonly Dictionary<ParticleSystem, Vector3> _baseSize3D = new();
     private readonly Dictionary<ParticleSystem, float> _baseSize = new();
+    private readonly Dictionary<ParticleSystem, float> _baseStartSize = new();
 
     // ================================
     // Inspector
@@ -86,6 +88,8 @@ public class ParticleManager : MonoBehaviour
     [SerializeField] private Vector2 spacing = new Vector2(5f, 5f); // UI 간격
     private Vector2 squareSize;            // UI 칸 크기
     private Vector3 squarePosLocal;        // 기준점(UI 로컬)
+    [SerializeField] private int rows = 8;
+    [SerializeField] private int cols = 8;
 
     [Header("Pool Settings")]
     [SerializeField] private GameObject destroyParticle;   // 가로/세로 소거 라인
@@ -100,6 +104,11 @@ public class ParticleManager : MonoBehaviour
     [SerializeField] private float allClearSizeScale = 1.75f;
     [SerializeField] private ParticleSystemScalingMode scalingMode = ParticleSystemScalingMode.Hierarchy;
 
+    [SerializeField] private ParticleSystem comboPrefab;
+    [SerializeField] private Transform comboParent;
+    [SerializeField] private int comboPrewarm = 8;
+
+
     // ================================
     // Runtime
     // ================================
@@ -110,7 +119,8 @@ public class ParticleManager : MonoBehaviour
     private readonly Queue<ParticleSystem> comboPool = new();
     private readonly Queue<ParticleSystem> perimeterPool = new();
     private int fxLayer = -1;
-    private Dictionary<(SpawnMode, int), ParticleSystem> activeLoops = new();
+    private readonly Dictionary<(SpawnMode, int), (ParticleSystem ps, Queue<ParticleSystem> pool)> activeLoops
+        = new();
 
     // ================================
     // Unity LifeCycle
@@ -248,17 +258,24 @@ public class ParticleManager : MonoBehaviour
     // ================================
     // 좌표 변환 (공통)
     // ================================
+    public void ConfigureGrid(int r, int c, Vector2 cellSize, Vector3 firstCellLocalPos)
+    {
+        rows = r; cols = c; squareSize = cellSize; squarePosLocal = firstCellLocalPos;
+    }
     private Vector3 RowIndexToUiLocal(int rowIndex)
     {
-        float offsetX = (squareSize.x + spacing.x) * 3.5f;      // 중앙 열 기준
-        float offsetY = -(squareSize.y + spacing.y) * rowIndex; // 아래로 증가
+        // 첫 칸 기준 + (열 중앙으로 이동)
+        float centerCol = (cols - 1) * 0.5f; // 8칸이면 3.5
+        float offsetX = (squareSize.x + spacing.x) * centerCol;
+        float offsetY = -(squareSize.y + spacing.y) * rowIndex;
         return squarePosLocal + new Vector3(offsetX, offsetY, 0f);
     }
 
     private Vector3 ColIndexToUiLocal(int colIndex)
     {
+        float centerRow = (rows - 1) * 0.5f; // 8칸이면 3.5
         float offsetX = (squareSize.x + spacing.x) * colIndex;
-        float offsetY = -(squareSize.y + spacing.y) * 3.5f;     // 중앙 행 기준
+        float offsetY = -(squareSize.y + spacing.y) * centerRow;
         return squarePosLocal + new Vector3(offsetX, offsetY, 0f);
     }
 
@@ -364,11 +381,16 @@ public class ParticleManager : MonoBehaviour
     // ================================
     // 공통 재생기
     // ================================
+    private void CacheIfNeeded(ParticleSystem ps)
+    {
+        if (!_baseStartSize.ContainsKey(ps))
+            _baseStartSize[ps] = ps.main.startSizeMultiplier;
+    }
+
     private void ApplyFxParams(ParticleSystem ps, in FxParams p)
     {
         if (!ps) return;
         var main = ps.main;
-
         if (p.setScalingMode) main.scalingMode = scalingMode;
 
         if (p.isLineFx)
@@ -379,19 +401,20 @@ public class ParticleManager : MonoBehaviour
         {
             if (!p.keepPrefabSize)
             {
+                CacheIfNeeded(ps);
                 if (main.startSize3D)
                 {
-                    main.startSizeXMultiplier *= p.uniformScale;
-                    main.startSizeYMultiplier *= p.uniformScale;
-                    main.startSizeZMultiplier *= p.uniformScale;
+                    // 3D인 경우도 base를 따로 캐시해서 절대값으로 세팅 권장
+                    main.startSizeXMultiplier = p.uniformScale;
+                    main.startSizeYMultiplier = p.uniformScale;
+                    main.startSizeZMultiplier = p.uniformScale;
                 }
                 else
                 {
-                    main.startSizeMultiplier = p.uniformScale;
+                    main.startSizeMultiplier = _baseStartSize[ps] * p.uniformScale;
                 }
             }
         }
-
         if (p.color.HasValue) main.startColor = p.color.Value;
     }
 
@@ -446,23 +469,20 @@ public class ParticleManager : MonoBehaviour
         if (unscaled) yield return new WaitForSecondsRealtime(delay);
         else yield return new WaitForSeconds(delay);
 
+        yield return new WaitWhile(() => ps != null && ps.IsAlive(true));
+
+        if (ps == null) yield break;
         ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         ps.transform.localRotation = Quaternion.identity;
         ps.gameObject.SetActive(false);
         pool.Enqueue(ps);
     }
 
-    public void PlayLoopCommon(
-        ParticleSystem ps,
-        in SpawnTarget target,
-        in FxParams p,
-        bool returnToPool,
-        Queue<ParticleSystem> poolToReturn = null)
+    public void PlayLoopCommon(ParticleSystem ps, in SpawnTarget target, in FxParams p,
+                               bool returnToPool, Queue<ParticleSystem> poolToReturn = null)
     {
         if (ps == null) return;
-
         ApplyFxParams(ps, p);
-
         var t = ps.transform;
         t.SetParent(fxRoot, false);
         t.localPosition = ToFxLocal(target);
@@ -470,16 +490,14 @@ public class ParticleManager : MonoBehaviour
         t.localScale = Vector3.one;
         if (fxLayer >= 0) LayerUtil.SetLayerRecursive(ps.gameObject, fxLayer);
 
-        var main = ps.main;
-        main.loop = true;
+        var main = ps.main; main.loop = true;
 
         ps.gameObject.SetActive(true);
         ps.Clear();
         ps.Play();
 
-        // 변경: 튜플 키 사용
         var key = (target.mode, target.index);
-        activeLoops[key] = ps;
+        activeLoops[key] = (ps, returnToPool ? poolToReturn : null);
     }
 
 
@@ -489,12 +507,12 @@ public class ParticleManager : MonoBehaviour
     {
         foreach (var kv in activeLoops)
         {
-            var ps = kv.Value;
-            if (ps == null) continue;
+            var (ps, pool) = kv.Value;
+            if (!ps) continue;
 
             ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             ps.gameObject.SetActive(false);
-            perimeterPool.Enqueue(ps);
+            if (pool != null) pool.Enqueue(ps); // 풀로 되돌릴 수 있으면
         }
         activeLoops.Clear();
     }
@@ -532,36 +550,63 @@ public class ParticleManager : MonoBehaviour
     // 콤보용 파티클 재생 (스프라이트 변경)
     public void PlayComboRowParticle(int rowIndex, Sprite sprite)
     {
-        Color color = Color.white;
+        EnsureComboPool();
+        if (comboPool == null || comboPool.Count == 0)
+        {
+            Debug.LogWarning("[Particle] comboPool empty (row)");
+            return;
+        }
 
-        if (destroyPool.Count == 0) { Debug.LogWarning("comboPool exhausted"); return; }
         var ps = comboPool.Dequeue();
 
         var target = new SpawnTarget(
             SpawnMode.GridRow, idx: rowIndex, rotZ: 0f, unscaledTime: false);
 
-        var param = new FxParams(color, lineFx: true, applyScalingMode: true);
-        var psRenderer = ps.GetComponent<ParticleSystemRenderer>();
-        psRenderer.material.mainTexture = sprite.texture;
+        var param = new FxParams(Color.white, lineFx: true, applyScalingMode: true);
 
+        ApplySprite(ps, sprite);
         PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: comboPool);
     }
 
     public void PlayComboColParticle(int colIndex, Sprite sprite)
     {
-        Color color = Color.white;
-        if (destroyPool.Count == 0) { Debug.LogWarning("comboPool exhausted"); return; }
+        EnsureComboPool();
+        if (comboPool == null || comboPool.Count == 0)
+        {
+            Debug.LogWarning("[Particle] comboPool empty (col)");
+            return;
+        }
+
         var ps = comboPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridCol, idx: colIndex, rotY: 90f ,rotZ: 90f, unscaledTime: false);
+            SpawnMode.GridCol, idx: colIndex, rotY: 90f, rotZ: 90f, unscaledTime: false);
 
-        var param = new FxParams(color, lineFx: true, applyScalingMode: true);
+        var param = new FxParams(Color.white, lineFx: true, applyScalingMode: true);
 
-        var psRenderer = ps.GetComponent<ParticleSystemRenderer>();
-        psRenderer.material.mainTexture = sprite.texture;
-
+        ApplySprite(ps, sprite);
         PlayOnceCommon(ps, target, param, returnToPool: true, poolToReturn: comboPool);
+    }
+
+    private static void ApplySprite(ParticleSystem ps, Sprite sprite)
+    {
+        if (!sprite) return;
+
+        // 권장: MPB로 텍스처만 바꾸면 머티리얼 인스턴스 증식 방지
+        var r = ps.GetComponent<ParticleSystemRenderer>();
+        var mpb = new MaterialPropertyBlock();
+        r.GetPropertyBlock(mpb);
+        mpb.SetTexture("_MainTex", sprite.texture);
+        r.SetPropertyBlock(mpb);
+
+        // TextureSheetAnimation을 쓰는 경우 (스프라이트 슬롯 교체)
+        var tsa = ps.textureSheetAnimation;
+        if (tsa.enabled)
+        {
+            tsa.mode = ParticleSystemAnimationMode.Sprites;
+            tsa.RemoveSprite(0);
+            tsa.AddSprite(sprite);
+        }
     }
 
     // 테두리용 파티클 재생 
@@ -747,6 +792,32 @@ public class ParticleManager : MonoBehaviour
         {
             if (_baseSize.TryGetValue(ps, out var baseMul))
                 m.startSizeMultiplier = baseMul * allClearSizeScale;
+        }
+    }
+    private void EnsureComboPool()
+    {
+        if (comboPool == null) return;            // 선언은 되어 있음
+        if (comboPool.Count > 0) return;
+
+        if (!comboParticle && !comboPrefab)
+        {
+            Debug.LogError("[Particle] Combo prefab is null (comboParticle/comboPrefab).");
+            return;
+        }
+
+        // 우선순위: comboPrefab > comboParticle
+        var prefabGO = comboPrefab ? comboPrefab.gameObject : comboParticle;
+
+        for (int i = 0; i < Mathf.Max(1, comboPrewarm); i++)
+        {
+            var go = Instantiate(prefabGO, comboParent ? comboParent : fxRoot);
+            if (fxLayer >= 0) LayerUtil.SetLayerRecursive(go, fxLayer);
+            go.SetActive(false);
+            var ps = go.GetComponent<ParticleSystem>();
+            var m = ps.main;
+            m.scalingMode = scalingMode;
+            if (lineStartSize > 0f) m.startSize = lineStartSize;
+            comboPool.Enqueue(ps);
         }
     }
 }
