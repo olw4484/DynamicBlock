@@ -223,36 +223,47 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     // === 외부 API ===
     public void SetPanel(string key, bool on)
     {
-        Debug.Log($"SetPanel {key} -> {on}");
         if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
 
         // 모달: 스택 기반 처리
         if (p.isModal)
         {
+            // 상태 변화가 없으면 무시
+            if (p.root.activeSelf == on) return;
+
+            Debug.Log($"[UIManager] SetPanel {key} -> {on} (modal)");
             if (on) PushModalInternal(key, on);
-            else PopModalInternal(key);
+            else    PopModalInternal(key);
             return;
         }
 
-        // 일반 패널
+        // 일반 패널 + CanvasGroup 미사용
         if (!p.useCanvasGroup)
         {
+            if (p.root.activeSelf == on) return;
+            Debug.Log($"[UIManager] SetPanel {key} -> {on} (instant)");
             p.root.SetActive(on);
             return;
         }
 
+        // 일반 패널 + CanvasGroup 사용 
         if (!on && !p.root.activeSelf) return;
 
         var cg = EnsureCanvasGroup(p.root);
 
+        Debug.Log($"[UIManager] SetPanel {key} -> {on} (fade)");
+
         if (on)
+        {
             ResetChildCanvasGroupsAlpha(p.root);
 
-        if (!p.root.activeSelf)
-        {
-            p.root.SetActive(true);
-            if (on) cg.alpha = 0f;
+            if (!p.root.activeSelf)
+            {
+                p.root.SetActive(true);
+                cg.alpha = 0f;
+            }
         }
+        
 
         StopFade(key);
         _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on, key));
