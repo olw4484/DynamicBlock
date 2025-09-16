@@ -531,7 +531,7 @@ public class ParticleManager : MonoBehaviour
     // 콤보용 파티클 재생 (스프라이트 변경)
     public void PlayComboRowParticle(int rowIndex, Sprite sprite)
     {
-        EnsureComboPool();
+        //EnsureComboPool();
         if (comboPool == null || comboPool.Count == 0)
         {
             Debug.LogWarning("[Particle] comboPool empty (row)");
@@ -551,7 +551,7 @@ public class ParticleManager : MonoBehaviour
 
     public void PlayComboColParticle(int colIndex, Sprite sprite)
     {
-        EnsureComboPool();
+        //EnsureComboPool();
         if (comboPool == null || comboPool.Count == 0)
         {
             Debug.LogWarning("[Particle] comboPool empty (col)");
@@ -831,32 +831,32 @@ public class ParticleManager : MonoBehaviour
                 m.startSizeMultiplier = baseMul * allClearSizeScale;
         }
     }
-    private void EnsureComboPool()
-    {
-        if (comboPool == null) return;
-        if (comboPool.Count > 0) return;
-
-        if (!comboParticle && !comboPrefab)
-        {
-            Debug.LogError("[Particle] Combo prefab is null (comboParticle/comboPrefab).");
-            return;
-        }
-
-        // 우선순위: comboPrefab > comboParticle
-        var prefabGO = comboPrefab ? comboPrefab.gameObject : comboParticle;
-
-        for (int i = 0; i < Mathf.Max(1, comboPrewarm); i++)
-        {
-            var go = Instantiate(prefabGO, comboParent ? comboParent : fxRoot);
-            if (fxLayer >= 0) LayerUtil.SetLayerRecursive(go, fxLayer);
-            go.SetActive(false);
-            var ps = go.GetComponent<ParticleSystem>();
-            var m = ps.main;
-            m.scalingMode = scalingMode;
-            if (lineStartSize > 0f) m.startSize = lineStartSize;
-            comboPool.Enqueue(ps);
-        }
-    }
+    //private void EnsureComboPool()
+    //{
+    //    if (comboPool == null) return;
+    //    if (comboPool.Count > 0) return;
+    //
+    //    if (!comboParticle && !comboPrefab)
+    //    {
+    //        Debug.LogError("[Particle] Combo prefab is null (comboParticle/comboPrefab).");
+    //        return;
+    //    }
+    //
+    //    // 우선순위: comboPrefab > comboParticle
+    //    var prefabGO = comboPrefab ? comboPrefab.gameObject : comboParticle;
+    //
+    //    for (int i = 0; i < Mathf.Max(1, comboPrewarm); i++)
+    //    {
+    //        var go = Instantiate(prefabGO, comboParent ? comboParent : fxRoot);
+    //        if (fxLayer >= 0) LayerUtil.SetLayerRecursive(go, fxLayer);
+    //        go.SetActive(false);
+    //        var ps = go.GetComponent<ParticleSystem>();
+    //        var m = ps.main;
+    //        m.scalingMode = scalingMode;
+    //        if (lineStartSize > 0f) m.startSize = lineStartSize;
+    //        comboPool.Enqueue(ps);
+    //    }
+    //}
 
     private void PlayOnceAndAutoDisable(ParticleSystem ps, bool unscaled)
     {
