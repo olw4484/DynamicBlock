@@ -145,16 +145,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _lastHighScore = e.data.highScore;
             if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
             // 필요 시 GO 화면의 Best도 최신으로 동기화
-            SetAll(_goBestTexts, $"Best : {FormatScore(_lastHighScore)}");
+            SetAll(_goBestTexts, $"{FormatScore(_lastHighScore)}");
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
         }, replaySticky: true);
 
         // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
-            SetAll(_goTotalTexts, $"TotalScore : {FormatScore(e.score)}");
+            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = Mathf.Max(e.score, _lastHighScore);
-            SetAll(_goBestTexts, $"Best : {FormatScore(best)}");
+            SetAll(_goBestTexts, $"{FormatScore(best)}");
             SetPanel("Revive", true);
             Game.Audio.PlayContinueTimeCheck();
         }, replaySticky: false);
@@ -168,9 +168,9 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 리바이브 패널 OFF + 결과 패널 ON (신기록 여부에 따라 분기)
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
-            SetAll(_goTotalTexts, $"TotalScore : {FormatScore(e.score)}");
+            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = e.isNewBest ? e.score : _lastHighScore;
-            SetAll(_goBestTexts, $"Best : {FormatScore(best)}");
+            SetAll(_goBestTexts, $"{FormatScore(best)}");
 
             SetPanel("Revive", false);
             SetPanel("GameOver", !e.isNewBest);
