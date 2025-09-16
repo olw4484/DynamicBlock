@@ -29,7 +29,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     [Header("HUD")]
     [SerializeField] private TMP_Text _scoreText;
-    [SerializeField] private TMP_Text _comboText;
     [SerializeField] private TMP_Text _hudBestText;
 
     [Header("GameOver Texts (All Canvases)")]
@@ -43,6 +42,14 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] CanvasGroup mainGroup;   // 메인 루트 그룹(강제 원복용)
     [SerializeField] Image dimOverlay;        // 모달 DIM
 
+    [Header("Combo UI")]
+    [SerializeField] private GameObject _rainbowIcon;   // GameCanvas
+    [SerializeField] private CanvasGroup _comboGroup;   // UICanvas (Combo 이미지+텍스트 묶음)
+    [SerializeField] private TMP_Text _comboText;       // Combo 숫자
+    [SerializeField] private float _comboHoldTime = 0.8f; // 유지시간
+    [SerializeField] private float _comboFadeTime = 0.2f; // 페이드아웃 시간
+
+    private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
 
@@ -137,7 +144,24 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _bus.Subscribe<ComboChanged>(e =>
         {
-            if (_comboText) _comboText.text = $"x{e.value}";
+            if (e.value <= 0)
+            {
+                if (_rainbowIcon) _rainbowIcon.SetActive(false);
+                if (_comboGroup) _comboGroup.gameObject.SetActive(false);
+                return;
+            }
+
+            if (_rainbowIcon && !_rainbowIcon.activeSelf)
+                _rainbowIcon.SetActive(true);
+
+            if (_comboGroup && !_comboGroup.gameObject.activeSelf)
+                _comboGroup.gameObject.SetActive(true);
+
+            if (_comboText)
+                _comboText.text = $"x{e.value}";
+
+            if (_comboFadeJob != null) StopCoroutine(_comboFadeJob);
+            _comboFadeJob = StartCoroutine(FadeOutCombo(_comboGroup, _comboHoldTime, _comboFadeTime));
         }, replaySticky: true);
 
         _bus.Subscribe<GameDataChanged>(e =>
@@ -145,16 +169,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _lastHighScore = e.data.highScore;
             if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
             // 필요 시 GO 화면의 Best도 최신으로 동기화
-            SetAll(_goBestTexts, $"Best : {FormatScore(_lastHighScore)}");
+            SetAll(_goBestTexts, $"{FormatScore(_lastHighScore)}");
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
         }, replaySticky: true);
 
         // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
-            SetAll(_goTotalTexts, $"TotalScore : {FormatScore(e.score)}");
+            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = Mathf.Max(e.score, _lastHighScore);
-            SetAll(_goBestTexts, $"Best : {FormatScore(best)}");
+            SetAll(_goBestTexts, $"{FormatScore(best)}");
             SetPanel("Revive", true);
             Game.Audio.PlayContinueTimeCheck();
         }, replaySticky: false);
@@ -168,9 +192,9 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 리바이브 패널 OFF + 결과 패널 ON (신기록 여부에 따라 분기)
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
-            SetAll(_goTotalTexts, $"TotalScore : {FormatScore(e.score)}");
+            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = e.isNewBest ? e.score : _lastHighScore;
-            SetAll(_goBestTexts, $"Best : {FormatScore(best)}");
+            SetAll(_goBestTexts, $"{FormatScore(best)}");
 
             SetPanel("Revive", false);
             SetPanel("GameOver", !e.isNewBest);
@@ -262,6 +286,28 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 여전히 0(또는 거의 0)이고 입력도 막혀 있으면 강제 정상화
         if (cg && cg.alpha <= 0.01f && !cg.interactable)
             StopFadeAndSnap(key, cg, true);
+    }
+
+    private IEnumerator FadeOutCombo(CanvasGroup cg, float hold, float fade)
+    {
+        // 즉시 보이게
+        cg.alpha = 1f;
+
+        // 일정 시간 유지
+        float t = 0f;
+        while (t < hold) { t += Time.unscaledDeltaTime; yield return null; }
+
+        // 페이드 아웃
+        float start = cg.alpha;
+        t = 0f;
+        while (t < fade)
+        {
+            t += Time.unscaledDeltaTime;
+            cg.alpha = Mathf.Lerp(start, 0f, t / fade);
+            yield return null;
+        }
+        cg.alpha = 0f;
+        cg.gameObject.SetActive(false);
     }
 
     public void CloseTopModal()
