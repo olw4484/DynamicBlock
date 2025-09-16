@@ -282,7 +282,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 // 3) 점수/콤보 갱신 후, 실제 클리어 이벤트
                 ScoreManager.Instance.ApplyMoveScore(blockUnits, _lineCount);
                 int comboNow = ScoreManager.Instance.comboCount;
-                _bus?.PublishImmediate(new _00.WorkSpace.GIL.Scripts.Messages.LinesCleared(rowsArr, colsArr, comboNow));
+                _bus?.PublishImmediate(new _00.WorkSpace.GIL.Scripts.Messages.LinesCleared(rowsArr, colsArr, comboNow, destroySprite));
 
                 // 4) 올클리어 체크 => 이벤트
                 if (IsBoardEmpty())

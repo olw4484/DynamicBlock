@@ -29,8 +29,8 @@ public class BlockFxFacade : MonoBehaviour, IFx
 
     public void PlayRow(int row, Color color) => particles?.PlayRowParticle(row, color);
     public void PlayCol(int col, Color color) => particles?.PlayColParticle(col, color);
-    public void PlayComboRow(int row, Sprite sprite) => particles?.PlayComboRowParticle(row, ComboSprite(sprite)); //
-    public void PlayComboCol(int col, Sprite sprite) => particles?.PlayComboColParticle(col, ComboSprite(sprite)); //
+    public void PlayComboRow(int row, Sprite sprite) => particles?.PlayComboRowParticle(row, sprite); //
+    public void PlayComboCol(int col, Sprite sprite) => particles?.PlayComboColParticle(col, sprite); //
     public void PlayRowPerimeter(int row, Sprite sprite) => particles?.PlayRowPerimeterParticle(row, SpriteToColor(sprite));
     public void PlayColPerimeter(int col, Sprite sprite) => particles?.PlayColPerimeterParticle(col, SpriteToColor(sprite));
     public void StopAllLoop() => particles?.StopAllLoopCommon();

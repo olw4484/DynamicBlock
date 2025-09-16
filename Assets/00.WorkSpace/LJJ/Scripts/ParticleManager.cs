@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using static UnityEditor.Localization.LocalizationTableCollection;
+//using static UnityEditor.Localization.LocalizationTableCollection;
 
 public class ParticleManager : MonoBehaviour
 {
@@ -572,6 +572,7 @@ public class ParticleManager : MonoBehaviour
 
     private static void ApplySprite(ParticleSystem ps, Sprite sprite)
     {
+        Debug.Log($"ApplySprite : {sprite}");
         if (!sprite) return;
 
         // 권장: MPB로 텍스처만 바꾸면 머티리얼 인스턴스 증식 방지
