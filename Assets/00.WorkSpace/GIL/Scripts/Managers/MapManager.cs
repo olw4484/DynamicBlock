@@ -37,11 +37,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private Sprite[] _fruitBackgroundSprite;
 
         private bool _codeMapsBuilt = false;
-        
+        bool _isApplyingMap;
+        int _tutorialApplyTicket = 0;
         private bool _pendingClassicEnter;
         private ClassicEnterPolicy _pendingClassicPolicy;
 
+        bool _pendingTutorialApply;
+        int _pendingIndex;
+
         private Action<GridReady> _classicEnterHandler;
+        private Action<GridReady> _onGridReadyTutorial;
 
         private EventQueue _bus;
 
@@ -199,7 +204,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
         
         public static bool IsFruitCode(int code) => (code >= 200 && code < 300);
-        
+
         /// <summary>
         /// 맵 데이터를 토대로 그리드를 칠하기, 게임 시작 -> 블럭 생성 이전에 써야 할듯
         /// 게임 시작 위치를 정확히 모르겠어서 어디서든 코드를 사용하여 바로 붙일 수 있게 해야함.
@@ -207,26 +212,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         /// <param name="index">생성할 맵 Index, 0일 경우 튜토리얼, 1 이상일 경우 스테이지 번호</param>
         // 버튼/Start에서 한 줄 사용
-        public void SetMapDataToGrid(int index = 0)
+        public void SetMapDataToGrid(int index = 0, bool publishGridReady = true) // ← 파라미터 추가
         {
-            if (_mapList == null || _mapList.Length == 0) LoadMapData();
-            if (_mapList == null || _mapList.Length == 0)
+            if (_isApplyingMap) { Debug.LogWarning("[MapManager] Re-entrant SetMapDataToGrid blocked"); return; }
+            _isApplyingMap = true;
+            try
             {
-                Debug.LogError("[MapManager] Maps 폴더에서 MapData를 찾지 못했습니다.");
-                return;
+                if (_mapList == null || _mapList.Length == 0) LoadMapData();
+                if (_mapList == null || _mapList.Length == 0)
+                { Debug.LogError("[MapManager] Maps not found."); return; }
+
+                int idx = Mathf.Clamp(index, 0, _mapList.Length - 1);
+                if (idx == 0) idx = defaultMapIndex;
+
+                var map = _mapList[idx];
+                if (!map) { Debug.LogError($"[MapManager] MapData[{idx}] is null."); return; }
+
+                ApplyMapToCurrentGrid(map, publishGridReady); // ← 아래 패치 2와 함께
+                StartCoroutine(RestoreScoreNextFrame());
             }
-            int idx = Mathf.Clamp(index, 0, _mapList.Length - 1);
-            if(idx == 0) idx = defaultMapIndex;
-            
-            var map = _mapList[idx];
-            if (map == null)
-            {
-                Debug.LogError($"[MapManager] MapData[{idx}]가 null 입니다.");
-                return;
-            }
-            
-            ApplyMapToCurrentGrid(map);
-            StartCoroutine(RestoreScoreNextFrame());
+            finally { _isApplyingMap = false; }
         }
 
         /// <summary>
@@ -267,42 +272,43 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 layout = layout
             };
 
-            ApplyMapToCurrentGrid(mapData);
+            ApplyMapToCurrentGrid(mapData, publishGridReady: false);
             StartCoroutine(RestoreScoreNextFrame());
+
+            StartCoroutine(Co_PostEnterSignals(GameMode.Classic));
         }
 
-        private void ApplyMapToCurrentGrid(MapData map)
+        private void ApplyMapToCurrentGrid(MapData map, bool publishGridReady = true)
         {
             Debug.Log("[MapManager] ApplyMapToCurrentGrid 호출됨");
-            Debug.Log($"[MapManager] 맵 크기: {map?.rows} x {map?.cols}");
-
             var gm = GridManager.Instance;
             if (!gm || gm.gridSquares == null) return;
-            
-            // 1) 이전 잔상 제거
+
             gm.ResetBoardToEmpty();
 
-            // 2) 코드 매핑 준비
             if (!_codeMapsBuilt) { BuildCodeMaps(); _codeMapsBuilt = true; }
-            
+
             int rows = Mathf.Min(map.rows, gm.rows);
             int cols = Mathf.Min(map.cols, gm.cols);
-            
+
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-            {
-                int code = map.layout[r * map.cols + c];
-                if (code > 0 && _codeToSprite.TryGetValue(code, out var sprite) && sprite)
-                    gm.SetCellOccupied(r, c, true, sprite);
-                else
-                    gm.SetCellOccupied(r, c, false);
-            }
+                for (int c = 0; c < cols; c++)
+                {
+                    int code = map.layout[r * map.cols + c];
+                    if (code > 0 && _codeToSprite.TryGetValue(code, out var sprite) && sprite)
+                        gm.SetCellOccupied(r, c, true, sprite);
+                    else
+                        gm.SetCellOccupied(r, c, false);
+                }
 
             gm.ValidateGridConsistency();
-            Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
+
+            if (!publishGridReady) return;
+
             Game.Bus?.PublishSticky(new GridReady(gm.rows, gm.cols), alsoEnqueue: false);
+            // Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
         }
-        
+
         // 블록 규칙성
         // 0     : 빈칸(비활성)
         // 101..105  : 일반 블록 
@@ -620,8 +626,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             return true;
         }
 
-        bool _pendingTutorialApply;
-        int  _pendingIndex;
+
 
         public IEnumerator EnterTutorial()
         {
@@ -629,35 +634,78 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             RequestTutorialApply();
         }
-        
+
         public void RequestTutorialApply(int index = 0)
         {
+            // 요청 토큰(버전) 갱신
+            _tutorialApplyTicket++;
+            int myTicket = _tutorialApplyTicket;
+
+            // 기존 구독 clean
+            if (_onGridReadyTutorial != null)
+            {
+                try { Game.Bus?.Unsubscribe(_onGridReadyTutorial); } catch { }
+                _onGridReadyTutorial = null;
+            }
+
             _pendingTutorialApply = true;
             _pendingIndex = index;
 
             var gm = GridManager.Instance;
             if (IsGridFullyReady(gm))
             {
-                SetMapDataToGrid(index);
                 _pendingTutorialApply = false;
+                SetMapDataToGrid(index, publishGridReady: false);
+                // 필요하다면 다음 프레임에 1회만 발행
+                StartCoroutine(Co_PostGridReadyOnce(gm.rows, gm.cols));
                 return;
             }
 
-            // GridReady(Sticky) 수신 후 1회만 적용
-            Game.Bus?.Subscribe<GridReady>(_ => {
+            _onGridReadyTutorial = _ =>
+            {
+                if (myTicket != _tutorialApplyTicket) return;
+
                 if (!_pendingTutorialApply) return;
                 if (!IsGridFullyReady(GridManager.Instance)) return;
-                Debug.Log("[MapManager] Requesting Tutorial Apply");
-                SetMapDataToGrid(_pendingIndex);
+
                 _pendingTutorialApply = false;
-            }, replaySticky: true);
+                try { Game.Bus?.Unsubscribe(_onGridReadyTutorial); } catch { }
+                _onGridReadyTutorial = null;
+
+                SetMapDataToGrid(_pendingIndex, publishGridReady: false);
+                StartCoroutine(Co_PostGridReadyOnce(GridManager.Instance.rows, GridManager.Instance.cols));
+            };
+            if (IsGridFullyReady(GridManager.Instance))
+            {
+                _pendingTutorialApply = false;
+                SetMapDataToGrid(index, publishGridReady: false); // GridReady 유사 신호 금지
+                StartCoroutine(Co_PostEnterSignals(GameMode.Tutorial));
+                return;
+            }
+
+            _onGridReadyTutorial = _ =>
+            {
+                if (!_pendingTutorialApply) return;
+                if (!IsGridFullyReady(GridManager.Instance)) return;
+
+                _pendingTutorialApply = false;
+                try { Game.Bus?.Unsubscribe(_onGridReadyTutorial); } catch { }
+                _onGridReadyTutorial = null;
+
+                SetMapDataToGrid(_pendingIndex, publishGridReady: false);
+                StartCoroutine(Co_PostEnterSignals(GameMode.Tutorial));
+            };
+
+            Game.Bus?.Subscribe(_onGridReadyTutorial, replaySticky: true);
         }
-        
-        public IEnumerator EnterClassicAfterOneFrame()
+
+        IEnumerator Co_PostGridReadyOnce(int rows, int cols)
         {
+            // 동기 재귀 끊기 위해 다음 프레임에 한 번만
             yield return null;
-            RequestClassicEnter();
-            //EnterClassic();
+            Game.Bus?.PublishSticky(new GridReady(rows, cols), alsoEnqueue: false);
+            // Immediate는 되도록 생략 (필요 시 한 줄만)
+            // Game.Bus?.PublishImmediate(new GridReady(rows, cols));
         }
 
         public void EnterClassic(ClassicEnterPolicy policy = ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew)
@@ -793,44 +841,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
 
-            // 1) 보드 완전 초기화
             gm.ResetBoardToEmpty();
 
-            // 2) 코드 -> 스프라이트 매핑 준비
-            if (!_codeMapsBuilt)
-            {
-                BuildCodeMaps();
-                _codeMapsBuilt = true;
-            }
+            if (!_codeMapsBuilt) { BuildCodeMaps(); _codeMapsBuilt = true; }
 
-            // 3) 클래식 시작 보드 생성 알고리즘 실행
-            //    필요 시 파라미터 조정
             GenerateClassicStartingMap();
+            gm.ValidateGridConsistency();
 
-            // 4) 상태/일관성 정리
-            gm.ValidateGridConsistency(); // 디버그 확인
-            
-            Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
-            Debug.Log("[Map] PublishImmediate(GridReady) after classic board generated.");
-            
-            // 5) 세이브 상태 세팅 & 저장
-            if (saveManager != null && saveManager.gameData != null)
+            // 세이브
+            if (saveManager?.gameData != null)
             {
                 saveManager.gameData.isClassicModePlaying = true;
-                saveManager.gameData.currentMapLayout = gm.ExportLayoutCodes(); // 현재 보드 -> 코드 리스트
+                saveManager.gameData.currentMapLayout = gm.ExportLayoutCodes();
                 saveManager.gameData.currentScore = 0;
                 saveManager.gameData.currentCombo = 0;
                 saveManager.SaveGame();
             }
 
-            // 6) 첫 스냅샷 저장
             GameSnapShot.SaveGridSnapshot();
 
-            Debug.Log("[MapManager] StartNewClassicMap: classic board generated.");
-
-            Game.Bus?.PublishSticky(new GridReady(gm.rows, gm.cols), alsoEnqueue: false);
-            Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
-            Debug.Log("[Map] Publish(GridReady) classic board generated (sticky+immediate).");
+            StartCoroutine(Co_PostEnterSignals(GameMode.Classic));
         }
 
         private IEnumerator RestoreScoreNextFrame()
@@ -878,6 +908,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 RequestClassicEnter(req.policy); // 예: ForceLoadSave
                 Debug.Log($"[Map] Classic enter requested via intent: {req.policy}");
             }
+        }
+        IEnumerator Co_PostEnterSignals(GameMode mode)
+        {
+            // 동기 재귀 차단
+            yield return null;
+
+            var gm = GridManager.Instance;
+            if (!gm) yield break;
+
+            // 보드는 Sticky 1회
+            Game.Bus?.PublishSticky(new BoardReady(gm.rows, gm.cols), alsoEnqueue: false);
+
+            // 입장은 Immediate 1회 (손패/스폰은 이걸 듣는다)
+            Game.Bus?.PublishImmediate(new GameEntered(mode));
         }
     }
 }

@@ -372,3 +372,14 @@ public readonly struct GameEnterIntent
         this.forceLoadSave = forceLoadSave;
     }
 }
+public readonly struct BoardReady
+{
+    public readonly int rows, cols;
+    public BoardReady(int r, int c) { rows = r; cols = c; }
+}
+
+public readonly struct GameEntered
+{
+    public readonly GameMode mode;
+    public GameEntered(GameMode m) { mode = m; }
+}
