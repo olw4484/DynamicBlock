@@ -318,11 +318,12 @@ namespace _00.WorkSpace.GIL.Scripts.Messages
         public readonly int[] rows;
         public readonly int[] cols;
         public readonly int combo;
+        public readonly Sprite destroySprite;
         public int Total => (rows?.Length ?? 0) + (cols?.Length ?? 0);
 
-        public LinesCleared(int[] rows, int[] cols, int combo)
+        public LinesCleared(int[] rows, int[] cols, int combo, Sprite sprite)
         {
-            this.rows = rows; this.cols = cols; this.combo = combo;
+            this.rows = rows; this.cols = cols; this.combo = combo; this.destroySprite = sprite;
         }
     }
 }

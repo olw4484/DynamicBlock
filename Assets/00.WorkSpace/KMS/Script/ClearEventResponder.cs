@@ -56,9 +56,9 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
 
         // 예고용 테두리 루프 시작
         if (e.rows != null) foreach (var r in e.rows)
-                Game.BlockFx?.PlayRowPerimeter(r, perimeterColor);
+                Game.BlockFx?.PlayRowPerimeter(r, e.destroySprite);
         if (e.cols != null) foreach (var c in e.cols)
-                Game.BlockFx?.PlayColPerimeter(c, perimeterColor);
+                Game.BlockFx?.PlayColPerimeter(c, e.destroySprite);
 
         // 안전장치: TTL 지나면 자동 정지 (LinesCleared가 못 들어온 경우 대비)
         if (_perimeterTimeout != null) StopCoroutine(_perimeterTimeout);
@@ -89,10 +89,10 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
         if (Game.Fx != null)
         {
             if (e.rows != null) foreach (var r in e.rows)
-                    if (combo) Game.Fx.PlayComboRow(r, null);
+                    if (combo) Game.Fx.PlayComboRow(r, e.destroySprite);
                     else Game.Fx.PlayRow(r, Color.white);
             if (e.cols != null) foreach (var c in e.cols)
-                    if (combo) Game.Fx.PlayComboCol(c, null);
+                    if (combo) Game.Fx.PlayComboCol(c, e.destroySprite);
                     else Game.Fx.PlayCol(c, Color.white);
         }
 
