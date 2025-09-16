@@ -1,12 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using System.IO;
-using System;
-using System.Linq;
 using _00.WorkSpace.GIL.Scripts;
 using _00.WorkSpace.GIL.Scripts.Blocks;
+using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEngine;
 
 public class SaveManager : MonoBehaviour
 {
@@ -28,6 +29,10 @@ public class SaveManager : MonoBehaviour
     // ���� ������ ����
     public void SaveGame()
     {
+        Debug.Log("[SaveManager] SaveGame 호출됨");
+        Debug.Log($"[SaveManager] 저장 데이터 상태: " +
+                  $"blocks={gameData.currentBlockSlots?.Count}");
+
         var json = JsonUtility.ToJson(gameData, true);
         File.WriteAllText(filePath, json);
         Debug.Log("���� �Ϸ�: " + filePath);
@@ -37,6 +42,8 @@ public class SaveManager : MonoBehaviour
     // ���� ������ �ҷ�����
     public void LoadGame()
     {
+        Debug.Log("[SaveManager] LoadGame 호출됨");
+
         try
         {
             if (File.Exists(filePath))
@@ -67,7 +74,8 @@ public class SaveManager : MonoBehaviour
             Debug.LogError("[Save] Load failed: " + ex);
             gameData = GameData.NewDefault(200);
         }
-
+        Debug.Log($"[SaveManager] 로드 완료: " +
+          $"blocks={gameData.currentBlockSlots?.Count}, ");
         AfterLoad?.Invoke(gameData);
     }
 
@@ -243,6 +251,29 @@ public class SaveManager : MonoBehaviour
 
         if (save) SaveGame();
         Debug.Log("[Save] ClearRunState: grid/blocks/score cleared.");
+    }
+    public void SaveRunSnapshot(bool saveBlocksToo = true)
+    {
+        var gm = GridManager.Instance;
+        if (gm != null)
+        {
+            if (gameData.currentMapLayout == null)
+                gameData.currentMapLayout = new List<int>();
+            gameData.currentMapLayout = gm.ExportLayoutCodes();
+            gameData.isClassicModePlaying = true;
+
+            gameData.currentScore = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
+            gameData.currentCombo = ScoreManager.Instance ? ScoreManager.Instance.Combo : 0;
+        }
+
+        if (saveBlocksToo)
+        {
+            var storage = UnityEngine.Object.FindFirstObjectByType<BlockStorage>();
+            if (storage) SaveCurrentBlocksFromStorage(storage);
+        }
+
+        SaveGame();
+        Debug.Log("[Save] SaveRunSnapshot done.");
     }
 }
 

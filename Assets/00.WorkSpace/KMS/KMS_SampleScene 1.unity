@@ -59839,7 +59839,6 @@ MonoBehaviour:
   clearRunStateOnClick: 0
   sfxMode: 2
   customId: 1002
-  generateClassicMap: 1
   cooldown: 0.12
 --- !u!114 &6017222585651018533
 MonoBehaviour:
@@ -61473,7 +61472,6 @@ MonoBehaviour:
   clearRunStateOnClick: 1
   sfxMode: 1
   customId: 1001
-  generateClassicMap: 0
   cooldown: 0.12
 --- !u!114 &6395986166356024808
 MonoBehaviour:
@@ -71634,14 +71632,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetPanel: Main
-  closeModalFirst: 0
+  closeModalFirst: 1
   modalsToClose:
   - GameOver
   - Option
   clearRunStateOnClick: 0
   sfxMode: 1
   customId: 1001
-  generateClassicMap: 0
   cooldown: 0.12
 --- !u!224 &8774124643738280378
 RectTransform:
@@ -72910,7 +72907,6 @@ MonoBehaviour:
   clearRunStateOnClick: 1
   sfxMode: 1
   customId: 1001
-  generateClassicMap: 0
   cooldown: 0.12
 --- !u!224 &9080558951465845670
 RectTransform:

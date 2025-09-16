@@ -1,11 +1,12 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Text;
-using _00.WorkSpace.GIL.Scripts.Grids;
+﻿using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Utils;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
@@ -82,6 +83,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         void OnEnable()
         {
+            Debug.Log("[BlockStorage] OnEnable: 이벤트 구독 시작");
             Game.Bus?.Subscribe<GridReady>(_ => {
                 if (_paused || _handSpawnedOnce) return;
                 Debug.Log("[Block Storage] : 그리드 셋팅 완료, 블럭 생성 준비");
@@ -507,7 +509,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void OnGridReady(GridReady e)
         {
-            Debug.Log($"[Storage] OnGridReady | before: paused={_paused}, initialized={_initialized}, this={GetInstanceID()}");
+            Debug.Log("[BlockStorage] OnGridReady 수신됨");
 
             if (_paused == false && _initialized)
             {
