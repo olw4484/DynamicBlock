@@ -123,7 +123,7 @@ public class SaveManager : MonoBehaviour
         if (gameData.currentShapeSprites == null) gameData.currentShapeSprites = new List<Sprite>();
         else gameData.currentShapeSprites.Clear();
 
-        // (있다면) 이름/슬롯 리스트도 같이 비우기 — 없는 프로젝트도 예외 없이 통과
+        // 이름/슬롯 리스트도 같이 비우기
         try { gameData.currentShapeNames?.Clear(); } catch { }
         try { gameData.currentSpriteNames?.Clear(); } catch { }
         try { gameData.currentBlockSlots?.Clear(); } catch { }
@@ -131,7 +131,7 @@ public class SaveManager : MonoBehaviour
         if (save) SaveGame();
         Debug.Log("[Save] Cleared current blocks (by reset).");
     }
-    
+
     /// <summary>���� highScore���� ũ�� �����ϰ� ����.</summary>
     public bool TryUpdateHighScore(int score, bool save = true)
     {
@@ -234,6 +234,7 @@ public class SaveManager : MonoBehaviour
     
     public void ClearRunState(bool save = true)
     {
+        Debug.Log("[Save] ClearRunState CALLED");
         if (gameData == null) return;
 
         // 손패(블록) 비우기
@@ -254,6 +255,8 @@ public class SaveManager : MonoBehaviour
     }
     public void SaveRunSnapshot(bool saveBlocksToo = true)
     {
+        Debug.Log($"[Save] SaveRunSnapshot START rows*cols={GridManager.Instance?.rows * GridManager.Instance?.cols}");
+
         var gm = GridManager.Instance;
         if (gm != null)
         {
@@ -273,7 +276,29 @@ public class SaveManager : MonoBehaviour
         }
 
         SaveGame();
-        Debug.Log("[Save] SaveRunSnapshot done.");
+        Debug.Log($"[Save] SaveRunSnapshot DONE: layoutCount={gameData?.currentMapLayout?.Count}, score={gameData?.currentScore}, combo={gameData?.currentCombo}, classicFlag={gameData?.isClassicModePlaying}");
+    }
+    public bool HasRunSnapshot()
+    {
+        if (gameData == null) LoadGame();
+        return gameData != null
+            && gameData.isClassicModePlaying
+            && gameData.currentMapLayout != null
+            && gameData.currentMapLayout.Count > 0;
+    }
+
+    public bool TryApplyRunSnapshot()
+    {
+        if (gameData == null) LoadGame();
+        if (!HasRunSnapshot()) return false;
+
+        MapManager.Instance?.LoadCurrentClassicMap();
+
+        var storage = UnityEngine.Object.FindFirstObjectByType<BlockStorage>();
+        TryRestoreBlocksToStorage(storage);
+
+        Debug.Log("[Save] Applied run snapshot (grid via MapManager, hand restored).");
+        return true;
     }
 }
 

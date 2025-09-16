@@ -491,31 +491,37 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     private void OnGameResetRequest(GameResetRequest req)
     {
-        // 1) 보장: 시간 재개
+        // 1) 보장: 시간/오디오/모달 정리
         Time.timeScale = 1f;
-
         Game.Audio.StopContinueTimeCheckSE();
         Game.Audio.StopAllSe();
         Game.Audio.ResumeAll();
-
-        // 잔여 모달/Dim 정리
         ForceCloseAllModals();
 
-        // 2) 엔진 리셋 이벤트
-        _bus.PublishImmediate(new GameResetting());
-        _bus.PublishImmediate(new ComboChanged(0));
-        _bus.PublishImmediate(new ScoreChanged(0));
+        bool toGame = (req.targetPanel == "Game");
+        string onKey = toGame ? "Game" : "Main";
+        string offKey = toGame ? "Main" : "Game";
+
+        // 2) 엔진 리셋 이벤트 (목적지에 따라)
+        if (!toGame)
+        {
+            // Main으로 나갈 때만 런 정리
+            _bus.PublishImmediate(new GameResetting());
+            _bus.PublishImmediate(new ComboChanged(0));
+            _bus.PublishImmediate(new ScoreChanged(0));
+        }
+        else
+        {
+            // Game으로 들어갈 때는 런 유지 (원하면 Heal 요청만)
+            // _bus.PublishImmediate(new HealBoardRequest(), alsoEnqueue:false);
+        }
 
         // 3) UI 전환(원자적)
-        string onKey = (req.targetPanel == "Game") ? "Game" : "Main";
-        string offKey = (onKey == "Game") ? "Main" : "Game";
-
         SetPanel("GameOver", false);
         SetPanel("NewRecord", false);
         SetPanel(offKey, false);
         SetPanel(onKey, true);
 
-        // 전환 사실을 이벤트로도 알림
         _bus.PublishImmediate(new PanelToggle(offKey, false));
         var onEvt = new PanelToggle(onKey, true);
         _bus.PublishSticky(onEvt, alsoEnqueue: false);
@@ -527,6 +533,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 4) 완료 알림
         _bus.PublishImmediate(new GameResetDone());
     }
+
 
     // 모든 모달 강제 종료 + DIM/메인 원복
     private void ForceCloseAllModals()

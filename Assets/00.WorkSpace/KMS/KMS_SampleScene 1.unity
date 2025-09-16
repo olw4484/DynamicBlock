@@ -36652,6 +36652,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: ReviveScreen
       objectReference: {fileID: 0}
+    - target: {fileID: 4483604268369790003, guid: 8d0cc3036629f314bac0655a4d49504e, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -59840,6 +59844,7 @@ MonoBehaviour:
   sfxMode: 2
   customId: 1002
   cooldown: 0.12
+  enterMode: 1
 --- !u!114 &6017222585651018533
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -61473,6 +61478,7 @@ MonoBehaviour:
   sfxMode: 1
   customId: 1001
   cooldown: 0.12
+  enterMode: 1
 --- !u!114 &6395986166356024808
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -62816,6 +62822,10 @@ PrefabInstance:
       propertyPath: gridParent
       value: 
       objectReference: {fileID: 4289798565079145175}
+    - target: {fileID: 783529534833246912, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
+      propertyPath: comboParticle
+      value: 
+      objectReference: {fileID: 5539121658716097015, guid: e5e4f0f246da34465871391a4db98da3, type: 3}
     - target: {fileID: 783529534833246912, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: fxScaleFactor
       value: 3
@@ -71640,6 +71650,7 @@ MonoBehaviour:
   sfxMode: 1
   customId: 1001
   cooldown: 0.12
+  enterMode: 1
 --- !u!224 &8774124643738280378
 RectTransform:
   m_ObjectHideFlags: 0
@@ -72908,6 +72919,7 @@ MonoBehaviour:
   sfxMode: 1
   customId: 1001
   cooldown: 0.12
+  enterMode: 1
 --- !u!224 &9080558951465845670
 RectTransform:
   m_ObjectHideFlags: 0

@@ -304,10 +304,22 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             _bus = bus;
             Debug.Log($"[Grid] Bind bus={_bus.GetHashCode()}");
-            _bus.Subscribe<GameResetRequest>(_ =>
+
+            _bus.Subscribe<GameResetRequest>(e =>
             {
-                Debug.Log("[Grid] ResetRuntime received");
-                ResetRuntime();
+                var dest = e.targetPanel;
+                Debug.Log($"[Grid] GameResetRequest -> dest={dest}");
+
+                if (dest == "Main")
+                {
+                    ResetBoardToEmpty();
+                    _bus.PublishImmediate(new ComboChanged(0));
+                    _bus.PublishImmediate(new ScoreChanged(0));
+                }
+                else if (dest == "Game")
+                {
+                    HealBoardFromStates();
+                }
             }, replaySticky: false);
         }
 

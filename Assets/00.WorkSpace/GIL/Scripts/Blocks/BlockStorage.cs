@@ -53,7 +53,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public List<ShapeData> CurrentBlocksShapedata => _currentBlocksShapeData;
         public List<Sprite> CurrentBlocksSpriteData => _currentBlocksSpriteData;
         private bool _handSpawnedOnce;
-        
+        int _lastResetFrame = -1;
         // 게임 오버 1회만 발동 가드
         bool _gameOverFired;
         System.Action<ContinueGranted> _onContinue;
@@ -91,18 +91,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _handSpawnedOnce = true;
             }, replaySticky:true);
 
-            Game.Bus?.Subscribe<GameResetting>(_ =>
+            Game.Bus?.Subscribe<GameResetting>(e =>
             {
-                _handSpawnedOnce = false; // 다음 GridReady에서 새 웨이브 생성 허용
-                if (MapManager.Instance.saveManager.gameData.currentScore == 0)
-                {
-                    ClearHand();              // 씬의 손패 오브젝트 제거
-                    MapManager.Instance?.saveManager?.ClearCurrentBlocks(); // 세이브의 손패 데이터도 삭제
-                    
-                    if (GridManager.Instance && GridManager.Instance.HasAnyOccupied())
-                        GenerateAllBlocks();
-                }
-            }, replaySticky:false);
+                if (Time.frameCount == _lastResetFrame) return;
+                _lastResetFrame = Time.frameCount;
+
+                if (e.reason == ResetReason.ToMain || e.reason == ResetReason.Restart)
+                    MapManager.Instance?.saveManager?.ClearCurrentBlocks(true);
+            }, replaySticky: false);
         }
 
         void OnDisable()

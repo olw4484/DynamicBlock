@@ -43,6 +43,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private Action<GridReady> _classicEnterHandler;
 
+        private EventQueue _bus;
+
         private void Awake()
         {
             Debug.Log("[MapManager] : 튜토리얼 정보 초기화는 F1");
@@ -55,6 +57,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if(_mapList == null) LoadMapData();
             saveManager.LoadGame();
             Debug.Log("[MapManager] Loaded saveData");
+
+            _bus = Game.Bus;
+
         }
         
         private void Start()
@@ -86,7 +91,34 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 SetGameMode(GameMode.Tutorial);
             }
         }
-        
+        void OnEnable()
+        {
+            if (PendingEnterIntent.TryConsume(out var intent))
+            {
+                SetGameMode(intent.mode);
+
+                if (intent.mode == GameMode.Tutorial)
+                {
+                    RequestTutorialApply();
+                    Debug.Log("[Map] Tutorial apply requested (via PendingEnterIntent)");
+                }
+                else
+                {
+                    // Classic: 저장 강제 로드
+                    if (intent.forceLoadSave)
+                    {
+                        RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
+                    }
+                    else
+                    {
+                        // 필요 시 다른 정책 분기 (없으면 위 한 줄로 충분)
+                        RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
+                    }
+                    Debug.Log("[Map] Classic enter requested (ForceLoadSave via PendingEnterIntent)");
+                }
+            }
+        }
+
         private void ApplySavedGameMode(GameData data)
         {
             var loaded = (saveManager != null) ? saveManager.GetGameMode() : GameMode.Tutorial;
@@ -831,6 +863,21 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             ForceLoadSave,                     // 항상 저장 복원
             ForceNew                           // Retry/패배: 완전 초기화 -> 신규
         }
-        
+
+        private void ApplyEnterIntent(GameEnterRequest req)
+        {
+            SetGameMode(req.mode);
+
+            if (req.mode == GameMode.Tutorial)
+            {
+                RequestTutorialApply();
+                Debug.Log("[Map] Tutorial apply requested via intent");
+            }
+            else
+            {
+                RequestClassicEnter(req.policy); // 예: ForceLoadSave
+                Debug.Log($"[Map] Classic enter requested via intent: {req.policy}");
+            }
+        }
     }
 }

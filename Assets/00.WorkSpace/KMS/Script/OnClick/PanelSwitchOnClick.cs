@@ -1,9 +1,8 @@
 using _00.WorkSpace.GIL.Scripts.Blocks;
 using _00.WorkSpace.GIL.Scripts.Managers;
-using _00.WorkSpace.GIL.Scripts.Utils;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using System.Collections;
 
 public enum InvokeSfxMode
 {
@@ -30,6 +29,9 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
     [Header("Others")]
     [SerializeField] float cooldown = 0.12f;
 
+    [Header("Game Enter Mode")]
+    [SerializeField] GameMode enterMode = GameMode.Classic;
+
     float _cool;
     bool _invoking; // 재진입 방지
 
@@ -48,7 +50,6 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
     public void Invoke()
     {
-        // 0) 기본 가드
         Debug.Log($"[Home] Invoke clicked. clear={clearRunStateOnClick} target={targetPanel} cool={_cool} bound={Game.IsBound}");
         if (_invoking) return;
         if (_cool > 0f || !Game.IsBound) return;
@@ -58,37 +59,21 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
         try
         {
-            // 1) SFX
             PlayInvokeSfx();
-
             var bus = Game.Bus;
-            var map = MapManager.Instance;
 
-            // 2) (핵심) 게임 진입/적용 요청을 먼저 MapManager로 위임
             if (targetPanel == "Game")
             {
-                if (!map)
-                {
-                    Debug.LogError("[Home] MapManager missing. Abort.");
-                    return;
-                }
+                // 🔸 1) UI 리셋/전환을 먼저 요청
+                var reason = ResetReason.ToGame;
+                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
 
-                if (map.GameMode == GameMode.Tutorial)
-                {
-                    // 프레임 지연 코루틴 대신 '요청'으로 안전 진입
-                    map.RequestTutorialApply();
-                    Debug.Log("[Home] Requested Tutorial Apply");
-                }
-                else
-                {
-                    map.RequestClassicEnter(); // GridReady Sticky + 타임아웃 가드 내장
-                    Debug.Log("[Home] Requested Classic Enter");
-                }
+                // 🔸 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
+                StartCoroutine(EnterGameNextFrame());
             }
-
-            // 3) 런 상태 정리 — 보통 Main으로 갈 때만 권장
-            if (targetPanel == "Main")
+            else if (targetPanel == "Main")
             {
+                // 이어하기를 원하면 Inspector에서 clearRunStateOnClick = false 유지!
                 if (!clearRunStateOnClick)
                 {
                     MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true);
@@ -103,47 +88,29 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 }
 
                 GridManager.Instance?.HealBoardFromStates();
+
+                var reason = ResetReason.ToMain;
+                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
+            }
+            else
+            {
+                var reason = ResetReason.None;
+                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
             }
 
-            // 4) 모달 먼저 정리(필요 시)
+            // 2) 모달 정리 (기존 유지)
             if (closeModalFirst && modalsToClose != null)
             {
+                var bus2 = Game.Bus;
                 for (int i = 0; i < modalsToClose.Length; i++)
                 {
                     var k = modalsToClose[i];
                     if (string.IsNullOrEmpty(k)) continue;
                     var off = new PanelToggle(k, false);
-                    bus.PublishSticky(off, alsoEnqueue: false);
-                    bus.PublishImmediate(off);
-                    if (k == "GameOver") bus.ClearSticky<GameOver>();
+                    bus2.PublishSticky(off, alsoEnqueue: false);
+                    bus2.PublishImmediate(off);
+                    if (k == "GameOver") bus2.ClearSticky<GameOver>();
                 }
-            }
-
-            // 5) UI 전환 + 게임 리셋 요청 (마지막에 수행)
-            bus.PublishImmediate(new GameResetRequest(targetPanel));
-            Debug.Log($"[Home] Published GameResetRequest({targetPanel})");
-
-            // 6) Main으로 이동하는 케이스라면 저장/정리(필요 시)
-            if (targetPanel == "Main")
-            {
-                // 리셋 버튼이 아닌 경우: 현재 런 상태 저장
-                if (!clearRunStateOnClick)
-                {
-                    MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true);
-                }
-                else
-                {
-                    // 완전 리셋 홈 버튼인 경우에만 런 상태 파기
-                    MapManager.Instance?.saveManager?.ClearRunState(true);
-                    GridManager.Instance?.ResetBoardToEmpty();
-                    ScoreManager.Instance?.ResetRuntime();
-                    var storage = UnityEngine.Object.FindFirstObjectByType<_00.WorkSpace.GIL.Scripts.Blocks.BlockStorage>();
-                    storage?.ClearHand();
-                    Debug.Log("[Home] Cleared run state (reset home).");
-                }
-
-                // 보정
-                GridManager.Instance?.HealBoardFromStates();
             }
         }
         finally
@@ -152,6 +119,32 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         }
     }
 
+    private IEnumerator EnterGameNextFrame()
+    {
+        // UI 토글/리셋 구독자들이 모두 처리할 시간을 한 프레임 줌
+        yield return null;
+
+        var map = MapManager.Instance;
+        if (!map)
+        {
+            Debug.LogError("[Home] MapManager missing on EnterGameNextFrame");
+            yield break;
+        }
+
+        // 모드 세팅
+        if (enterMode == GameMode.Tutorial)
+        {
+            map.SetGameMode(GameMode.Tutorial);
+            map.RequestTutorialApply();
+            Debug.Log("[Home] Tutorial apply (after reset)");
+        }
+        else
+        {
+            map.SetGameMode(GameMode.Classic);
+            map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
+            Debug.Log("[Home] Classic enter ForceLoadSave (after reset)");
+        }
+    }
     void PlayInvokeSfx()
     {
         switch (sfxMode)
