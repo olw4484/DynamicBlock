@@ -7,7 +7,7 @@ using UnityEngine;
 [System.Serializable]
 public class GameData
 {
-    public int Version = 1;
+    public int Version = 2;
 
     public int LanguageIndex; // 0 = �⺻
 
@@ -26,14 +26,15 @@ public class GameData
     public GameMode gameMode;
     // Ŭ���� ���
     public bool isClassicModePlaying;       // Ŭ���� ��� �÷��� ���ΰ�?
-    public List<ShapeData> currentShapes;   // �� ���� ���� ������
-    public List<Sprite> currentShapeSprites;// �� ���� ���� ��������Ʈ
+    [NonSerialized] public List<ShapeData> currentShapes;    // 런타임 캐시
+    [NonSerialized] public List<Sprite> currentShapeSprites; // 런타임 캐시
     public List<int> currentBlockSlots;
     public List<int> currentMapLayout;      // �� ���� �� ����
     public List<string> currentShapeNames; // ShapeData.name
     public List<string> currentSpriteNames; // Sprite.name
     public int currentScore;                // �� ���� ����
     public int currentCombo;                // �� ���� ���� ����
+
     public static GameData NewDefault(int stages = 200)
     {
         return new GameData

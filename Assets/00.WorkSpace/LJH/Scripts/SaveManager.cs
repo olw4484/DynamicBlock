@@ -37,18 +37,37 @@ public class SaveManager : MonoBehaviour
     // ���� ������ �ҷ�����
     public void LoadGame()
     {
-        if (File.Exists(filePath))
+        try
         {
-            string json = File.ReadAllText(filePath);
-            gameData = JsonUtility.FromJson<GameData>(json);
+            if (File.Exists(filePath))
+            {
+                string json = File.ReadAllText(filePath);
+                gameData = JsonUtility.FromJson<GameData>(json);
+                if (gameData == null) throw new Exception("FromJson returned null");
+            }
+            else
+            {
+                gameData = GameData.NewDefault(200);
+            }
+
+            if (gameData.Version < 2)
+            {
+                gameData.Version = 2;
+            }
+
+            gameData.currentShapeNames ??= new List<string>();
+            gameData.currentSpriteNames ??= new List<string>();
+            gameData.currentBlockSlots ??= new List<int>();
+
+            gameData.currentShapes ??= new List<ShapeData>();
+            gameData.currentShapeSprites ??= new List<Sprite>();
         }
-        else
+        catch (Exception ex)
         {
-            gameData = new GameData();
-            gameData.stageCleared = new int[200];
-            gameData.stageScores = new int[200];
+            Debug.LogError("[Save] Load failed: " + ex);
             gameData = GameData.NewDefault(200);
         }
+
         AfterLoad?.Invoke(gameData);
     }
 
