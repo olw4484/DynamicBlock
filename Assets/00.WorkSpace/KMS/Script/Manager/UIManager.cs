@@ -180,18 +180,20 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             int best = Mathf.Max(e.score, _lastHighScore);
             SetAll(_goBestTexts, $"{FormatScore(best)}");
             SetPanel("Revive", true);
-            Game.Audio.PlayContinueTimeCheck();
+            Game.Audio.PlayContinueTimeCheckSE();
         }, replaySticky: false);
 
         // 리바이브 패널 OFF
         _bus.Subscribe<RevivePerformed>(_ =>
         {
+            Game.Audio.StopContinueTimeCheckSE();
             SetPanel("Revive", false);
         }, replaySticky: false);
 
         // 리바이브 패널 OFF + 결과 패널 ON (신기록 여부에 따라 분기)
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
+            Game.Audio.StopContinueTimeCheckSE();
             SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = e.isNewBest ? e.score : _lastHighScore;
             SetAll(_goBestTexts, $"{FormatScore(best)}");
@@ -204,6 +206,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 광고 성공 시 모달/패널 닫기
         _bus.Subscribe<ContinueGranted>(_ =>
         {
+            Game.Audio.StopContinueTimeCheckSE();
             SetPanel("Revive", false);
             SetPanel("GameOver", false);
             SetPanel("NewRecord", false);
@@ -490,6 +493,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     {
         // 1) 보장: 시간 재개
         Time.timeScale = 1f;
+
+        Game.Audio.StopContinueTimeCheckSE();
+        Game.Audio.StopAllSe();
+        Game.Audio.ResumeAll();
 
         // 잔여 모달/Dim 정리
         ForceCloseAllModals();

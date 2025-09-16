@@ -26,4 +26,13 @@ public interface IAudioService : IManager
     // 패턴형
     void PlayLineClear(int lineCount);
     void PlayClearCombo(int n);
+
+    // 모든 SFX 정지/일시정지/재개
+    void StopAllSe();
+    void PauseAll();
+    void ResumeAll();
+
+    // 전용 루프 제어
+    void PlayContinueTimeCheckSE();
+    void StopContinueTimeCheckSE();
 }

@@ -39,5 +39,14 @@ public sealed class AudioServiceAdapter : IAudioService
     // 패턴형
     public void PlayLineClear(int lineCount) => AM?.PlayLineClearSE(lineCount);
     public void PlayClearCombo(int n) => AM?.PlayClearComboSE(n);
+
+    // 전체 일시정지 / 재시작
+    public void StopAllSe() => AM?.StopAllSe();
+    public void PauseAll() => AM?.PauseAll();
+    public void ResumeAll() => AM?.ResumeAll();
+
+    // 전용 루프 제어
+    public void PlayContinueTimeCheckSE() => AM?.PlayContinueTimeCheckSE();
+    public void StopContinueTimeCheckSE() => AM?.StopContinueTimeCheckSE();
 }
 
