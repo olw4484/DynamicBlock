@@ -833,7 +833,7 @@ public class ParticleManager : MonoBehaviour
     }
     private void EnsureComboPool()
     {
-        if (comboPool == null) return;            // 선언은 되어 있음
+        if (comboPool == null) return;
         if (comboPool.Count > 0) return;
 
         if (!comboParticle && !comboPrefab)
