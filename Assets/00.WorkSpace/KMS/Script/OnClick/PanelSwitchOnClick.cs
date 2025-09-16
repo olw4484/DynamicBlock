@@ -1,4 +1,8 @@
-﻿using _00.WorkSpace.GIL.Scripts.Managers;
+using System.Collections;
+using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Utils;
+using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -18,7 +22,8 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
     [Header("Modal close")]
     [SerializeField] bool closeModalFirst = true;
     [SerializeField] string[] modalsToClose = { "GameOver", "Option" };
-
+    [SerializeField] bool clearRunStateOnClick = false; // 메인으로 나갈 때 진행상태 비우기
+    
     [Header("SFX")]
     [SerializeField] InvokeSfxMode sfxMode = InvokeSfxMode.Button; // ← 인스펙터에서 선택
     [SerializeField] SfxId customId = SfxId.ButtonClick;           // sfxMode=CustomId일 때 사용
@@ -36,11 +41,24 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
     public void Invoke()
     {
         if (_cool > 0f || !Game.IsBound) return;
+        
+        Debug.Log("[Home] PanelSwitchOnClick.Invoke(), clear=" + clearRunStateOnClick);
+        
         _cool = cooldown;
 
         // 1) SFX (상황별)
         PlayInvokeSfx();
-
+        
+        if (clearRunStateOnClick)
+        {
+            // 저장된 진행 상태(그리드/손패/점수) 비우기
+            MapManager.Instance?.saveManager?.ClearRunState(true);
+            GridManager.Instance?.ResetBoardToEmpty();
+            ScoreManager.Instance?.ResetRuntime(); // 또는 ResetAll()
+            FindObjectOfType<_00.WorkSpace.GIL.Scripts.Blocks.BlockStorage>().ClearHand();
+            Debug.Log("[Home] Cleared run state before leaving to Main.");
+        }
+        
         // 2) 모달 먼저 정리
         var bus = Game.Bus;
         if (closeModalFirst && modalsToClose != null)
@@ -55,15 +73,38 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 if (k == "GameOver") bus.ClearSticky<GameOver>();
             }
         }
-
+        
         // 3) 게임 리셋 + UI전환 요청
         bus.PublishImmediate(new GameResetRequest(targetPanel));
+        
+        // GIL Add
+        var map = MapManager.Instance;
 
-        // 4) 클래식 맵 생성
-        if (generateClassicMap)
-            MapManager.Instance.GenerateClassicStartingMap(minTotalTiles: 30, maxPlacements: 8);
+        if (targetPanel == "Game")
+        {
+            if (!map) return;
+
+            // 튜토리얼은 기존 로직 유지, 그 외는 클래식 진입
+            if (map.GameMode == GameMode.Tutorial)
+            {
+                StartCoroutine(map.EnterTutorial());
+                //map.RequestTutorialApply( /* index 필요시 */ );
+            }
+            else
+            {
+                StartCoroutine(map.EnterClassicAfterOneFrame());
+                //map.EnterClassic();
+            }
+        }
+        else if (targetPanel == "Main")
+        {
+            // 2) 그 다음 저장 
+            GameSnapShot.SaveGridSnapshot();
+
+            // 3) 저장 이후에 유령 인덱스 정리
+            GridManager.Instance?.HealBoardFromStates();
+        }
     }
-
     void PlayInvokeSfx()
     {
         switch (sfxMode)

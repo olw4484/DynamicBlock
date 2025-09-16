@@ -9,7 +9,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public bool CanPlaceShapeData(ShapeData shape)
         {
             var gm = GridManager.Instance;
-            var states = gm.gridStates;
+            var states = gm.SnapshotOccupied();
 
             var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
             int shapeRows = maxY - minY + 1;

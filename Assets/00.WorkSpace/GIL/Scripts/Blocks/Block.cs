@@ -12,7 +12,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
-
+        
+        [HideInInspector] public int SpawnSlotIndex = -1; // 블록 위치 ( 0 ~ 2 )
+        
         [Header("Pointer")] 
         public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
         public Vector2 selectedOffset = new Vector2(0f, 500f);
@@ -23,8 +25,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private Vector3 _startPosition;
         
         private ShapeData _currentShapeData;
-
-        private bool _isDragging;
+        private Sprite _currentSprite;
         private bool _startReady;
 
         private void Awake()
@@ -39,6 +40,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 #endif
         }
         
+        public ShapeData GetShapeData() => _currentShapeData;
+        public Sprite GetSpriteData() => _currentSprite;
+        public Sprite SetSpriteData(Sprite sprite) => _currentSprite = sprite;
         public void GenerateBlock(ShapeData shapeData)
         {
             if (shapeData == null)
@@ -106,8 +110,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             BlockSpawnManager.Instance?.ClearPreview();
             
-            _isDragging = false;
-            
             _shapeTransform.localScale = shapeSelectedScale;
 
             Sfx.BlockSelect();
@@ -119,7 +121,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             if(TouchGate.GetTouchID() != eventData.pointerId) return;
             
-            _isDragging = true;
             MoveBlock(eventData);
 
             var shapeBlocks = new List<Transform>();
@@ -155,6 +156,13 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
+                
+                // TODO : 적절한 튜토리얼 시작 위치 옮기기
+                if (MapManager.Instance.GameMode == GameMode.Tutorial)
+                {
+                    MapManager.Instance.OnTutorialCompleted();
+                }
+                
                 Destroy(gameObject);
             }
             
@@ -171,7 +179,5 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             
             _shapeTransform.anchoredPosition = localPos + (selectedOffset / _canvas.scaleFactor);
         }
-        
-        public ShapeData GetShapeData() => _currentShapeData;
     }
 }

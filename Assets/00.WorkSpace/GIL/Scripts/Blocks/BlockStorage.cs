@@ -1,11 +1,14 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
+using _00.WorkSpace.GIL.Scripts.Utils;
 using UnityEngine;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
@@ -17,7 +20,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         [Header("Block Prefab & Data")] 
         [SerializeField] private GameObject blockPrefab;
         [SerializeField] public List<Sprite> shapeImageSprites;
-        [SerializeField] private string imageDictory = "BlockImages";
 
         [Header("Spawn Positions")] [SerializeField]
         private List<Transform> blockSpawnPosList;
@@ -25,7 +27,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         [SerializeField] private Transform shapesPanel;
 
         [Header("Block Placement Helper")] 
-        [SerializeField] private bool previewMode = true;
+        [SerializeField] private bool previewMode = false;
         
         [Header("AD")]
         [SerializeField] private float interstitialDelayAfterGameOver = 1f;
@@ -44,7 +46,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private EventQueue _bus;
 
         private List<Block> _currentBlocks = new();
-        
+        private List<ShapeData> _currentBlocksShapeData = new();
+        private List<Sprite> _currentBlocksSpriteData = new();
+        public List<Block> CurrentBlocks => _currentBlocks;
+        public List<ShapeData> CurrentBlocksShapedata => _currentBlocksShapeData;
+        public List<Sprite> CurrentBlocksSpriteData => _currentBlocksSpriteData;
         private bool _handSpawnedOnce;
         
         // 게임 오버 1회만 발동 가드
@@ -61,7 +67,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void LoadImageData()
         {
-            shapeImageSprites = new List<Sprite>(Resources.LoadAll<Sprite>(imageDictory));
+            shapeImageSprites = new List<Sprite>(GDS.I.BlockSprites);
         }
         #endregion
         
@@ -77,26 +83,24 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         void OnEnable()
         {
             Game.Bus?.Subscribe<GridReady>(_ => {
-                Debug.Log("[Block Storage] : 그리드 셋팅 완료, 블럭 생성 준비");
                 if (_paused || _handSpawnedOnce) return;
+                Debug.Log("[Block Storage] : 그리드 셋팅 완료, 블럭 생성 준비");
                 GenerateAllBlocks();
                 _handSpawnedOnce = true;
             }, replaySticky:true);
 
-            Game.Bus?.Subscribe<GameResetting>(_ => _handSpawnedOnce = false, replaySticky:false);
-            // 이전 코드인데 없이도 크게 문제 없는 것으로 보임, 혹시 모르니 유지할 예정
-            // Game.Bind 이후에만 구독 시도
-            // if (Game.IsBound)
-            // {
-            //     _onContinue = _ =>
-            //     {
-            //         _gameOverFired = false;
-            //         Time.timeScale = 1f;
-            //         // 이어하기 정책에 맞게 블록 재생성/리셋
-            //         GenerateAllBlocks();
-            //     };
-            //     Game.Bus.Subscribe(_onContinue, replaySticky: false);
-            // }
+            Game.Bus?.Subscribe<GameResetting>(_ =>
+            {
+                _handSpawnedOnce = false; // 다음 GridReady에서 새 웨이브 생성 허용
+                if (MapManager.Instance.saveManager.gameData.currentScore == 0)
+                {
+                    ClearHand();              // 씬의 손패 오브젝트 제거
+                    MapManager.Instance?.saveManager?.ClearCurrentBlocks(); // 세이브의 손패 데이터도 삭제
+                    
+                    if (GridManager.Instance && GridManager.Instance.HasAnyOccupied())
+                        GenerateAllBlocks();
+                }
+            }, replaySticky:false);
         }
 
         void OnDisable()
@@ -123,16 +127,30 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 Debug.LogWarning("[Storage] GenerateAllBlocks EARLY-RETURN: paused==true");
                 return;
             }
-
-            // 안전 정리
-            for (int i = 0; i < _currentBlocks.Count; i++)
+            
+            // 안전 정리, 미리 생성하기
+            var gm = GridManager.Instance;
+            if (MapManager.Instance != null && gm != null && !gm.HasAnyOccupied())
             {
-                if (_currentBlocks[i]) 
-                    Destroy(_currentBlocks[i].gameObject);
+                Debug.Log("[Storage] Board empty → build classic starting map first");
+                MapManager.Instance.StartNewClassicMap(); // 동기 실행, 즉시 셀 찍힘
             }
-            _currentBlocks.Clear();
 
+            for (int i = 0; i < _currentBlocks.Count; i++)
+                if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
+            
+            _currentBlocks.Clear();
+            _currentBlocksShapeData.Clear();
+            _currentBlocksSpriteData.Clear();
             var spawner = blockManager;
+            
+            var sm = MapManager.Instance?.saveManager;
+            if (sm != null && sm.TryRestoreBlocksToStorage(this))
+            {
+                Debug.Log("[Storage] Restored blocks from save. Skip random generation.");
+                return;
+            }
+            
             if (spawner == null) { Debug.LogError("[Storage] Spawner null"); return; }
 
             var wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
@@ -161,6 +179,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 var block = go.GetComponent<Block>();
                 if (block == null) { Debug.LogError("[Storage] Block component missing"); Destroy(go); continue; }
 
+                block.SpawnSlotIndex = i;
+                
                 Sprite sprite = null;
                 
                 if (MapManager.Instance.GameMode == GameMode.Tutorial)
@@ -176,12 +196,18 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 previewSprites[i] = sprite;
                 block.GenerateBlock(shape);
                 _currentBlocks.Add(block);
+                _currentBlocksShapeData.Add(shape);
+                _currentBlocksSpriteData.Add(sprite);
+                block.SetSpriteData(sprite);
             }
 
             var fitsInfo = spawner.LastGeneratedFits;
             
-            if (previewMode)
-                blockManager.PreviewWaveNonOverlapping(wave, fitsInfo, previewSprites);
+            Debug.Log("[Block Storage] 블록 생성 완성");
+            
+            MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
+            // TODO : 프리뷰 모드를 다시 사용하고 싶을 경우 주석 해체
+            //if (previewMode) blockManager.PreviewWaveNonOverlapping(wave, fitsInfo, previewSprites);
         }
 
         private int GetRandomImageIndex()
@@ -282,9 +308,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Game.Bus?.PublishImmediate(new ContinueGranted());
 
             // 4) 손패를 Revive 웨이브로 교체하고, 손패 갱신 훅 호출
-            var previewSprites = ApplyReviveWave(wave);
+            ApplyReviveWave(wave);
             ScoreManager.Instance?.OnHandRefilled();
-            BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
+            //BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
 
             Debug.Log("[Revive] Revive 웨이브 적용 완료, 게임 재개");
             return true;
@@ -301,6 +327,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                     if (_currentBlocks[i] != null)
                         Destroy(_currentBlocks[i].gameObject);
                 _currentBlocks.Clear();
+                _currentBlocksShapeData.Clear();
+                _currentBlocksSpriteData.Clear();
             }
             else _currentBlocks = new List<Block>(wave.Count);
 
@@ -322,7 +350,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 var go = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
                 var blk = go.GetComponent<Block>();
                 if (!blk) { Debug.LogError("[Revive] Block component missing"); Destroy(go); continue; }
-
+                blk.SpawnSlotIndex = i;
+                
                 // 스프라이트 선택 로직도 GenerateAllBlocks와 동일하게
                 Sprite sprite = shapeImageSprites[GetRandomImageIndex()];
                 // 프리팹 내 이미지 적용
@@ -334,8 +363,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 // 블록 초기화
                 blk.GenerateBlock(shape);
                 _currentBlocks.Add(blk);
+                _currentBlocksShapeData.Add(blk.GetShapeData());
+                _currentBlocksSpriteData.Add(blk.GetSpriteData());
             }
-
+            
+            MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
+            
             return previewSprites;
         }
         private void CancelQueuedInterstitialIfAny() //
@@ -378,13 +411,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void OnBlockPlaced(Block placedBlock)
         {
             _currentBlocks.Remove(placedBlock);
+            _currentBlocksShapeData.Remove(placedBlock.GetShapeData());
+            _currentBlocksSpriteData.Remove(placedBlock.GetSpriteData());
             
-            // 튜토리얼 진행 중이라면: 여기서 클래식으로 전환하고 '즉시 리필'은 건너뜀
-            if (MapManager.Instance.GameMode == GameMode.Tutorial)
-                MapManager.Instance.SetGameMode(GameMode.Classic);
+            MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
             
             CheckGameOver();
-
+            
+            GridManager.Instance.ValidateGridConsistency();
+            GameSnapShot.SaveGridSnapshot();
+            
             if (_currentBlocks.Count == 0)
             {
                 // 리필 실행
@@ -464,7 +500,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             for (int i = 0; i < _currentBlocks.Count; i++)
                 if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
-
+            _currentBlocksShapeData.Clear();
+            _currentBlocksSpriteData.Clear();
             // 생성은 GridReady에서 재개
         }
 
@@ -544,5 +581,120 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         }
 
         #endregion
+        
+        // 리스트를 받아 블록 재생성하기
+        public bool RebuildBlocksFromLists(List<ShapeData> shapes, List<Sprite> sprites)
+        {
+            if (shapes == null || sprites == null) return false;
+            int n = Mathf.Min(shapes.Count, sprites.Count);
+            if (n <= 0) return false;
+
+            // 기존 손패 제거
+            if (_currentBlocks != null)
+            {
+                for (int i = _currentBlocks.Count - 1; i >= 0; i--)
+                    if (_currentBlocks[i] != null)
+                        Destroy(_currentBlocks[i].gameObject);
+                _currentBlocks.Clear();
+                _currentBlocksShapeData.Clear();
+                _currentBlocksSpriteData.Clear();
+            }
+            else
+            {
+                _currentBlocks = new List<Block>(n);
+            }
+
+            // 저장된 개수만큼만 복원 (spawn 슬롯보다 적어도 추가 생성하지 않음)
+            int count = Mathf.Min(n, blockSpawnPosList.Count);
+            for (int i = 0; i < count; i++)
+            {
+                var shape  = shapes[i];
+                var sprite = sprites[i];
+                if (!shape) continue;
+
+                var go  = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
+                var blk = go.GetComponent<Block>();
+                if (!blk) { Destroy(go); continue; }
+
+                blk.GenerateBlock(shape);
+
+                var img = blk.shapePrefab ? blk.shapePrefab.GetComponent<Image>() : null;
+                if (img && sprite) img.sprite = sprite;
+                blk.SetSpriteData(sprite);
+
+                _currentBlocks.Add(blk);
+                _currentBlocksShapeData.Add(shape);
+                _currentBlocksSpriteData.Add(sprite);
+            }
+            return _currentBlocks.Count > 0;
+        }
+
+        // 원래 손패 슬롯 유지
+        public bool RebuildBlocksFromLists(List<ShapeData> shapes, List<Sprite> sprites, List<int> slots)
+        {
+            if (shapes == null || sprites == null || slots == null) return false;
+            int n = Mathf.Min(shapes.Count, Math.Min(sprites.Count, slots.Count));
+            if (n <= 0) return false;
+
+            // 기존 손패 제거
+            if (_currentBlocks != null)
+            {
+                for (int i = _currentBlocks.Count - 1; i >= 0; i--)
+                    if (_currentBlocks[i] != null) Destroy(_currentBlocks[i].gameObject);
+                _currentBlocks.Clear();
+                _currentBlocksShapeData.Clear();
+                _currentBlocksSpriteData.Clear();
+            }
+            else
+            {
+                _currentBlocks = new List<Block>(n);
+            }
+
+            // 저장된 슬롯에만 재생성 (부족한 슬롯은 비워둠)
+            for (int k = 0; k < n; k++)
+            {
+                var shape  = shapes[k];
+                var sprite = sprites[k];
+                int slot   = slots[k];
+
+                if (!shape) continue;
+                if (slot < 0 || slot >= blockSpawnPosList.Count) continue;
+
+                var pos = blockSpawnPosList[slot];
+                var go  = Instantiate(blockPrefab, pos.position, Quaternion.identity, shapesPanel);
+                var blk = go.GetComponent<Block>();
+                if (!blk) { Destroy(go); continue; }
+
+                blk.GenerateBlock(shape);
+
+                var img = blk.shapePrefab ? blk.shapePrefab.GetComponent<Image>() : null;
+                if (img && sprite) img.sprite = sprite;
+
+                blk.SetSpriteData(sprite);
+                blk.SpawnSlotIndex = slot;                   // 슬롯 보존
+
+                _currentBlocks.Add(blk);
+                _currentBlocksShapeData.Add(shape);
+                _currentBlocksSpriteData.Add(sprite);
+            }
+
+            return _currentBlocks.Count > 0;
+        }
+        
+        // === 손패 오브젝트/리스트 즉시 정리 (리셋 시 사용) ===
+        public void ClearHand()
+        {
+            if (_currentBlocks != null)
+            {
+                for (int i = _currentBlocks.Count - 1; i >= 0; i--)
+                    if (_currentBlocks[i] != null)
+                        Destroy(_currentBlocks[i].gameObject);
+                _currentBlocks.Clear();
+            }
+            _currentBlocksShapeData?.Clear();
+            _currentBlocksSpriteData?.Clear();
+
+            Debug.Log("[Storage] Hand cleared by reset.");
+        }
     }
 }

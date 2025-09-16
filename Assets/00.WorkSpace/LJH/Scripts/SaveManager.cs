@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using System;
+using System.Linq;
+using _00.WorkSpace.GIL.Scripts;
+using _00.WorkSpace.GIL.Scripts.Blocks;
+using _00.WorkSpace.GIL.Scripts.Shapes;
 
 public class SaveManager : MonoBehaviour
 {
@@ -11,7 +15,9 @@ public class SaveManager : MonoBehaviour
 
     private string filePath;
     public GameData gameData;
-
+    
+    [NonSerialized] public bool skipNextGridSnapshot = false;
+    
     private void Awake()
     {
         filePath = Path.Combine(Application.persistentDataPath, "save.json");
@@ -19,16 +25,16 @@ public class SaveManager : MonoBehaviour
 
     }
 
-    // °ÔÀÓ µ¥ÀÌÅÍ ÀúÀå
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     public void SaveGame()
     {
         var json = JsonUtility.ToJson(gameData, true);
         File.WriteAllText(filePath, json);
-        Debug.Log("ÀúÀå ¿Ï·á: " + filePath);
+        Debug.Log("ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½: " + filePath);
         AfterSave?.Invoke(gameData);
     }
 
-    // °ÔÀÓ µ¥ÀÌÅÍ ºÒ·¯¿À±â
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ò·ï¿½ï¿½ï¿½ï¿½ï¿½
     public void LoadGame()
     {
         if (File.Exists(filePath))
@@ -46,7 +52,7 @@ public class SaveManager : MonoBehaviour
         AfterLoad?.Invoke(gameData);
     }
 
-    // ============= Å¬·¡½Ä ¸ğµå =============
+    // ============= Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ =============
     public void UpdateClassicScore(int score)
     {
         gameData.lastScore = score;
@@ -57,12 +63,12 @@ public class SaveManager : MonoBehaviour
         SaveGame();
     }
 
-    // ============= ¾îµåº¥Ã³ ¸ğµå =============
+    // ============= ï¿½ï¿½åº¥Ã³ ï¿½ï¿½ï¿½ =============
     public void ClearStage(int stageIndex, int score)
     {
         if (stageIndex < 0 || stageIndex >= gameData.stageCleared.Length) return;
 
-        gameData.stageCleared[stageIndex] = 1; // Å¬¸®¾î Ã¼Å©
+        gameData.stageCleared[stageIndex] = 1; // Å¬ï¿½ï¿½ï¿½ï¿½ Ã¼Å©
         if (score > gameData.stageScores[stageIndex])
             gameData.stageScores[stageIndex] = score;
 
@@ -78,8 +84,28 @@ public class SaveManager : MonoBehaviour
     {
         return gameData.stageScores[stageIndex];
     }
+    
+    public void ClearCurrentBlocks(bool save = true)
+    {
+        if (gameData == null) return;
 
-    /// <summary>ÇöÀç highScoreº¸´Ù Å©¸é °»½ÅÇÏ°í ÀúÀå.</summary>
+        // ëŸ°íƒ€ì„ ìºì‹œ ë¦¬ìŠ¤íŠ¸ ë¹„ìš°ê¸° (ì—†ìœ¼ë©´ ìƒˆë¡œ ë§Œë“¤ì–´ ë‘ )
+        if (gameData.currentShapes == null) gameData.currentShapes = new List<ShapeData>();
+        else gameData.currentShapes.Clear();
+
+        if (gameData.currentShapeSprites == null) gameData.currentShapeSprites = new List<Sprite>();
+        else gameData.currentShapeSprites.Clear();
+
+        // (ìˆë‹¤ë©´) ì´ë¦„/ìŠ¬ë¡¯ ë¦¬ìŠ¤íŠ¸ë„ ê°™ì´ ë¹„ìš°ê¸° â€” ì—†ëŠ” í”„ë¡œì íŠ¸ë„ ì˜ˆì™¸ ì—†ì´ í†µê³¼
+        try { gameData.currentShapeNames?.Clear(); } catch { }
+        try { gameData.currentSpriteNames?.Clear(); } catch { }
+        try { gameData.currentBlockSlots?.Clear(); } catch { }
+
+        if (save) SaveGame();
+        Debug.Log("[Save] Cleared current blocks (by reset).");
+    }
+    
+    /// <summary>ï¿½ï¿½ï¿½ï¿½ highScoreï¿½ï¿½ï¿½ï¿½ Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½.</summary>
     public bool TryUpdateHighScore(int score, bool save = true)
     {
         if (gameData == null) LoadGame();
@@ -91,4 +117,113 @@ public class SaveManager : MonoBehaviour
         }
         return false;
     }
+    
+    // API: GameMode
+    public GameMode GetGameMode() => gameData != null ? gameData.gameMode : GameMode.Tutorial;
+
+    public void SetGameMode(GameMode mode, bool save = true)
+    {
+        if (gameData == null) gameData = GameData.NewDefault(200);
+        gameData.gameMode = mode;
+        if (save) SaveGame();
+    }
+    
+    public void SkipNextSnapshot(string reason = null)
+    {
+        skipNextGridSnapshot = true;
+        Debug.Log($"[Save] Skip next grid snapshot (reason: {reason})");
+    }
+    
+    // ==== Save/Restore current blocks (hand) ====
+    public void SaveCurrentBlocksFromStorage(BlockStorage storage)
+    {
+        if (gameData == null || storage == null) return;
+        if (gameData.currentShapes == null)       gameData.currentShapes       = new List<ShapeData>();
+        if (gameData.currentShapeSprites == null) gameData.currentShapeSprites = new List<Sprite>();
+        gameData.currentShapes.Clear();
+        gameData.currentShapeSprites.Clear();
+
+        var shapes  = storage.CurrentBlocksShapedata;
+        var sprites = storage.CurrentBlocksSpriteData;
+        if (shapes == null || sprites == null) return;
+
+        int n = Mathf.Min(shapes.Count, sprites.Count);
+        for (int i = 0; i < n; i++)
+        {
+            gameData.currentShapes.Add(shapes[i]);
+            gameData.currentShapeSprites.Add(sprites[i]);
+        }
+        
+        // (ì˜µì…˜) ë””ìŠ¤í¬ ì§ë ¬í™”ìš© ì´ë¦„ ë¦¬ìŠ¤íŠ¸ë„ ê°±ì‹ 
+            gameData.currentShapeNames  = new List<string>(n);
+        gameData.currentSpriteNames = new List<string>(n);
+        for (int i = 0; i < n; i++)
+        {
+            gameData.currentShapeNames.Add(shapes[i]  ? shapes[i].name : string.Empty);
+            gameData.currentSpriteNames.Add(sprites[i] ? sprites[i].name : string.Empty);
+        }
+        
+        gameData.currentBlockSlots = storage.CurrentBlocks
+            .Select(b => b ? b.SpawnSlotIndex : -1)
+            .ToList();
+        
+        SaveGame();
+        Debug.Log($"[Save] Saved current blocks: {n}");
+    }
+
+    public bool TryRestoreBlocksToStorage(BlockStorage storage)
+    {
+        if (gameData == null || storage == null) return false;
+        var shapes  = gameData.currentShapes;
+        var sprites = gameData.currentShapeSprites;
+        var slots   = gameData.currentBlockSlots;
+        
+        if ((shapes == null || shapes.Count == 0) &&
+            (gameData.currentShapeNames != null && gameData.currentShapeNames.Count > 0))
+        {
+            shapes  = gameData.currentShapeNames
+                .Select(n => GDS.I.GetShapeByName(n))
+                .ToList();
+
+            sprites = (gameData.currentSpriteNames ?? new List<string>())
+                .Select(n => GDS.I.GetBlockSpriteByName(n))
+                .ToList();
+
+            // ê²Œì„ ë°ì´í„°ë„ ì±„ì›Œì£¼ê¸°
+            gameData.currentShapes       = shapes;
+            gameData.currentShapeSprites = sprites;
+        }
+        
+        if (shapes != null && sprites != null && slots != null
+            && shapes.Count > 0
+            && shapes.Count == sprites.Count
+            && shapes.Count == slots.Count)
+        {
+            return storage.RebuildBlocksFromLists(shapes, sprites, slots);
+        }
+           
+        return storage.RebuildBlocksFromLists(shapes, sprites);
+    }
+    
+    public void ClearRunState(bool save = true)
+    {
+        if (gameData == null) return;
+
+        // ì†íŒ¨(ë¸”ë¡) ë¹„ìš°ê¸°
+        ClearCurrentBlocks(false); // ì—¬ê¸°ì„œ SaveGameì€ í•˜ì§€ ì•ŠìŒ
+
+        // ê·¸ë¦¬ë“œ/ì ìˆ˜/ìŠ¬ë¡¯ ë“± ëŸ¬ë‹ ìƒíƒœ ì „ë¶€ ì´ˆê¸°í™”
+        gameData.currentMapLayout?.Clear();
+        try { gameData.currentBlockSlots?.Clear(); } catch { }
+        try { gameData.currentShapeNames?.Clear(); } catch { }
+        try { gameData.currentSpriteNames?.Clear(); } catch { }
+
+        gameData.currentScore = 0;
+        gameData.currentCombo = 0;
+        gameData.isClassicModePlaying = false; // ì‚¬ìš© ì¤‘ì´ë©´ ìœ ì§€
+
+        if (save) SaveGame();
+        Debug.Log("[Save] ClearRunState: grid/blocks/score cleared.");
+    }
 }
+

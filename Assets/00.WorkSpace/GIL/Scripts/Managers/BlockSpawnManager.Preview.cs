@@ -116,80 +116,86 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             PreviewWaveNonOverlapping(wave, null, spritesOrNull);
         }
             
-            /// <summary>
-            /// 지정된 배치의 셀들을 Hover 상태로 표시(점유 갱신 X)
-            /// </summary>
-            private void ApplyPreview(FitInfo fit, Sprite spriteOrNull)
+        /// <summary>
+        /// 지정된 배치의 셀들을 Hover 상태로 표시(점유 갱신 X)
+        /// </summary>
+        private void ApplyPreview(FitInfo fit, Sprite spriteOrNull)
+        {
+            if (fit.CoveredSquares == null || fit.CoveredSquares.Count == 0)
             {
-                if (fit.CoveredSquares == null || fit.CoveredSquares.Count == 0)
-                {
-                    Debug.LogError("fit 설정이 안되어있다.");
-                    return;
-                }
-                
-                foreach (var sq in fit.CoveredSquares)
-                {
-                    if (sq == null) 
-                        continue;
-                    if (spriteOrNull != null) 
-                        sq.SetImage(spriteOrNull);
-                    if (!sq.IsOccupied) 
-                        sq.SetState(GridState.Hover); // Hover 이미지를 켬
-                }
-            }
-
-            /// <summary>
-            /// 현재 보드에서 점유되지 않은 셀들의 Hover를 모두 해제
-            /// </summary>
-            public void ClearPreview()
-            {
-                var gm = GridManager.Instance;
-                var squares = gm.gridSquares;
-
-                for (int r = 0; r < gm.rows; r++)
-                {
-                    for (int c = 0; c < gm.cols; c++)
-                    {
-                        bool occupied = gm.gridStates[r, c];
-                        squares[r, c].SetOccupied(occupied);
-                    }
-                }
-            }
-
-            private void RecomputeFitsForWave(List<ShapeData> wave)
-            {
-                _lastGeneratedFits.Clear();
-
-                var gm = GridManager.Instance;
-                int rows = gm.rows, cols = gm.cols;
-                var squares = gm.gridSquares;
-
-                var virtualBoard = new bool[rows, cols];
-                for (int r = 0; r < rows; r++)
-                for (int c = 0; c < cols; c++)
-                    virtualBoard[r, c] = squares[r, c].IsOccupied;
-
-                for (int i = 0; i < wave.Count; i++)
-                {
-                    var shape = wave[i];
-                    if (shape == null) { _lastGeneratedFits.Add(default); continue; }
-
-                    if (TryFindFitFromRandomStart(virtualBoard, shape, out var fit))
-                    {
-                        _lastGeneratedFits.Add(fit);
-                        if (fit.CoveredSquares != null)
-                            foreach (var sq in fit.CoveredSquares)
-                                virtualBoard[sq.RowIndex, sq.ColIndex] = true;
-
-                        // 라인 제거 시뮬까지 반영하려면, 여기서 가상 보드에 적용
-                        ResolveCompletedLinesInPlace(virtualBoard);
-                    }
-                    else
-                    {
-                        _lastGeneratedFits.Add(default);
-                    }
-                }
+                Debug.LogError("fit 설정이 안되어있다.");
+                return;
             }
             
+            foreach (var sq in fit.CoveredSquares)
+            {
+                if (sq == null) 
+                    continue;
+                if (!sq.IsOccupied)
+                {
+                    sq.SetState(GridState.Hover); // Hover 이미지를 켬
+                    sq.SetPreviewImage(spriteOrNull);        // 인덱스 안 바뀜
+                    sq.SetFruitImage(false, null, false);     // 혹시 잔상 제거, 인덱스 커밋 안 함
+                }
+            }
+        }
+
+        /// <summary>
+        /// 현재 보드에서 점유되지 않은 셀들의 Hover를 모두 해제
+        /// </summary>
+        public void ClearPreview()
+        {
+            var gm = GridManager.Instance;
+            var squares = gm.gridSquares;
+
+            for (int r = 0; r < gm.rows; r++)
+            for (int c = 0; c < gm.cols; c++)
+            {
+                var sq = squares[r, c];
+                if (sq == null) continue;
+
+                // 점유 안 된 칸만 Normal로 되돌리고 프리뷰/라인 오버레이 제거
+                if (!sq.IsOccupied) sq.SetState(GridState.Normal);
+                sq.SetPreviewImage(null);
+                sq.SetLineClearImage(false, null);
+            }
+
+            _lastGeneratedFits.Clear();
+        }
+
+        private void RecomputeFitsForWave(List<ShapeData> wave)
+        {
+            _lastGeneratedFits.Clear();
+
+            var gm = GridManager.Instance;
+            int rows = gm.rows, cols = gm.cols;
+            var squares = gm.gridSquares;
+
+            var virtualBoard = new bool[rows, cols];
+            for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                virtualBoard[r, c] = squares[r, c].IsOccupied;
+
+            for (int i = 0; i < wave.Count; i++)
+            {
+                var shape = wave[i];
+                if (shape == null) { _lastGeneratedFits.Add(default); continue; }
+
+                if (TryFindFitFromRandomStart(virtualBoard, shape, out var fit))
+                {
+                    _lastGeneratedFits.Add(fit);
+                    if (fit.CoveredSquares != null)
+                        foreach (var sq in fit.CoveredSquares)
+                            virtualBoard[sq.RowIndex, sq.ColIndex] = true;
+
+                    // 라인 제거 시뮬까지 반영하려면, 여기서 가상 보드에 적용
+                    ResolveCompletedLinesInPlace(virtualBoard);
+                }
+                else
+                {
+                    _lastGeneratedFits.Add(default);
+                }
+            }
+        }
     }
 }
