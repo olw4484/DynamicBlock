@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using static UnityEditor.Localization.LocalizationTableCollection;
 
 public class ParticleManager : MonoBehaviour
 {
