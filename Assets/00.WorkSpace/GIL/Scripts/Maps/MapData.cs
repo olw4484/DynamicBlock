@@ -45,7 +45,7 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
         private void OnEnable()
         {
 #if UNITY_EDITOR
-            EnsureEditorPreviewSprites();   // ★ 추가
+            EnsureEditorPreviewSprites();
 #endif
         }
         

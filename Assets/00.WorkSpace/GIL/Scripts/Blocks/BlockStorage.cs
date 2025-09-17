@@ -1,5 +1,4 @@
-﻿using _00.WorkSpace.GIL.Scripts.Grids;
-using _00.WorkSpace.GIL.Scripts.Managers;
+﻿using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Utils;
 using System;
@@ -7,9 +6,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.UI;
+using static UnityEditor.Localization.LocalizationTableCollection;
 using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
@@ -64,7 +63,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         bool _paused;
         private bool _initialized;
         bool _handRestoredTried = false;
-
+        private bool _subscribed;
         #endregion
 
         #region Block Image Load
@@ -86,31 +85,25 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         void OnEnable()
         {
-            Game.Bus?.Subscribe<GridReady>(_ =>
-            {
-                if (_paused) return;
-                if (_handSpawnedOnce) return;
-                GenerateAllBlocks();
-                _handSpawnedOnce = true;
-            }, replaySticky: true);
-
-            Game.Bus?.Subscribe<GameResetting>(e =>
-            {
-                if (Time.frameCount == _lastResetFrame) return;
-                _lastResetFrame = Time.frameCount;
-
-                if (e.reason == ResetReason.ToMain || e.reason == ResetReason.Restart)
-                    MapManager.Instance?.saveManager?.ClearCurrentBlocks(true);
-            }, replaySticky: false);
-
-            Game.Bus?.Subscribe<GameEntered>(OnGameEntered /*, replaySticky:false*/);
+            StartCoroutine(CoBindWhenBusReady());
         }
 
         void OnDisable()
         {
             if (Game.IsBound && _onContinue != null)
                 Game.Bus.Unsubscribe(_onContinue);
-            Game.Bus?.Unsubscribe<GameEntered>(OnGameEntered);
+
+            if (_subscribed)
+            {
+                _bus.Unsubscribe<GridReady>(OnGridReady);
+                _bus.Unsubscribe<GameEntered>(OnGameEntered);
+                _bus.Unsubscribe<GameResetting>(OnGameResetting);
+                _bus.Unsubscribe<GameResetRequest>(OnGameResetRequest);
+                _bus.Unsubscribe<ReviveRequest>(OnReviveRequest);
+                _bus.Unsubscribe<GiveUpRequest>(OnGiveUpRequest);
+                _bus.Unsubscribe<GameDataChanged>(OnGameDataChanged);
+                _subscribed = false;
+            }
         }
 
         #endregion
@@ -124,7 +117,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Debug.Log($"[Storage] >>> ENTER GenerateAllBlocks | paused={_paused} | " +
                       $"spawnPos={(blockSpawnPosList == null ? -1 : blockSpawnPosList.Count)} | " +
                       $"sprites={(shapeImageSprites == null ? -1 : shapeImageSprites.Count)} | " +
-                      $"hasSpawner={(blockManager != null)} | this={GetInstanceID()}");
+                      $"hasSpawner={blockManager != null} | this={GetInstanceID()}");
 
             if (_paused)
             {
@@ -447,44 +440,19 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void SetDependencies(EventQueue bus)
         {
             _bus = bus;
+            if (_subscribed) return; // 중복 가드
+
             Debug.Log($"[Storage] Bind bus={_bus.GetHashCode()}");
 
-            // 1) 리셋 시작: 가드/타임스케일 초기화 (이중 안전망)
-            _bus.Subscribe<GameResetting>(_ =>
-            {
-                _gameOverFired = false;
-                Time.timeScale = 1f;
-            }, replaySticky: false);
-
-            // 2) 리셋 처리: 내부 상태 정리
-            _bus.Subscribe<GameResetRequest>(_ =>
-            {
-                Debug.Log("[Storage] ResetRuntime received");
-                ResetRuntime();
-            }, replaySticky: false);
-
-            // 3) 그리드 준비됨: 초기 블록 생성
+            _bus.Subscribe<GameResetting>(OnGameResetting, replaySticky: false);
+            _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
             _bus.Subscribe<GridReady>(OnGridReady, replaySticky: true);
+            _bus.Subscribe<GameEntered>(OnGameEntered, replaySticky: false);
+            _bus.Subscribe<ReviveRequest>(OnReviveRequest, replaySticky: false);
+            _bus.Subscribe<GiveUpRequest>(OnGiveUpRequest, replaySticky: false);
+            _bus.Subscribe<GameDataChanged>(OnGameDataChanged, replaySticky: true);
 
-            // 4) 폴백: 이미 그리드가 있으면 바로 한 번 호출
-            if (GridManager.Instance != null && GridManager.Instance.gridSquares != null)
-            {
-                Debug.Log("[Storage] Fallback OnGridReady (grid already built)");
-                OnGridReady(new GridReady(GridManager.Instance.rows, GridManager.Instance.cols));
-            }
-
-            _bus.Subscribe<ReviveRequest>(_ =>
-            {
-                if (!GenerateAdRewardWave())
-                    ConfirmGameOver(); // 실패 시 곧바로 확정 오버
-            }, replaySticky: false);
-
-            _bus.Subscribe<GiveUpRequest>(_ => { ConfirmGameOver(); }, replaySticky: false);
-            _bus.Subscribe<GameDataChanged>(e =>
-            {
-                _persistedHigh = e.data.highScore;
-                Debug.Log($"[BlockStorage] HighScore cached = {_persistedHigh}");
-            }, replaySticky: true);
+            _subscribed = true;
         }
 
         public void ResetRuntime()
@@ -494,42 +462,33 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Time.timeScale = 1f;
             CancelQueuedInterstitialIfAny();
 
-            Game.Bus?.ClearSticky<PlayerDowned>();
-            Game.Bus?.ClearSticky<GameOverConfirmed>();
-
-            // 생성/체크 잠깐 중지
             _paused = true;
 
-            // 기존 블록 정리
+            _handSpawnedOnce = false;
+            _handRestoredTried = false;
+
             for (int i = 0; i < _currentBlocks.Count; i++)
                 if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
             _currentBlocksShapeData.Clear();
             _currentBlocksSpriteData.Clear();
-            // 생성은 GridReady에서 재개
         }
 
         private void OnGridReady(GridReady e)
         {
             Debug.Log("[BlockStorage] OnGridReady 수신됨");
-
-            if (_paused == false && _initialized)
-            {
-                Debug.Log("[Storage] OnGridReady SKIP: already running");
-                return;
-            }
-
             _paused = false;
-            if (!_initialized) _initialized = true;
 
-            Debug.Log("[Storage] OnGridReady → call GenerateAllBlocks()");
-            GenerateAllBlocks();
+            if (!HasAnyHand())
+                RefillHand();
         }
 
         private void TryBindBus()
         {
-            if (_bus != null || !Game.IsBound) return;
-            SetDependencies(Game.Bus);
+            if (!Game.IsBound) return;
+
+            if (_bus == null) _bus = Game.Bus;
+            if (!_subscribed) SetDependencies(_bus);
         }
 
         void ConfirmGameOverImmediate(string reason)
@@ -730,22 +689,61 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (!_handRestoredTried)
             {
                 _handRestoredTried = true;
-                var save = MapManager.Instance?.saveManager;
 
-                int nameCnt = save?.Data?.currentShapeNames?.Count ?? 0;
-                if (save != null && save.HasRunSnapshot() && nameCnt > 0)
+                var sm = MapManager.Instance?.saveManager;
+                int nameCnt = sm?.Data?.currentShapeNames?.Count ?? 0;
+                Debug.Log($"[Hand] Try restore before generate. names={nameCnt}");
+
+                if (sm != null && sm.TryRestoreBlocksToStorage(this))
                 {
-                    Debug.Log($"[Hand] Try restore before generate. names={nameCnt}");
-                    if (save.TryRestoreBlocksToStorage(this))
-                    {
-                        Debug.Log("[Hand] Restored from save -> skip generation");
-                        return;
-                    }
+                    Debug.Log("[Hand] Restored from save → skip generation");
+                    return;
                 }
             }
 
             Debug.Log("[Hand] Refill → GenerateAllBlocks()");
             GenerateAllBlocks();
+        }
+    private void OnGameResetting(GameResetting _)
+        {
+            _gameOverFired = false;
+            Time.timeScale = 1f;
+        }
+
+        private void OnGameResetRequest(GameResetRequest e)
+        {
+            Debug.Log("[Storage] ResetRuntime (scene-only) — no SaveManager clear");
+            ResetRuntime();
+        }
+
+        private void OnReviveRequest(ReviveRequest _)
+        {
+            if (!GenerateAdRewardWave()) ConfirmGameOver();
+        }
+
+        private void OnGiveUpRequest(GiveUpRequest _)
+        {
+            ConfirmGameOver();
+        }
+
+        private void OnGameDataChanged(GameDataChanged e)
+        {
+            _persistedHigh = e.data.highScore;
+            Debug.Log($"[BlockStorage] HighScore cached = {_persistedHigh}");
+        }
+        IEnumerator CoBindWhenBusReady()
+        {
+            while (!Game.IsBound) yield return null;
+
+            if (!_subscribed) SetDependencies(Game.Bus);
+
+            yield return null;
+
+            if (!HasAnyHand())
+            {
+                Debug.Log("[Storage] Boot fallback: no hand after bind → GenerateAllBlocks");
+                GenerateAllBlocks();
+            }
         }
     }
 }

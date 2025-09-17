@@ -228,7 +228,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 var map = _mapList[idx];
                 if (!map) { Debug.LogError($"[MapManager] MapData[{idx}] is null."); return; }
 
-                ApplyMapToCurrentGrid(map, publishGridReady); // ← 아래 패치 2와 함께
+                ApplyMapToCurrentGrid(map, publishGridReady);
                 StartCoroutine(RestoreScoreNextFrame());
             }
             finally { _isApplyingMap = false; }
@@ -315,6 +315,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             Game.Bus?.PublishSticky(new GridReady(gm.rows, gm.cols), alsoEnqueue: false);
             // Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
+            GridManager.Instance.PublishGridReady();
         }
 
         // 블록 규칙성
@@ -936,6 +937,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             // 입장은 Immediate 1회 (손패/스폰은 이걸 듣는다)
             Game.Bus?.PublishImmediate(new GameEntered(mode));
+        }
+
+        public void RestartClassicAfterReset(bool clearRun)
+        {
+            StartCoroutine(CoRestartClassicAfterReset(clearRun));
+        }
+
+        private IEnumerator CoRestartClassicAfterReset(bool clearRun)
+        {
+            yield return null;
+            yield return new WaitForEndOfFrame();
+
+            if (clearRun)
+            {
+                saveManager?.ClearRunState(true);
+                ScoreManager.Instance?.ResetAll();
+                yield break;
+            }
+
+            EnterClassic(ClassicEnterPolicy.ForceNew);
         }
     }
 }

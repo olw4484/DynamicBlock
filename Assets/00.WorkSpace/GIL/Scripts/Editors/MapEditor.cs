@@ -1,10 +1,11 @@
 #if UNITY_EDITOR
+using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using _00.WorkSpace.GIL.Scripts.Maps;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -1015,6 +1016,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
                     grid.Add(line);
                 }
+                GridManager.Instance.PublishGridReady();
             }
         }
         private void PaintGridWithValue(int idx1D, Image img, int value)

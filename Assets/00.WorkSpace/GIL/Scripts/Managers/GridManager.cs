@@ -487,8 +487,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     cell.SetOccupied(false);                               // Normal
                 }
 
-            Debug.Log("[Grid] Cleared (no GridReady here)");
+            Game.Bus.ClearSticky<GridReady>();
             _bus?.PublishImmediate(new GridCleared(rows, cols)); // 새 이벤트
+            Debug.Log("[Grid] Cleared (no GridReady here)");
         }
 
         public bool HasAnyOccupied()
@@ -630,5 +631,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             ValidateGridConsistency();
         }
+
+        public void PublishGridReady()
+        {
+            var evt = new GridReady(rows, cols);
+            Game.Bus.PublishSticky(evt, alsoEnqueue: false);
+            Game.Bus.PublishImmediate(evt);
+            Debug.Log($"[Grid] PublishSticky(GridReady) {rows}x{cols}");
+        }
+
     }
 }
