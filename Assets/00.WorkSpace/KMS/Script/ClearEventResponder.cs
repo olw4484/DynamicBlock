@@ -132,12 +132,6 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
         Game.Audio?.PlayClearCombo(Mathf.Min(combo, 8));
     }
 
-    private IEnumerator PlayComboSfxAfter(float delay, int combo)
-    {
-        if (delay > 0f) yield return new WaitForSeconds(delay);
-        Game.Audio?.PlayClearCombo(Mathf.Min(combo, 8));
-    }
-
     // AllClear´Â À¯Áö
     private void OnAllClear(_00.WorkSpace.GIL.Scripts.Messages.AllClear e)
     {
