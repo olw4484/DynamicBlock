@@ -13,6 +13,7 @@ using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Messages;
 using System.Collections;
 using UnityEditor.Localization.Plugins.XLIFF.V20;
+using UnityEngine.Localization.Settings;
 
 // ================================
 // System : SaveManager (Unified)
@@ -79,6 +80,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
         TryMigrateLegacyLanguageOnce();
         LoadGame();
+        StartCoroutine(CoApplyLocale(gameData?.LanguageIndex ?? 0));
     }
 
 
@@ -343,11 +345,41 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     public void SetLanguageIndex(int index)
     {
         if (gameData == null) LoadGame();
-        if (gameData.LanguageIndex == index) return;
+
+        var locales = LocalizationSettings.AvailableLocales?.Locales;
+        if (locales == null || locales.Count == 0)
+        {
+            Debug.LogWarning("[Lang] No locales. Will only persist index.");
+            gameData.LanguageIndex = index;
+            PublishState(gameData);
+            SaveGame();
+            return;
+        }
+        index = Mathf.Clamp(index, 0, locales.Count - 1);
 
         gameData.LanguageIndex = index;
+        StartCoroutine(CoApplyLocale(index));
+
         PublishState(gameData);
         SaveGame();
+    }
+
+    private IEnumerator CoApplyLocale(int index)
+    {
+        var initOp = LocalizationSettings.InitializationOperation;
+        if (!initOp.IsDone) yield return initOp;
+
+        var locales = LocalizationSettings.AvailableLocales.Locales;
+        if (locales == null || locales.Count == 0) yield break;
+
+        index = Mathf.Clamp(index, 0, locales.Count - 1);
+        var target = locales[index];
+
+        if (LocalizationSettings.SelectedLocale != target)
+        {
+            Debug.Log($"[Lang] Apply locale: {target?.Identifier.Code} (index={index})");
+            LocalizationSettings.SelectedLocale = target;
+        }
     }
 
     // ------------- Score/Stage API -------------

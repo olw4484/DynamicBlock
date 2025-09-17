@@ -1,97 +1,58 @@
-﻿using System.Collections;
+﻿using _00.WorkSpace.GIL.Scripts.Managers;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Localization;
 using UnityEngine.Localization.Settings;
 
 public class LanguageChanger : MonoBehaviour
 {
     [SerializeField] private List<TMP_Dropdown> _languageDropDown = new();
-    [SerializeField] private SaveServiceAdapter _save;
 
-    void Awake()
+    void OnEnable() { StartCoroutine(InitRoutine()); }
+    void OnDisable()
     {
-        StartCoroutine(InitRoutine());
+        foreach (var dd in _languageDropDown)
+            if (dd) dd.onValueChanged.RemoveListener(OnDropdownValueChanged);
+        // 버스 구독했으면 여기서 Unsubscribe
+        // Game.Bus.Unsubscribe<GameDataChanged>(OnGameDataChanged); (구독 시)
     }
 
     IEnumerator InitRoutine()
     {
-        // Localization 시스템 준비
+        // 로컬라이제이션 준비
         yield return LocalizationSettings.InitializationOperation;
 
-        int initialIndex = 0;
-        bool got = false;
+        // 현재 저장된 인덱스 반영
+        int idx = MapManager.Instance?.saveManager?.Data?.LanguageIndex ?? 0;
+        SetAllDropdowns(idx);
 
-        // 세이브의 현재 LanguageIndex를 Sticky로 1회 수신
-        Game.Bus.Subscribe<GameDataChanged>(e =>
-        {
-            if (got) return;
-            got = true;
-            initialIndex = (e.data != null) ? e.data.LanguageIndex : 0;
-            Apply(initialIndex);
-        }, replaySticky: true);
-
-        // 안전 타임아웃 (예외 케이스)
-        float t = 0f;
-        while (!got && t < 1.0f) { t += Time.unscaledDeltaTime; yield return null; }
-        if (!got) Apply(initialIndex);
-    }
-
-    void OnDestroy()
-    {
-        // 리스너 정리 (씬 전환/파괴 시 중복 방지)
+        // 변경 리스너 등록
         foreach (var dd in _languageDropDown)
         {
-            if (dd == null) continue;
-            dd.onValueChanged.RemoveListener(OnDropdownValueChanged);
-        }
-    }
-
-    private void Apply(int index)
-    {
-        var locales = LocalizationSettings.AvailableLocales;
-        if (locales == null || locales.Locales == null || locales.Locales.Count == 0) return;
-
-        index = Mathf.Clamp(index, 0, locales.Locales.Count - 1);
-
-        // 로케일 적용
-        LocalizationSettings.SelectedLocale = locales.Locales[index];
-
-        // 모든 드롭다운 초기 세팅 + 리스너 바인딩
-        foreach (var dd in _languageDropDown)
-        {
-            if (dd == null) continue;
-
-            dd.SetValueWithoutNotify(index);                  // 값만 반영 (이벤트 미발생)
+            if (!dd) continue;
             dd.onValueChanged.RemoveListener(OnDropdownValueChanged);
             dd.onValueChanged.AddListener(OnDropdownValueChanged);
         }
 
-        Debug.Log($"[LanguageChanger] 초기화 index={index}, locale={locales.Locales[index].Identifier.Code}");
+        // (선택) 저장값 바뀔 때 드롭다운 동기화하고 싶으면 구독
+        // Game.Bus.Subscribe<GameDataChanged>(OnGameDataChanged, replaySticky:true);
     }
 
-    // 드롭다운 하나에서 변경되면 나머지도 동기화
-    private void OnDropdownValueChanged(int value)
+    void OnDropdownValueChanged(int value)
     {
-        var locales = LocalizationSettings.AvailableLocales;
-        if (locales == null || locales.Locales == null) return;
-        if (value < 0 || value >= locales.Locales.Count) return;
+        // UI는 SaveManager만 호출 (또는 이벤트 발행)
+        MapManager.Instance?.saveManager?.SetLanguageIndex(value);
+        SetAllDropdowns(value); // 다른 드롭다운 동기화
+        // Game.Bus.Publish(new LanguageChangeRequested(value)); // 이벤트로만 하고 싶으면 이렇게
+    }
 
-        // 1) 로케일 적용
-        LocalizationSettings.SelectedLocale = locales.Locales[value];
+    // (선택) 저장값이 외부에서 바뀌었을 때 드롭다운 맞추기
+    // void OnGameDataChanged(GameDataChanged e) => SetAllDropdowns(e.data.LanguageIndex);
 
-        // 2) 버스 통지 (세이브/표시 등)
-        Game.Bus.Publish(new LanguageChangeRequested(value));
-
-        // 3) 모든 드롭다운을 동일 값으로 맞춤 (루프 방지 위해 WithoutNotify)
+    void SetAllDropdowns(int value)
+    {
         foreach (var dd in _languageDropDown)
-        {
-            if (dd == null) continue;
-            if (dd.value != value)
-                dd.SetValueWithoutNotify(value);
-        }
-
-        Debug.Log($"[LanguageChanger] 변경 index={value}, locale={locales.Locales[value].Identifier.Code}");
+            if (dd && dd.value != value) dd.SetValueWithoutNotify(value);
     }
 }

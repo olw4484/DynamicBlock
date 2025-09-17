@@ -50,19 +50,6 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
             _legacy.SaveGame();
         }, replaySticky: false);
 
-        //_bus.Subscribe<ScoreChanged>(e =>
-        //{
-        //    if (_legacy.gameData == null) _legacy.LoadGame();
-        //
-        //    if (e.value > _legacy.gameData.highScore)
-        //    {
-        //        _legacy.gameData.highScore = e.value;
-        //        _legacy.SaveGame();
-        //        _newBestThisRun = true;
-        //        Debug.Log($"[SaveAdapter] NEW HIGH SCORE {e.value} (saved)");
-        //    }
-        //}, replaySticky: true);
-
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
             _legacy.UpdateClassicScore(e.score);
