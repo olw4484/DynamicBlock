@@ -13,6 +13,7 @@ using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Messages;
 using System.Collections;
 using UnityEditor.Localization.Plugins.XLIFF.V20;
+using UnityEngine.Localization.Settings;
 
 // ================================
 // System : SaveManager (Unified)
@@ -54,6 +55,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     private bool _pendingSnapshotApply;
     private const int DefaultStages = 200;
     bool _suppressSnapshot;
+    bool _internalClearGuard;
 
     public enum SnapshotSource { Auto, Manual, EnterRequest, EnterIntent, Reset }
 
@@ -78,6 +80,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
         TryMigrateLegacyLanguageOnce();
         LoadGame();
+        StartCoroutine(CoApplyLocale(gameData?.LanguageIndex ?? 0));
     }
 
 
@@ -121,13 +124,13 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         // (권장) 블록 커밋 시점 이벤트가 있다면 여기도 연결
         // _bus.Subscribe<BlockCommitted>(_ => MarkSnapshotDirty(), replaySticky: false);
 
-        // ---- 런 종료: GameOver에서만 스냅샷 삭제 ----
+        // ---- 런 종료/재시작: GameOver/Restart에서 스냅샷 삭제 ----
         _bus.Subscribe<GameResetRequest>(e =>
         {
-            if (e.reason == ResetReason.GameOver)
+            if (e.reason == ResetReason.GameOver || e.reason == ResetReason.Restart)
             {
                 ClearRunState(save: true);
-                Debug.Log("[Save] Snapshot cleared by GameResetRequest(GameOver).");
+                Debug.Log($"[Save] Snapshot cleared by GameResetRequest({e.reason}).");
             }
         }, replaySticky: false);
 
@@ -342,11 +345,41 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     public void SetLanguageIndex(int index)
     {
         if (gameData == null) LoadGame();
-        if (gameData.LanguageIndex == index) return;
+
+        var locales = LocalizationSettings.AvailableLocales?.Locales;
+        if (locales == null || locales.Count == 0)
+        {
+            Debug.LogWarning("[Lang] No locales. Will only persist index.");
+            gameData.LanguageIndex = index;
+            PublishState(gameData);
+            SaveGame();
+            return;
+        }
+        index = Mathf.Clamp(index, 0, locales.Count - 1);
 
         gameData.LanguageIndex = index;
+        StartCoroutine(CoApplyLocale(index));
+
         PublishState(gameData);
         SaveGame();
+    }
+
+    private IEnumerator CoApplyLocale(int index)
+    {
+        var initOp = LocalizationSettings.InitializationOperation;
+        if (!initOp.IsDone) yield return initOp;
+
+        var locales = LocalizationSettings.AvailableLocales.Locales;
+        if (locales == null || locales.Count == 0) yield break;
+
+        index = Mathf.Clamp(index, 0, locales.Count - 1);
+        var target = locales[index];
+
+        if (LocalizationSettings.SelectedLocale != target)
+        {
+            Debug.Log($"[Lang] Apply locale: {target?.Identifier.Code} (index={index})");
+            LocalizationSettings.SelectedLocale = target;
+        }
     }
 
     // ------------- Score/Stage API -------------
@@ -405,6 +438,13 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     // ------------- Hand/Blocks Snapshot -------------
     public void ClearCurrentBlocks(bool save = true)
     {
+        if (!_internalClearGuard)
+        {
+            Debug.LogWarning("[Save] ClearCurrentBlocks ignored (external caller)");
+            return; // 외부 호출 차단
+        }
+        Debug.Log("[Save] Cleared current blocks (by reset).\n" +
+          new System.Diagnostics.StackTrace(true));
         if (gameData == null) return;
 
         if (gameData.currentShapes == null) gameData.currentShapes = new List<ShapeData>();
@@ -458,41 +498,48 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
     public bool TryRestoreBlocksToStorage(BlockStorage storage)
     {
-        int ns = gameData?.currentShapeNames?.Count ?? 0;
-        int ni = gameData?.currentSpriteNames?.Count ?? 0;
-        int sl = gameData?.currentBlockSlots?.Count ?? 0;
-        Debug.Log($"[Save] TryRestoreBlocksToStorage enter. storageNull={storage == null}, names={ns}, sprites={ni}, slots={sl}");
+        if (gameData == null || storage == null) return false;
 
-        if (storage == null) return false;
-
-        var nameShapes = gameData.currentShapeNames;
-        var nameSprites = gameData.currentSpriteNames;
+        var shapes = gameData.currentShapes;
+        var sprites = gameData.currentShapeSprites;
         var slots = gameData.currentBlockSlots;
 
-        if (nameShapes == null || nameSprites == null || nameShapes.Count == 0 || nameShapes.Count != nameSprites.Count)
+        // 필요시 이름→객체 복원
+        if ((shapes == null || shapes.Count == 0)
+            && (gameData.currentShapeNames?.Count ?? 0) > 0)
         {
-            Debug.Log("[Save] Restore aborted: invalid name lists.");
+            shapes = gameData.currentShapeNames.Select(n => GDS.I.GetShapeByName(n)).ToList();
+            sprites = (gameData.currentSpriteNames ?? new List<string>())
+                        .Select(n => GDS.I.GetBlockSpriteByName(n)).ToList();
+
+            gameData.currentShapes = shapes;
+            gameData.currentShapeSprites = sprites;
+        }
+
+        int nShapes = shapes?.Count ?? 0;
+        int nSprites = sprites?.Count ?? 0;
+
+        if (nShapes == 0 || nSprites == 0)
+        {
+            Debug.Log("[Save] TryRestoreBlocksToStorage: empty -> false");
             return false;
         }
 
-        var shapes = nameShapes.Select(n => GDS.I.GetShapeByName(n)).ToList();
-        var sprites = nameSprites.Select(n => GDS.I.GetBlockSpriteByName(n)).ToList();
+        int n = Mathf.Min(nShapes, nSprites);
 
-        gameData.currentShapes = shapes;
-        gameData.currentShapeSprites = sprites;
+        if (slots != null && slots.Count == n)
+            return storage.RebuildBlocksFromLists(shapes, sprites, slots);
 
-        bool ok = (slots != null && slots.Count == shapes.Count)
-            ? storage.RebuildBlocksFromLists(shapes, sprites, slots)
-            : storage.RebuildBlocksFromLists(shapes, sprites);
-
-        Debug.Log($"[Save] Restore hand from names -> ok={ok}, count={shapes.Count}");
-        return ok;
+        return storage.RebuildBlocksFromLists(shapes, sprites);
     }
 
     // ------------- Run Snapshot (Grid/Score/Combo) -------------
     public void ClearRunState(bool save = true)
     {
         Debug.Log("[Save] ClearRunState CALLED");
+        _internalClearGuard = true;
+        ClearCurrentBlocks(false);
+        _internalClearGuard = false;
         if (gameData == null) return;
 
         ClearCurrentBlocks(false);
