@@ -198,7 +198,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             PublishCombo();
         }
 
-        // 선택: 명시 초기화가 필요할 때 사용할 함수
         public void ResetAll(bool publish = true) => SetFromSave(0, 0, publish);
+        public void RestoreScoreState(int score, int combo, bool silent = false)
+        {
+            _score = Mathf.Max(0, score);
+            Combo = Mathf.Max(0, combo);
+            if (!silent)
+            {
+                Game.Bus.PublishImmediate(new ScoreChanged(_score));
+                Game.Bus.PublishImmediate(new ComboChanged(Combo));
+            }
+        }
     }
 }
