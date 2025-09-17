@@ -36,7 +36,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -320, y: 0}
-  m_SizeDelta: {x: 350, y: 350}
+  m_SizeDelta: {x: 300, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4392160750932823541
 CanvasRenderer:
@@ -59,8 +59,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shapePrefab: {fileID: 4139110875559665879, guid: 05e290eec2872b24bbb5924a43f8e196, type: 3}
-  shapeSelectedScale: {x: 1.5, y: 1.5, z: 1}
-  selectedOffset: {x: 0, y: 350}
+  SpawnSlotIndex: -1
+  shapeSelectedScale: {x: 2, y: 2, z: 1}
+  selectedOffset: {x: 0, y: 500}
   editorOffset: -200
 --- !u!114 &876028515964935966
 MonoBehaviour:

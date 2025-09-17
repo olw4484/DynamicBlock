@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using UnityEditor;
 using UnityEngine;
@@ -16,21 +17,29 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private MapData _data;
         private int _brush; // 현재 브러시 ID
         private const int FruitCount = 5;
-        private Dictionary<Sprite, int> _spriteToIndex;
+        private Dictionary<Sprite, int> _spriteToIndex; // sprite -> code
+        private Dictionary<int, Sprite> _codeToSprite; // code -> sprite
         private Sprite _brushSprite; // 현재 선택된 블록의 스프라이트(지우개는 null)
         private Button _selectedPaletteButton;
         private bool _isDragging;
         private int _dragValue;
         private int _cellSize = 47; // 셀 한 변 픽셀 수
+        private int blockSize = 60;
         private Action _rebuildGrid;
+        private static readonly Regex s_CodeRegex =
+            new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        private VisualElement _settingsPane;
+        private float _settingsScale = 1f;
         public override VisualElement CreateInspectorGUI()
         {
             _data = (MapData)target;
-            BuildSpriteIndex();
             
             // 아이콘 로드/사이즈 보정
             MapEditorFunctions.EnsureIcons(_data);
-
+            
+            BuildSpriteIndex();
+            
 #if UNITY_EDITOR
             // 파일명 기준으로 id/index 동기화(메뉴 생성 직후 케이스 대응)
             var path = AssetDatabase.GetAssetPath(_data);
@@ -67,6 +76,9 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var left  = BuildGridPane();           // 그리드
             var right = BuildSettingPane();        // 셋팅
 
+            _settingsPane = right;
+            _settingsPane.style.transformOrigin = new TransformOrigin(Length.Percent(0), Length.Percent(0), 0);
+            
             // 기본 배치 (가로)
             container.style.flexDirection = FlexDirection.Row;
             left.style.marginRight = 8;
@@ -79,17 +91,22 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
             // 반응형 전환
             const float Breakpoint = 700f;
-            bool isWide = true;
+            bool? isWide = null;
 
             void ApplyLayout(float width)
             {
                 bool wide = width >= Breakpoint;
-                if (wide == isWide) return;
+                // 셀 크기는 항상 현재 레이아웃에 맞춰 갱신
+                _cellSize = wide ? 70 : 47;
+                _settingsScale = wide ? 1.15f : 1.0f;
+                if (_settingsPane != null) 
+                    _settingsPane.style.scale = new Scale(new Vector3(_settingsScale, _settingsScale, 1f));
+                // 레이아웃 전환은 상태 변화가 있을 때만
+                if (isWide.HasValue && wide == isWide.Value) { _rebuildGrid?.Invoke(); return; }
                 isWide = wide;
-
+                
                 if (wide)
                 {
-                    _cellSize = 60;
                     container.style.flexDirection = FlexDirection.Row;
                     container.Clear();
                     left.style.marginRight = 8;
@@ -99,7 +116,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 }
                 else
                 {
-                    _cellSize = 47;
                     container.style.flexDirection = FlexDirection.Column;
                     container.Clear();
                     left.style.marginRight  = 0;
@@ -149,31 +165,80 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             bool isUpdating = false;
             
             // TODO : 여기로 설정부분 옮기기
-            // 스테이지 이름
+            
+            // 스테이지 이름 수정하는 공간
+            var idRow = Row();
+            idRow.style.width = 300;
+            var idFieldLable = new Label();
+            idFieldLable.text = "Name";
+            idFieldLable.style.fontSize = 15;
+            idFieldLable.style.unityTextAlign = TextAnchor.MiddleLeft;
+            idFieldLable.style.width = 70;
+            idFieldLable.style.unityFontStyleAndWeight = FontStyle.Bold;
+            
             var idField = new TextField { value = _data.id };
             idField.style.unityTextAlign = TextAnchor.MiddleCenter;
-            idField.style.width = 340;
-            idField.style.fontSize = 25;
-            idField.style.unityFontStyleAndWeight = FontStyle.Bold;
+            idField.style.width = 200;
+            idField.style.fontSize = 20;
             idField.RegisterValueChangedCallback(e =>
             {
                 MapEditorFunctions.MarkDirty(_data, "Rename Stage");
                 _data.id = e.newValue;
+                
+                
             });
-            panel.Add(idField);
-            SpaceV(panel, 6);
+            
+            // 조립
+            idRow.Add(idFieldLable);
+            idRow.Add(idField);
+            panel.Add(idRow);
+            SpaceV(panel);
+            
+            // 맵 번호 수정하는 공간
+            var stageNumRow = Row();
+            stageNumRow.style.width = 300;
+
+            var stageNumLabel = new Label();
+            stageNumLabel.text = "Number";
+            stageNumLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
+            stageNumLabel.style.width = 70;
+            stageNumLabel.style.fontSize = 15;
+            stageNumLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            
+            var stageIndexField = new IntegerField();
+            stageIndexField.value = _data.mapIndex;
+            stageIndexField.style.unityTextAlign = TextAnchor.MiddleCenter;
+            stageIndexField.style.fontSize = 15;
+            stageIndexField.style.width = 70;
+            stageIndexField.RegisterValueChangedCallback(e =>
+            {
+                MapEditorFunctions.MarkDirty(_data, "Rename Stage Index");
+                _data.mapIndex = e.newValue;
+                
+                //idField 값도 동기화하기
+                var newId = $"Stage_{_data.mapIndex}";
+                _data.id = newId;
+                idField.SetValueWithoutNotify(newId);
+            });
+            
+            // stageNumber 조립
+            stageNumRow.Add(stageNumLabel);
+            stageNumRow.Add(stageIndexField);
+            panel.Add(stageNumRow);
+            SpaceV(panel);
+            
 
             // 네비게이션 바
             var nav = Row();
-            nav.Add(Button("<", () => { MapEditorFunctions.NavigateClamped(_data, -1); }));
-            nav.Add(Button(">", () => { MapEditorFunctions.NavigateClamped(_data, +1); }));
-            nav.Add(Button("Add", () => { MapEditorFunctions.AddAfterCurrent(_data); }));
-            nav.Add(Button("Save", () => { MapEditorFunctions.Save(_data); }));
+            nav.Add(Button("<", () => { MapEditorFunctions.NavigateToExisting(_data, -1); }));
+            nav.Add(Button(">", () => { MapEditorFunctions.NavigateToExisting(_data, +1); }));
+            nav.Add(Button("Add", () => { MapEditorFunctions.CreateEmptyStageAssetNear(_data); }));
+            nav.Add(Button("Save", () => { MapEditorFunctions.SaveAndRename(_data, idField); }));
             nav.Add(Button("Delete", () =>
             {
                 if (EditorUtility.DisplayDialog("Delete Stage", $"Delete '{_data?.id}'?\n(This cannot be undone)", "Delete", "Cancel"))
                 {
-                    MapEditorFunctions.DeleteCurrent(_data);
+                    MapEditorFunctions.DeleteStageOnly(_data);
                 }
             }));
             panel.Add(nav);
@@ -409,10 +474,19 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var sliderLength = 200;
             var floatWidth = 35;
             
-            CreateAlphaRow(textWidth, textFontSize, sliderLength, floatWidth, panel);
-
-            CreateCharlieRow(textWidth, textFontSize, sliderLength, floatWidth, panel);
-
+            var weightFoldout = new Foldout();
+            weightFoldout.text = "맵 가중치 수정";
+            weightFoldout.value = true;
+            var titleLabel = weightFoldout.Q<Toggle>()?.Q<Label>();
+            if (titleLabel != null)
+            {
+                titleLabel.style.fontSize = 17;                  
+                titleLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            }
+            CreateAlphaRow(textWidth, textFontSize, sliderLength, floatWidth, weightFoldout);
+            CreateCharlieRow(textWidth, textFontSize, sliderLength, floatWidth, weightFoldout);
+            
+            panel.Add(weightFoldout);
 
             // ========== 블록 선택 ==========
             var selectBlockLbl = new Label("Select Block");
@@ -426,8 +500,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             palette.style.alignItems = Align.FlexStart;
             Pad(palette, 6);
 
-            int blockSize = 50;
-            int blockOffset = 5;
+            int blockOffset = 7;
 
             var line2 = Row();
             line2.style.flexWrap = Wrap.NoWrap;
@@ -439,13 +512,13 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                 int index = i;
 
                 var button = new Button();
+                button.text = string.Empty;
                 button.style.width = blockSize;
                 button.style.height = blockSize;
                 button.style.alignItems = Align.Center;
                 button.style.justifyContent = Justify.Center;
                 Pad(button, 0f);
-                button.text = string.Empty;
-
+                
                 var image = new Image { scaleMode = ScaleMode.ScaleToFit };
                 image.style.width = blockSize - blockOffset;
                 image.style.height = blockSize - blockOffset;
@@ -530,133 +603,19 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             ApplyGoalUI(_data, tutT, scoT, fruT, scoreDetailRow, fruitTable, fruitCounts, fruitBlocksRow);
             return panel;
         }
-
-        private void CreateCharlieRow(int textWidth, int textFontSize, int sliderLength, int floatWidth, VisualElement panel)
-        {
-            var charlieMinRow = Row();
-
-            var charlieMinLbl = new Label("C Min");
-            charlieMinLbl.style.width = textWidth;
-            charlieMinLbl.style.fontSize = textFontSize;
-            charlieMinLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
-
-            var charileMinSlider = new Slider(0f, 2f);
-            charileMinSlider.value = _data.charlieMin;
-            charileMinSlider.style.width = sliderLength;      
-            
-            var charlieMinField = new FloatField();
-            charlieMinField.value = _data.charlieMin;
-            charlieMinField.style.width = floatWidth;
-            charlieMinField.formatString = "0.00";    // 2자리 소수 표시
-            
-            var charlieMaxRow = Row();
-            
-            var charlieMaxLbl = new Label("C Max");
-            charlieMaxLbl.style.width = textWidth;
-            charlieMaxLbl.style.fontSize = textFontSize;
-            charlieMaxLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
-
-            var charlieMaxSlider = new Slider(0f, 2f);
-            charlieMaxSlider.value = _data.charlieMax;
-            charlieMaxSlider.style.width = sliderLength;     
-
-            var charlieMaxField = new FloatField();
-            charlieMaxField.value = _data.charlieMax;
-            charlieMaxField.style.width = floatWidth;
-            charlieMaxField.formatString = "0.00";    // 2자리 소수 표시
-
-            bool charlieUpdating = false;          // 쌍방 이벤트 루프 방지
-
-            // --- 로컬 헬퍼: Min을 설정 ---
-            void SetCharlieMin(float v, bool withUndo = true)
-            {
-                if (charlieUpdating) return;
-                charlieUpdating = true;
-
-                float nv = Mathf.Clamp(v, 0f, 2f);
-                if (withUndo) Undo.RecordObject(_data, "Change Charlie Min");
-                _data.charlieMin = nv;
-
-                // min이 max를 넘어섰으면 max를 따라올림
-                if (_data.charlieMin > _data.charlieMax)
-                {
-                    _data.charlieMax = _data.charlieMin;
-                    charlieMaxSlider.SetValueWithoutNotify(_data.charlieMax);
-                    charlieMaxField.SetValueWithoutNotify(_data.charlieMax);
-                }
-
-                // 본인 UI 동기화
-                charileMinSlider.SetValueWithoutNotify(_data.charlieMin);
-                charlieMinField.SetValueWithoutNotify(_data.charlieMin);
-
-                EditorUtility.SetDirty(_data);
-                charlieUpdating = false;
-            }
-
-// --- 로컬 헬퍼: Max를 설정 ---
-            void SetCharlieMax(float v, bool withUndo = true)
-            {
-                if (charlieUpdating) return;
-                charlieUpdating = true;
-
-                float nv = Mathf.Clamp(v, 0f, 2f);
-                if (withUndo) Undo.RecordObject(_data, "Change Charlie Max");
-                _data.charlieMax = nv;
-
-                // max가 min보다 작아졌으면 min을 끌어내림
-                if (_data.charlieMax < _data.charlieMin)
-                {
-                    _data.charlieMin = _data.charlieMax;
-                    charileMinSlider.SetValueWithoutNotify(_data.charlieMin);
-                    charlieMinField.SetValueWithoutNotify(_data.charlieMin);
-                }
-
-                // 본인 UI 동기화
-                charlieMaxSlider.SetValueWithoutNotify(_data.charlieMax);
-                charlieMaxField.SetValueWithoutNotify(_data.charlieMax);
-
-                EditorUtility.SetDirty(_data);
-                charlieUpdating = false;
-            }
-
-// --- 콜백: 헬퍼만 호출 ---
-            charileMinSlider.RegisterValueChangedCallback(e => SetCharlieMin(e.newValue));
-            charlieMinField .RegisterValueChangedCallback(e => SetCharlieMin(e.newValue));
-            charlieMaxSlider.RegisterValueChangedCallback(e => SetCharlieMax(e.newValue));
-            charlieMaxField .RegisterValueChangedCallback(e => SetCharlieMax(e.newValue));
-
-// --- 초기값을 한 번 정규화(데이터가 어긋나 있었을 수 있으니) ---
-            SetCharlieMin(_data.charlieMin, withUndo:false);
-            SetCharlieMax(_data.charlieMax, withUndo:false);
-            
-            // 조립
-            SpaceH(charlieMinRow, 6);
-            charlieMinRow.Add(charlieMinLbl);
-            SpaceH(charlieMinRow, 8);
-            charlieMinRow.Add(charlieMinField);
-            SpaceH(charlieMinRow, 8);
-            charlieMinRow.Add(charileMinSlider);
-            panel.Add(charlieMinRow);
-            SpaceV(panel, 6);
-            
-            SpaceH(charlieMaxRow, 6);
-            charlieMaxRow.Add(charlieMaxLbl);
-            SpaceH(charlieMaxRow, 8);
-            charlieMaxRow.Add(charlieMaxField);
-            SpaceH(charlieMaxRow, 8);
-            charlieMaxRow.Add(charlieMaxSlider);
-            panel.Add(charlieMaxRow);
-            SpaceV(panel, 6);
-        }
-
+        
         private void CreateAlphaRow(int textWidth, int textFontSize, int sliderLength, int floatWidth, VisualElement panel)
         {
             var alphaMinRow = Row();
-
+            
+            var alphaDescText = new Label("A : 타일 수 기준 가중치 , 저타일 블록 확률 조정");
+            alphaDescText.style.width = textWidth;
+            alphaDescText.style.fontSize = textFontSize;
+            //alphaDescText.style.unityFontStyleAndWeight = FontStyle.Bold;
+            
             var alphaMinLbl = new Label("A Min");
             alphaMinLbl.style.width = textWidth;
             alphaMinLbl.style.fontSize = textFontSize;
-            alphaMinLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
 
             var alphaMinSlider = new Slider(0f, 2f);
             alphaMinSlider.value = _data.alphaMin;
@@ -672,7 +631,6 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var alphaMaxLbl = new Label("A Max");
             alphaMaxLbl.style.width = textWidth;
             alphaMaxLbl.style.fontSize = textFontSize;
-            alphaMaxLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
 
             var alphaMaxSlider = new Slider(0f, 2f);
             alphaMaxSlider.value = _data.alphaMax;
@@ -748,7 +706,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             SetAlphaMax(_data.alphaMax, withUndo:false);
             
             // 조립
-            SpaceH(alphaMinRow, 6);
+            SpaceV(panel);
+            panel.Add(alphaDescText);
+            SpaceV(panel);
+            SpaceH(alphaMinRow);
             alphaMinRow.Add(alphaMinLbl);
             SpaceH(alphaMinRow, 8);
             alphaMinRow.Add(alphaMinField);
@@ -757,7 +718,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             panel.Add(alphaMinRow);
             SpaceV(panel, 6);
             
-            SpaceH(alphaMaxRow, 6);
+            SpaceH(alphaMaxRow);
             alphaMaxRow.Add(alphaMaxLbl);
             SpaceH(alphaMaxRow, 8);
             alphaMaxRow.Add(alphaMaxField);
@@ -766,6 +727,132 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             panel.Add(alphaMaxRow);
             SpaceV(panel, 6);
         }
+        
+        private void CreateCharlieRow(int textWidth, int textFontSize, int sliderLength, int floatWidth, VisualElement panel)
+        {
+            var charlieMinRow = Row();
+            
+            var charlieDescText = new Label("C : 블록 난이도 기준 가중치");
+            charlieDescText.style.width = textWidth;
+            charlieDescText.style.fontSize = textFontSize;
+            //charlieDescText.style.unityFontStyleAndWeight = FontStyle.Bold;
+            
+            var charlieMinLbl = new Label("C Min");
+            charlieMinLbl.style.width = textWidth;
+            charlieMinLbl.style.fontSize = textFontSize;
+
+            var charileMinSlider = new Slider(0f, 2f);
+            charileMinSlider.value = _data.charlieMin;
+            charileMinSlider.style.width = sliderLength;      
+            
+            var charlieMinField = new FloatField();
+            charlieMinField.value = _data.charlieMin;
+            charlieMinField.style.width = floatWidth;
+            charlieMinField.formatString = "0.00";    // 2자리 소수 표시
+            
+            var charlieMaxRow = Row();
+            
+            var charlieMaxLbl = new Label("C Max");
+            charlieMaxLbl.style.width = textWidth;
+            charlieMaxLbl.style.fontSize = textFontSize;
+
+            var charlieMaxSlider = new Slider(0f, 2f);
+            charlieMaxSlider.value = _data.charlieMax;
+            charlieMaxSlider.style.width = sliderLength;     
+
+            var charlieMaxField = new FloatField();
+            charlieMaxField.value = _data.charlieMax;
+            charlieMaxField.style.width = floatWidth;
+            charlieMaxField.formatString = "0.00";    // 2자리 소수 표시
+
+            bool charlieUpdating = false;          // 쌍방 이벤트 루프 방지
+
+            // --- 로컬 헬퍼: Min을 설정 ---
+            void SetCharlieMin(float v, bool withUndo = true)
+            {
+                if (charlieUpdating) return;
+                charlieUpdating = true;
+
+                float nv = Mathf.Clamp(v, 0f, 2f);
+                if (withUndo) Undo.RecordObject(_data, "Change Charlie Min");
+                _data.charlieMin = nv;
+
+                // min이 max를 넘어섰으면 max를 따라올림
+                if (_data.charlieMin > _data.charlieMax)
+                {
+                    _data.charlieMax = _data.charlieMin;
+                    charlieMaxSlider.SetValueWithoutNotify(_data.charlieMax);
+                    charlieMaxField.SetValueWithoutNotify(_data.charlieMax);
+                }
+
+                // 본인 UI 동기화
+                charileMinSlider.SetValueWithoutNotify(_data.charlieMin);
+                charlieMinField.SetValueWithoutNotify(_data.charlieMin);
+
+                EditorUtility.SetDirty(_data);
+                charlieUpdating = false;
+            }
+
+// --- 로컬 헬퍼: Max를 설정 ---
+            void SetCharlieMax(float v, bool withUndo = true)
+            {
+                if (charlieUpdating) return;
+                charlieUpdating = true;
+
+                float nv = Mathf.Clamp(v, 0f, 2f);
+                if (withUndo) Undo.RecordObject(_data, "Change Charlie Max");
+                _data.charlieMax = nv;
+
+                // max가 min보다 작아졌으면 min을 끌어내림
+                if (_data.charlieMax < _data.charlieMin)
+                {
+                    _data.charlieMin = _data.charlieMax;
+                    charileMinSlider.SetValueWithoutNotify(_data.charlieMin);
+                    charlieMinField.SetValueWithoutNotify(_data.charlieMin);
+                }
+
+                // 본인 UI 동기화
+                charlieMaxSlider.SetValueWithoutNotify(_data.charlieMax);
+                charlieMaxField.SetValueWithoutNotify(_data.charlieMax);
+
+                EditorUtility.SetDirty(_data);
+                charlieUpdating = false;
+            }
+
+// --- 콜백: 헬퍼만 호출 ---
+            charileMinSlider.RegisterValueChangedCallback(e => SetCharlieMin(e.newValue));
+            charlieMinField .RegisterValueChangedCallback(e => SetCharlieMin(e.newValue));
+            charlieMaxSlider.RegisterValueChangedCallback(e => SetCharlieMax(e.newValue));
+            charlieMaxField .RegisterValueChangedCallback(e => SetCharlieMax(e.newValue));
+
+// --- 초기값을 한 번 정규화(데이터가 어긋나 있었을 수 있으니) ---
+            SetCharlieMin(_data.charlieMin, withUndo:false);
+            SetCharlieMax(_data.charlieMax, withUndo:false);
+            
+            // 조립
+            SpaceV(panel);
+            panel.Add(charlieDescText);
+            SpaceV(panel);
+            SpaceH(charlieMinRow);
+            charlieMinRow.Add(charlieMinLbl);
+            SpaceH(charlieMinRow);
+            charlieMinRow.Add(charlieMinField);
+            SpaceH(charlieMinRow);
+            charlieMinRow.Add(charileMinSlider);
+            panel.Add(charlieMinRow);
+            SpaceV(panel);
+            
+            SpaceH(charlieMaxRow);
+            charlieMaxRow.Add(charlieMaxLbl);
+            SpaceH(charlieMaxRow);
+            charlieMaxRow.Add(charlieMaxField);
+            SpaceH(charlieMaxRow);
+            charlieMaxRow.Add(charlieMaxSlider);
+            panel.Add(charlieMaxRow);
+            SpaceV(panel);
+        }
+
+        
 
         private static void SetFruitTileVisual(Button tile, bool enabled)
         {
@@ -940,53 +1027,45 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
         private void BuildSpriteIndex()
         {
             _spriteToIndex = new Dictionary<Sprite, int>();
-            int baseCount = _data.blockImages?.Length ?? 0;
+            _codeToSprite  = new Dictionary<int, Sprite>();
 
-            // 1..baseCount : 일반 블록
-            if (_data.blockImages != null)
+            void AddAll(Sprite[] arr)
             {
-                for (int i = 0; i < _data.blockImages.Length; i++)
+                if (arr == null) return;
+                foreach (var s in arr)
                 {
-                    var s = _data.blockImages[i];
-                    if (s != null) _spriteToIndex[s] = i + 1;
+                    if (!s) continue;
+                    var m = s_CodeRegex.Match(s.name);
+                    if (!m.Success) { Debug.LogWarning($"[MapEditor] 선행 숫자 없음: {s.name}"); continue; }
+
+                    int code = int.Parse(m.Groups[1].Value);
+
+                    // sprite -> code
+                    _spriteToIndex[s] = code;
+
+                    // code -> sprite (중복 코드면 최초 것 유지)
+                    if (!_codeToSprite.ContainsKey(code))
+                        _codeToSprite.Add(code, s);
                 }
             }
 
-            // baseCount+1.. : 과일 블록
-            if (_data.blockWithFruitIcons != null)
-            {
-                for (int i = 0; i < _data.blockWithFruitIcons.Length; i++)
-                {
-                    var s = _data.blockWithFruitIcons[i];
-                    if (s != null) _spriteToIndex[s] = baseCount + i + 1;
-                }
-            }
+            AddAll(_data.blockImages);
+            AddAll(_data.blockWithFruitIcons);
+
+            // 기존 코드 방식 재생성 
+            MigrateLegacyLayout();
         }
 
         private int SpriteToIndex(Sprite s)
         {
             if (s == null) return 0;
-            return _spriteToIndex != null && _spriteToIndex.TryGetValue(s, out var idx) ? idx : 0;
+            return (_spriteToIndex != null && _spriteToIndex.TryGetValue(s, out var code)) ? code : 0;
         }
 
-        private Sprite IndexToSprite(int v)
+        private Sprite IndexToSprite(int code)
         {
-            if (v <= 0) return null;
-            int baseCount = _data.blockImages?.Length ?? 0;
-
-            if (v <= baseCount)
-            {
-                // 1..baseCount → blockImages
-                return _data.blockImages[v - 1];
-            }
-            else
-            {
-                // baseCount+1.. → blockWithFruitIcons
-                int j = v - baseCount - 1;
-                if (_data.blockWithFruitIcons != null && j >= 0 && j < _data.blockWithFruitIcons.Length)
-                    return _data.blockWithFruitIcons[j];
-                return null;
-            }
+            if (code <= 0) return null;
+            return (_codeToSprite != null && _codeToSprite.TryGetValue(code, out var s)) ? s : null;
         }
         
         private void SetBrushSprite(Sprite sprite, Button sourceBtn)
@@ -996,7 +1075,51 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             _selectedPaletteButton = sourceBtn;
             Highlight(_selectedPaletteButton, true);
         }
+        
+        private void MigrateLegacyLayout()
+        {
+            if (_data?.layout == null || _data.layout.Count == 0) return;
 
+            int baseCount  = _data.blockImages?.Length ?? 0;
+            int fruitCount = _data.blockWithFruitIcons?.Length ?? 0;
+            int maxLegacy  = baseCount + fruitCount;
+
+            bool looksLegacy = false;
+            foreach (var v in _data.layout)
+            {
+                if (v > 0 && v <= maxLegacy) { looksLegacy = true; break; }
+            }
+            if (!looksLegacy) return;
+
+            // legacy -> code
+            for (int i = 0; i < _data.layout.Count; i++)
+            {
+                int v = _data.layout[i];
+                if (v <= 0) continue;
+
+                Sprite s = null;
+                if (v <= baseCount)
+                {
+                    // 1..baseCount -> blockImages[v-1]
+                    s = _data.blockImages[v - 1];
+                }
+                else
+                {
+                    // baseCount+1.. -> blockWithFruitIcons[v - baseCount - 1]
+                    int j = v - baseCount - 1;
+                    if (_data.blockWithFruitIcons != null &&
+                        j >= 0 && j < _data.blockWithFruitIcons.Length)
+                        s = _data.blockWithFruitIcons[j];
+                }
+
+                int code = SpriteToIndex(s); // 이제 code는 101/201...
+                _data.layout[i] = code;
+            }
+
+            MapEditorFunctions.MarkDirty(_data, "Migrate legacy layout -> code");
+            Debug.Log("[MapEditor] 레거시 인덱스 레이아웃을 코드(파일명 앞 숫자)로 마이그레이션했습니다.");
+        }
+        
         private void Highlight(Button btn, bool on)
         {
             if (btn == null) return;
@@ -1041,19 +1164,27 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             r.style.flexWrap = Wrap.Wrap;
             return r;
         }
-        private static void SpaceV(VisualElement parent, float h) => parent.Add(new VisualElement { style = { height = h } });
-        private static void SpaceH(VisualElement parent, float w) => parent.Add(new VisualElement { style = { width = w } });
+        private static void SpaceV(VisualElement parent, float h = 6) => parent.Add(new VisualElement { style = { height = h } });
+        private static void SpaceH(VisualElement parent, float w = 8) => parent.Add(new VisualElement { style = { width = w } });
         private static void Pad(VisualElement ve, float all)
         {
             ve.style.paddingLeft = all; ve.style.paddingRight = all;
             ve.style.paddingTop = all;  ve.style.paddingBottom = all;
         }
-        private static void Border(VisualElement ve, Color c = default)
+        private static void Border(VisualElement ve ,Color c = default, float width = 1  )
         {
-            ve.style.borderLeftWidth = 1;  ve.style.borderLeftColor = c;
-            ve.style.borderRightWidth = 1; ve.style.borderRightColor = c;
-            ve.style.borderTopWidth = 1;   ve.style.borderTopColor = c;
-            ve.style.borderBottomWidth = 1;ve.style.borderBottomColor = c;
+            ve.style.borderLeftWidth = width;  ve.style.borderLeftColor = c;
+            ve.style.borderRightWidth = width; ve.style.borderRightColor = c;
+            ve.style.borderTopWidth = width;   ve.style.borderTopColor = c;
+            ve.style.borderBottomWidth = width;ve.style.borderBottomColor = c;
+        }
+
+        private static void Background(VisualElement ve, Color c = default)
+        {
+            ve.style.borderLeftColor = c;
+            ve.style.borderRightColor = c;
+            ve.style.borderTopColor = c;
+            ve.style.borderBottomColor = c;
         }
         private static void BorderThin(VisualElement ve, Color c) => Border(ve, c);
         

@@ -17,45 +17,10 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 5220fe1aa187f924391c355303df5432
   m_SerializeEntries:
-  - m_GUID: 129801e68d44bcd459e0943cbe97211a
-    m_Address: Assets/00.WorkSpace/SJH/LanguageTable_en.asset
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Locale-en
-    - Preload
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 2e89ffc7fda6418449ddc39818e0e309
-    m_Address: Assets/00.WorkSpace/SJH/LanguageTable_es.asset
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Locale-es
-    - Preload
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 43dadabec26add240a8bc8510d7d14f8
-    m_Address: Assets/00.WorkSpace/SJH/LanguageTable_zh.asset
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Locale-zh
-    - Preload
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 53887de5d41ced24297c411e996d556a
     m_Address: Assets/00.WorkSpace/SJH/Localization Settings.asset
     m_ReadOnly: 0
     m_SerializedLabels:
-    - Preload
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 5958172cf4883b74e9cdea572d02195b
-    m_Address: Assets/00.WorkSpace/SJH/LanguageTable_ja-JP.asset
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Locale-ja-JP
-    - Preload
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 6c1e09e2cb60de940ba7693267324ed2
-    m_Address: Assets/00.WorkSpace/SJH/LanguageTable_ko-KR.asset
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Locale-ko-KR
     - Preload
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0

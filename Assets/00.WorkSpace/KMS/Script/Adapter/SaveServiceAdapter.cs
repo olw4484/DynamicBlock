@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using _00.WorkSpace.GIL.Scripts.Messages;
 
 // ================================
 // Script  : SaveServiceAdapter.cs
@@ -79,7 +80,6 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
         _bus.Subscribe<AllClear>(e =>
         {
-            Game.Fx.PlayAllClear();
             Debug.Log("[SaveAdapter] ALL CLEAR!");
             //AllClearCount++;
         }, replaySticky: false);

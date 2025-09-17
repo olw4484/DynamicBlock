@@ -1,25 +1,40 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Shapes;
 using UnityEngine;
 
 [System.Serializable]
 public class GameData
 {
-    public int Version = 1;
+    public int Version = 2;
 
-    public int LanguageIndex; // 0 = ±âº»
+    public int LanguageIndex; // 0 = ï¿½âº»
 
-    // Å¬·¡½Ä ¸ğµå
-    public int highScore;        // ÃÖ°í Á¡¼ö
-    public int lastScore;        // ¸¶Áö¸· ÇÃ·¹ÀÌ Á¡¼ö
-    public int playCount;        // ÇÃ·¹ÀÌ È½¼ö
+    // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
+    public int highScore;        // ï¿½Ö°ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public int lastScore;        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public int playCount;        // ï¿½Ã·ï¿½ï¿½ï¿½ È½ï¿½ï¿½
 
-    // ¾îµåº¥Ã³ ¸ğµå
-    public int[] stageCleared;   // 0 = ¹ÌÅ¬¸®¾î, 1 = Å¬¸®¾î
-    public int[] stageScores;    // °¢ ½ºÅ×ÀÌÁö ÃÖ°í Á¡¼ö
-
-    public bool isTutorialPlayed; // Æ©Åä¸®¾óÀ» ½ÇÇàÇÏ¿´´Â°¡?
+    // ï¿½ï¿½åº¥Ã³ ï¿½ï¿½ï¿½
+    public int[] stageCleared;   // 0 = ï¿½ï¿½Å¬ï¿½ï¿½ï¿½ï¿½, 1 = Å¬ï¿½ï¿½ï¿½ï¿½
+    public int[] stageScores;    // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö°ï¿½ ï¿½ï¿½ï¿½ï¿½
     
+    // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    [Obsolete("Use gameMode instead")]
+    public bool isTutorialPlayed; // Æ©ï¿½ä¸®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ï¿½Â°ï¿½?
+    public GameMode gameMode;
+    // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
+    public bool isClassicModePlaying;       // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î°ï¿½?
+    [NonSerialized] public List<ShapeData> currentShapes;    // ëŸ°íƒ€ì„ ìºì‹œ
+    [NonSerialized] public List<Sprite> currentShapeSprites; // ëŸ°íƒ€ì„ ìºì‹œ
+    public List<int> currentBlockSlots;
+    public List<int> currentMapLayout;      // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public List<string> currentShapeNames; // ShapeData.name
+    public List<string> currentSpriteNames; // Sprite.name
+    public int currentScore;                // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public int currentCombo;                // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+
     public static GameData NewDefault(int stages = 200)
     {
         return new GameData
@@ -30,7 +45,18 @@ public class GameData
             playCount = 0,
             stageCleared = new int[stages],
             stageScores = new int[stages],
-            isTutorialPlayed = false
+            // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+            gameMode = GameMode.Tutorial,
+            // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
+            isClassicModePlaying = false,
+            currentShapes = new (),
+            currentShapeSprites = new (),
+            currentBlockSlots = new(),
+            currentMapLayout = new (),
+            currentShapeNames = new (),
+            currentSpriteNames = new (),
+            currentScore = 0,
+            currentCombo = 0
         };
     }
 }

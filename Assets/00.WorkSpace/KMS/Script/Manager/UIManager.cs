@@ -29,7 +29,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     [Header("HUD")]
     [SerializeField] private TMP_Text _scoreText;
-    [SerializeField] private TMP_Text _comboText;
     [SerializeField] private TMP_Text _hudBestText;
 
     [Header("GameOver Texts (All Canvases)")]
@@ -43,6 +42,14 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] CanvasGroup mainGroup;   // 메인 루트 그룹(강제 원복용)
     [SerializeField] Image dimOverlay;        // 모달 DIM
 
+    [Header("Combo UI")]
+    [SerializeField] private GameObject _rainbowIcon;   // GameCanvas
+    [SerializeField] private CanvasGroup _comboGroup;   // UICanvas (Combo 이미지+텍스트 묶음)
+    [SerializeField] private TMP_Text _comboText;       // Combo 숫자
+    [SerializeField] private float _comboHoldTime = 0.8f; // 유지시간
+    [SerializeField] private float _comboFadeTime = 0.2f; // 페이드아웃 시간
+
+    private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
 
@@ -137,7 +144,24 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _bus.Subscribe<ComboChanged>(e =>
         {
-            if (_comboText) _comboText.text = $"x{e.value}";
+            if (e.value <= 0)
+            {
+                if (_rainbowIcon) _rainbowIcon.SetActive(false);
+                if (_comboGroup) _comboGroup.gameObject.SetActive(false);
+                return;
+            }
+
+            if (_rainbowIcon && !_rainbowIcon.activeSelf)
+                _rainbowIcon.SetActive(true);
+
+            if (_comboGroup && !_comboGroup.gameObject.activeSelf)
+                _comboGroup.gameObject.SetActive(true);
+
+            if (_comboText)
+                _comboText.text = $"x{e.value}";
+
+            if (_comboFadeJob != null) StopCoroutine(_comboFadeJob);
+            _comboFadeJob = StartCoroutine(FadeOutCombo(_comboGroup, _comboHoldTime, _comboFadeTime));
         }, replaySticky: true);
 
         _bus.Subscribe<GameDataChanged>(e =>
@@ -145,32 +169,34 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _lastHighScore = e.data.highScore;
             if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
             // 필요 시 GO 화면의 Best도 최신으로 동기화
-            SetAll(_goBestTexts, $"Best : {FormatScore(_lastHighScore)}");
+            SetAll(_goBestTexts, $"{FormatScore(_lastHighScore)}");
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
         }, replaySticky: true);
 
         // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
-            SetAll(_goTotalTexts, $"TotalScore : {FormatScore(e.score)}");
+            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = Mathf.Max(e.score, _lastHighScore);
-            SetAll(_goBestTexts, $"Best : {FormatScore(best)}");
+            SetAll(_goBestTexts, $"{FormatScore(best)}");
             SetPanel("Revive", true);
-            Game.Audio.PlayContinueTimeCheck();
+            Game.Audio.PlayContinueTimeCheckSE();
         }, replaySticky: false);
 
         // 리바이브 패널 OFF
         _bus.Subscribe<RevivePerformed>(_ =>
         {
+            Game.Audio.StopContinueTimeCheckSE();
             SetPanel("Revive", false);
         }, replaySticky: false);
 
         // 리바이브 패널 OFF + 결과 패널 ON (신기록 여부에 따라 분기)
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
-            SetAll(_goTotalTexts, $"TotalScore : {FormatScore(e.score)}");
+            Game.Audio.StopContinueTimeCheckSE();
+            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = e.isNewBest ? e.score : _lastHighScore;
-            SetAll(_goBestTexts, $"Best : {FormatScore(best)}");
+            SetAll(_goBestTexts, $"{FormatScore(best)}");
 
             SetPanel("Revive", false);
             SetPanel("GameOver", !e.isNewBest);
@@ -180,6 +206,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 광고 성공 시 모달/패널 닫기
         _bus.Subscribe<ContinueGranted>(_ =>
         {
+            Game.Audio.StopContinueTimeCheckSE();
             SetPanel("Revive", false);
             SetPanel("GameOver", false);
             SetPanel("NewRecord", false);
@@ -189,6 +216,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
 
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
+
+        var svc = Game.Save as ISaveService;
+        var data = svc?.Data;
+        if (data != null)
+        {
+            _lastHighScore = data.highScore;
+            if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+            SetAll(_goBestTexts, $"{_lastHighScore:#,0}");
+            Debug.Log($"[UI] Seed Best from Save: {_lastHighScore}");
+        }
     }
 
     private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);
@@ -262,6 +299,28 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 여전히 0(또는 거의 0)이고 입력도 막혀 있으면 강제 정상화
         if (cg && cg.alpha <= 0.01f && !cg.interactable)
             StopFadeAndSnap(key, cg, true);
+    }
+
+    private IEnumerator FadeOutCombo(CanvasGroup cg, float hold, float fade)
+    {
+        // 즉시 보이게
+        cg.alpha = 1f;
+
+        // 일정 시간 유지
+        float t = 0f;
+        while (t < hold) { t += Time.unscaledDeltaTime; yield return null; }
+
+        // 페이드 아웃
+        float start = cg.alpha;
+        t = 0f;
+        while (t < fade)
+        {
+            t += Time.unscaledDeltaTime;
+            cg.alpha = Mathf.Lerp(start, 0f, t / fade);
+            yield return null;
+        }
+        cg.alpha = 0f;
+        cg.gameObject.SetActive(false);
     }
 
     public void CloseTopModal()
@@ -442,27 +501,37 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     private void OnGameResetRequest(GameResetRequest req)
     {
-        // 1) 보장: 시간 재개
+        // 1) 보장: 시간/오디오/모달 정리
         Time.timeScale = 1f;
-
-        // 잔여 모달/Dim 정리
+        Game.Audio.StopContinueTimeCheckSE();
+        Game.Audio.StopAllSe();
+        Game.Audio.ResumeAll();
         ForceCloseAllModals();
 
-        // 2) 엔진 리셋 이벤트
-        _bus.PublishImmediate(new GameResetting());
-        _bus.PublishImmediate(new ComboChanged(0));
-        _bus.PublishImmediate(new ScoreChanged(0));
+        bool toGame = (req.targetPanel == "Game");
+        string onKey = toGame ? "Game" : "Main";
+        string offKey = toGame ? "Main" : "Game";
+
+        // 2) 엔진 리셋 이벤트 (목적지에 따라)
+        if (!toGame)
+        {
+            // Main으로 나갈 때만 런 정리
+            _bus.PublishImmediate(new GameResetting());
+            _bus.PublishImmediate(new ComboChanged(0));
+            _bus.PublishImmediate(new ScoreChanged(0));
+        }
+        else
+        {
+            // Game으로 들어갈 때는 런 유지 (원하면 Heal 요청만)
+            // _bus.PublishImmediate(new HealBoardRequest(), alsoEnqueue:false);
+        }
 
         // 3) UI 전환(원자적)
-        string onKey = (req.targetPanel == "Game") ? "Game" : "Main";
-        string offKey = (onKey == "Game") ? "Main" : "Game";
-
         SetPanel("GameOver", false);
         SetPanel("NewRecord", false);
         SetPanel(offKey, false);
         SetPanel(onKey, true);
 
-        // 전환 사실을 이벤트로도 알림
         _bus.PublishImmediate(new PanelToggle(offKey, false));
         var onEvt = new PanelToggle(onKey, true);
         _bus.PublishSticky(onEvt, alsoEnqueue: false);
@@ -474,6 +543,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 4) 완료 알림
         _bus.PublishImmediate(new GameResetDone());
     }
+
 
     // 모든 모달 강제 종료 + DIM/메인 원복
     private void ForceCloseAllModals()

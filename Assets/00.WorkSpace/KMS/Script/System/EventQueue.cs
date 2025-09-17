@@ -1,4 +1,6 @@
-﻿using System;
+﻿using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Messages;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -226,18 +228,30 @@ public readonly struct GameDataChanged
     public readonly GameData data;
     public GameDataChanged(GameData d) { data = d; }
 }
-public readonly struct LinesCleared
-{
-    public readonly int rows, cols, total;
-    public LinesCleared(int rows, int cols) { this.rows = rows; this.cols = cols; this.total = rows + cols; }
-}
+
+
 public readonly struct GridReady { public readonly int rows, cols; public GridReady(int r, int c) { rows = r; cols = c; } }
 public readonly struct GameResetRequest
 {
-    public readonly string targetPanel; // "Game" or "Main" (필수)
-    public GameResetRequest(string targetPanel) { this.targetPanel = targetPanel; }
+    public readonly string targetPanel;
+    public readonly ResetReason reason;
+    public GameResetRequest(string target, ResetReason reason)
+    {
+        this.targetPanel = target; this.reason = reason;
+    }
 }
-public readonly struct GameResetting { }      // 리셋 시작(입력잠금/모달닫기 등)
+
+
+public enum ResetReason { ToMain, Restart, GameOver, ToGame, None }
+public readonly struct GameResetting
+{
+    public readonly string targetPanel;
+    public readonly ResetReason reason;
+    public GameResetting(string target, ResetReason reason)
+    {
+        this.targetPanel = target; this.reason = reason;
+    }
+}
 public readonly struct GameResetDone { }      // 리셋 완료(입력해제/패널 복구 등)
 public readonly struct SplashFinish { }        // 스플래시 종료 트리거
 public readonly struct AppSplashFinished { }
@@ -289,6 +303,85 @@ public readonly struct LanguageChangeRequested
     public readonly int index;
     public LanguageChangeRequested(int index) { this.index = index; }
 }
-public readonly struct AllClear { } // AllClear
+namespace _00.WorkSpace.GIL.Scripts.Messages
+{
+    public readonly struct LinesWillClear
+    {
+        public readonly int[] rows;
+        public readonly int[] cols;
+        public readonly Sprite destroySprite;
+        public int Total => (rows?.Length ?? 0) + (cols?.Length ?? 0);
+
+        public LinesWillClear(int[] rows, int[] cols, Sprite sprite)
+        {
+            this.rows = rows; this.cols = cols; this.destroySprite = sprite;
+        }
+    }
+
+    public readonly struct AllClear
+    {
+        public readonly int bonus;
+        public readonly int combo;
+        public readonly Vector3? fxWorld;
+        public AllClear(int bonus = 50, int combo = 0, Vector3? fxWorld = null)
+        {
+            this.bonus = bonus; this.combo = combo; this.fxWorld = fxWorld;
+        }
+    }
+
+    public readonly struct LinesCleared
+    {
+        public readonly int[] rows;
+        public readonly int[] cols;
+        public readonly int combo;
+        public readonly Sprite destroySprite;
+        public int Total => (rows?.Length ?? 0) + (cols?.Length ?? 0);
+
+        public LinesCleared(int[] rows, int[] cols, int combo, Sprite sprite)
+        {
+            this.rows = rows; this.cols = cols; this.combo = combo; this.destroySprite = sprite;
+        }
+    }
+}
+
+
 public readonly struct ReviveRequest { }              // 리바이브 버튼 클릭/보상 수령
 public readonly struct GiveUpRequest { }              // 포기 버튼/타임아웃
+
+public readonly struct GridCleared { public readonly int rows, cols; public GridCleared(int r,int c){rows=r;cols=c;} }
+
+public readonly struct GameEnterRequest
+{
+    public readonly GameMode mode;
+    public readonly MapManager.ClassicEnterPolicy policy;
+    public GameEnterRequest(GameMode mode, MapManager.ClassicEnterPolicy policy)
+    {
+        this.mode = mode;
+        this.policy = policy;
+    }
+}
+
+public readonly struct GameEnterIntent
+{
+    public readonly GameMode mode;
+    public readonly bool forceLoadSave; // Classic일 때 저장 강제 로드할지
+
+    public GameEnterIntent(GameMode mode, bool forceLoadSave)
+    {
+        this.mode = mode;
+        this.forceLoadSave = forceLoadSave;
+    }
+}
+public readonly struct BoardReady
+{
+    public readonly int rows, cols;
+    public BoardReady(int r, int c) { rows = r; cols = c; }
+}
+
+public readonly struct GameEntered
+{
+    public readonly GameMode mode;
+    public GameEntered(GameMode m) { mode = m; }
+}
+
+public readonly struct BlockCommitted { }

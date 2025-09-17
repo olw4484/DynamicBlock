@@ -67,7 +67,7 @@ public class AudioManager : MonoBehaviour
     [Header("BGM Clips")]
     public AudioClip BGM_Main;
     public AudioClip BGM_Adventure;
-
+    private AudioSource continueTickSrc;
     private AudioSource bgmSource;
     private List<AudioSource> sePool = new List<AudioSource>();
 
@@ -215,9 +215,14 @@ public class AudioManager : MonoBehaviour
     // 볼륨 적용
     private void ApplyVolume()
     {
-        if (bgmSource != null) bgmSource.volume = BGMVolume;
-        foreach (var src in sePool)
-            src.volume = SEVolume;
+        if (bgmSource) bgmSource.volume = BGMVolume;
+        foreach (var src in sePool) src.volume = SEVolume;
+
+        if (continueTickSrc)
+        {
+            continueTickSrc.volume = SEVolume;
+            continueTickSrc.mute = SEVolume <= 0f;
+        }
     }
     public void SetVibrateEnabled(bool on) 
     {
@@ -252,7 +257,32 @@ public class AudioManager : MonoBehaviour
     // Clear All Block SE
     public void PlayClearAllBlockSE() => PlaySE(SE_ClearAllBlock, vibrate: true);
     // Continue Time Check SE
-    public void PlayContinueTimeCheckSE() => PlaySE(SE_ContinueTimeCheck);
+    public void PlayContinueTimeCheckSE()
+    {
+        if (!SE_ContinueTimeCheck)
+        {
+            Debug.LogWarning("[Audio] SE_ContinueTimeCheck clip is null");
+            return;
+        }
+        var src = EnsureContinueTickSource();
+
+        // 이미 같은 클립이 재생 중이면 스킵
+        if (src.isPlaying && src.clip == SE_ContinueTimeCheck) return;
+
+        src.clip = SE_ContinueTimeCheck;
+        src.loop = true;
+        src.mute = SEVolume <= 0f;
+        src.Play();
+        Debug.Log("[Audio] ContinueTimeCheck start");
+    }
+    // Stop Time Check SE
+    public void StopContinueTimeCheckSE()
+    {
+        if (!continueTickSrc) return;
+        if (continueTickSrc.isPlaying) continueTickSrc.Stop();
+        continueTickSrc.clip = null;
+        Debug.Log("[Audio] ContinueTimeCheck stop");
+    }
     // Block Select SE
     public void PlayBlockSelectSE() => PlaySE(SE_BlockSelect);
     // Block Place SE
@@ -274,4 +304,38 @@ public class AudioManager : MonoBehaviour
     }
     public bool IsBgmOn => BGMVolume > 0.0001f;
     public bool IsSeOn => SEVolume > 0.0001f;
+    public void StopAllSe()
+    {
+        AudioListener.pause = false;
+        if (sePool != null) foreach (var s in sePool) if (s) s.Stop();
+        if (continueTickSrc) continueTickSrc.Stop();
+    }
+    public void PauseAll()
+    {
+        AudioListener.pause = true;
+        if (bgmSource) bgmSource.Pause();
+        if (sePool != null) foreach (var s in sePool) if (s) s.Pause();
+        if (continueTickSrc) continueTickSrc.Pause();
+    }
+    public void ResumeAll()
+    {
+        AudioListener.pause = false;
+        if (bgmSource) bgmSource.UnPause();
+        if (sePool != null) foreach (var s in sePool) if (s) s.UnPause();
+        if (continueTickSrc) continueTickSrc.UnPause();
+    }
+    private AudioSource EnsureContinueTickSource()
+    {
+        if (!continueTickSrc)
+        {
+            continueTickSrc = gameObject.AddComponent<AudioSource>();
+            continueTickSrc.loop = true;
+            continueTickSrc.playOnAwake = false;
+            continueTickSrc.spatialBlend = 0f;
+        }
+        // 볼륨/뮤트는 현재 SE 설정에 추종
+        continueTickSrc.volume = SEVolume;
+        continueTickSrc.mute = SEVolume <= 0f;
+        return continueTickSrc;
+    }
 }

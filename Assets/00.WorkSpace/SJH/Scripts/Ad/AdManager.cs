@@ -25,6 +25,7 @@ public class AdManager : MonoBehaviour, IAdService
     public DateTime NextRewardTime = DateTime.MaxValue;
     public DateTime NextInterstitialTime = DateTime.MinValue;
 
+    private bool _adsReady = false;
     bool _rewardLocked;
     Coroutine _btnUpdateLoop;
 
@@ -56,7 +57,17 @@ public class AdManager : MonoBehaviour, IAdService
             }
             Debug.Log("[Ads] MobileAds.Initialize success");
 
-            // 컨트롤러 생성 및 초기화(=로드)
+            _adsReady = true;
+        });
+    }
+
+    void Update()
+    {
+        if (_adsReady)
+        {
+            _adsReady = false;
+
+            // 이제 메인 쓰레드에서 안전하게 실행
             Interstitial = new InterstitialAdController(); Interstitial.Init();
             Banner = new BannerAdController(); Banner.Init();
             Reward = new RewardAdController(); Reward.Init();
@@ -65,8 +76,9 @@ public class AdManager : MonoBehaviour, IAdService
 
             if (_btnUpdateLoop == null)
                 _btnUpdateLoop = StartCoroutine(Co_UpdateRewardButton());
-        });
+        }
     }
+
 
     void OnEnable() { Game.BindAds(this); }
     void OnDisable() { Game.UnbindAds(this); }
