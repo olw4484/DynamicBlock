@@ -48,6 +48,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] private TMP_Text _comboText;       // Combo 숫자
     [SerializeField] private float _comboHoldTime = 0.8f; // 유지시간
     [SerializeField] private float _comboFadeTime = 0.2f; // 페이드아웃 시간
+    [SerializeField] private int _comboVisibleThreshold = 2;
 
     private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
@@ -144,24 +145,15 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _bus.Subscribe<ComboChanged>(e =>
         {
-            if (e.value <= 0)
+            if (e.value < _comboVisibleThreshold)
             {
-                if (_rainbowIcon) _rainbowIcon.SetActive(false);
-                if (_comboGroup) _comboGroup.gameObject.SetActive(false);
+                HideComboImmediate();
                 return;
             }
 
-            if (_rainbowIcon && !_rainbowIcon.activeSelf)
-                _rainbowIcon.SetActive(true);
-
-            if (_comboGroup && !_comboGroup.gameObject.activeSelf)
-                _comboGroup.gameObject.SetActive(true);
-
-            if (_comboText)
-                _comboText.text = $"x{e.value}";
-
-            if (_comboFadeJob != null) StopCoroutine(_comboFadeJob);
-            _comboFadeJob = StartCoroutine(FadeOutCombo(_comboGroup, _comboHoldTime, _comboFadeTime));
+            // 2 이상부터 표시
+            if (_comboText) _comboText.SetText($"x{e.value}");
+            ShowComboStartHold();
         }, replaySticky: true);
 
         _bus.Subscribe<GameDataChanged>(e =>
@@ -590,9 +582,9 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         var rootCg = root.GetComponent<CanvasGroup>();
         foreach (var g in groups)
         {
-            if (!g || g == rootCg) continue;                          // 루트 제외
-            if (dimOverlay && g.gameObject == dimOverlay.gameObject) continue; // DIM 제외
-            g.alpha = 1f;   // 시각만 1로 정규화 (입력은 루트에서 관리)
+            if (!g || g == rootCg) continue;
+            if (dimOverlay && g.gameObject == dimOverlay.gameObject) continue;
+            g.alpha = 1f;
         }
     }
 
@@ -602,6 +594,28 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return false;
         root = p.root;
         return true;
+    }
+
+    void HideComboImmediate()
+    {
+        if (_comboFadeJob != null) { StopCoroutine(_comboFadeJob); _comboFadeJob = null; }
+        if (_rainbowIcon) _rainbowIcon.SetActive(false);
+        if (_comboGroup)
+        {
+            _comboGroup.alpha = 0f;
+            _comboGroup.gameObject.SetActive(false);
+            _comboGroup.blocksRaycasts = false;
+            _comboGroup.interactable = false;
+        }
+    }
+
+    void ShowComboStartHold()
+    {
+        if (_rainbowIcon && !_rainbowIcon.activeSelf) _rainbowIcon.SetActive(true);
+        if (_comboGroup && !_comboGroup.gameObject.activeSelf) _comboGroup.gameObject.SetActive(true);
+        if (_comboGroup) _comboGroup.alpha = 1f;
+        if (_comboFadeJob != null) StopCoroutine(_comboFadeJob);
+        if (_comboGroup) _comboFadeJob = StartCoroutine(FadeOutCombo(_comboGroup, _comboHoldTime, _comboFadeTime));
     }
 }
 

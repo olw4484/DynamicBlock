@@ -8,7 +8,6 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEditor.Localization.LocalizationTableCollection;
 using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
