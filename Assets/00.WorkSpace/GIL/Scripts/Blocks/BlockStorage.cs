@@ -5,6 +5,7 @@ using _00.WorkSpace.GIL.Scripts.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
@@ -62,6 +63,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         string _lastReason;
         bool _paused;
         private bool _initialized;
+        bool _handRestoredTried = false;
 
         #endregion
 
@@ -707,8 +709,13 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             if (HasAnyHand()) { Debug.Log("[Hand] Already has hand, skip refill"); return; }
 
-            Debug.Log("[Hand] GameEntered(Classic) -> RefillHand");
+            var gm = GridManager.Instance;
+            var gd = MapManager.Instance?.saveManager?.gameData;
+            bool hasSavable = gd != null && gd.isClassicModePlaying &&
+                              gd.currentMapLayout != null && gd.currentMapLayout.Any(v => v > 0);
+            Debug.Log($"[HAND] OnGameEntered → RefillHand: gm.HasAnyOccupied()={gm.HasAnyOccupied()}, hasSavable={hasSavable}");
             RefillHand();
+
         }
         bool HasAnyHand()
         {
@@ -718,38 +725,27 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             return _currentBlocks.Count > 0;
         }
 
-        void RefillHand()
+        public void RefillHand()
         {
-            if (_paused)
+            if (!_handRestoredTried)
             {
-                Debug.LogWarning("[Hand] Refill requested while paused → forcing unpause for safety");
-                _paused = false;
-            }
+                _handRestoredTried = true;
+                var save = MapManager.Instance?.saveManager;
 
-            if (HasAnyHand())
-            {
-                Debug.Log("[Hand] Already has hand. Skip refill.");
-                return;
-            }
-
-            if (blockPrefab == null || shapesPanel == null || blockSpawnPosList == null || blockSpawnPosList.Count == 0)
-            {
-                Debug.LogError("[Hand] Missing deps: blockPrefab/shapesPanel/slots");
-                return;
-            }
-
-            // 보드 준비 보장
-            var gm = GridManager.Instance;
-            if (MapManager.Instance != null && gm != null && !gm.HasAnyOccupied())
-            {
-                Debug.Log("[Hand] Board empty → StartNewClassicMap()");
-                MapManager.Instance.StartNewClassicMap();
+                int nameCnt = save?.Data?.currentShapeNames?.Count ?? 0;
+                if (save != null && save.HasRunSnapshot() && nameCnt > 0)
+                {
+                    Debug.Log($"[Hand] Try restore before generate. names={nameCnt}");
+                    if (save.TryRestoreBlocksToStorage(this))
+                    {
+                        Debug.Log("[Hand] Restored from save -> skip generation");
+                        return;
+                    }
+                }
             }
 
             Debug.Log("[Hand] Refill → GenerateAllBlocks()");
             GenerateAllBlocks();
-
-            _handSpawnedOnce = true; // GridReady 경로 중복 생성 방지
         }
     }
 }

@@ -109,6 +109,24 @@ namespace _00.WorkSpace.GIL.Scripts
                 return (i >= 0 && i < BlockSprites.Length) ? BlockSprites[i] : null;
             return null;
         }
+        public Sprite GetBlockSpriteByIndex(int idx)
+        {
+            return (idx >= 0 && idx < BlockSprites.Length) ? BlockSprites[idx] : null;
+        }
+        public int GetLayoutCodeForSprite(Sprite s)
+        {
+            if (!s) return 0;
+            if (_blockNameToIndex != null && _blockNameToIndex.TryGetValue(s.name, out var idx))
+                return idx + 1;
+            return 0;
+        }
+        public Sprite GetBlockSpriteByLayoutCode(int code)
+        {
+            if (code <= 0) return null;
+            int idx = code - 1;
+            var arr = BlockSprites;
+            return (arr != null && idx >= 0 && idx < arr.Length) ? arr[idx] : null;
+        }
     }
 
     public static class GDS

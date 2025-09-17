@@ -64,11 +64,11 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
             if (targetPanel == "Game")
             {
-                // 🔸 1) UI 리셋/전환을 먼저 요청
+                // 1) UI 리셋/전환을 먼저 요청
                 var reason = ResetReason.ToGame;
                 bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
 
-                // 🔸 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
+                // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
                 StartCoroutine(EnterGameNextFrame());
             }
             else if (targetPanel == "Main")
@@ -76,7 +76,7 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 // 이어하기를 원하면 Inspector에서 clearRunStateOnClick = false 유지!
                 if (!clearRunStateOnClick)
                 {
-                    MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true);
+                    MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true, src: SaveManager.SnapshotSource.Manual);
                 }
                 else
                 {
@@ -121,17 +121,13 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
     private IEnumerator EnterGameNextFrame()
     {
-        // UI 토글/리셋 구독자들이 모두 처리할 시간을 한 프레임 줌
         yield return null;
 
         var map = MapManager.Instance;
-        if (!map)
-        {
-            Debug.LogError("[Home] MapManager missing on EnterGameNextFrame");
-            yield break;
-        }
+        if (!map) { Debug.LogError("[Home] MapManager missing on EnterGameNextFrame"); yield break; }
 
-        // 모드 세팅
+        var bus = Game.Bus;
+
         if (enterMode == GameMode.Tutorial)
         {
             map.SetGameMode(GameMode.Tutorial);
@@ -142,9 +138,10 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         {
             map.SetGameMode(GameMode.Classic);
             map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
-            Debug.Log("[Home] Classic enter ForceLoadSave (after reset)");
+            Debug.Log("[BTN] EnterGameNextFrame: mode=Classic policy=ForceLoadSave");
         }
     }
+
     void PlayInvokeSfx()
     {
         switch (sfxMode)

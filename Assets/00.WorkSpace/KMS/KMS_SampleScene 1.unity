@@ -19938,8 +19938,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1207662056}
-  - component: {fileID: 1207662055}
-  - component: {fileID: 1207662057}
   m_Layer: 0
   m_Name: LanguageChanger
   m_TagString: Untagged
@@ -19947,21 +19945,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1207662055
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1207662054}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c2a87af47208397479a660486993c5f4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _languageDropDown:
-  - {fileID: 6315381351417433508}
-  - {fileID: 1832924987}
 --- !u!4 &1207662056
 Transform:
   m_ObjectHideFlags: 0
@@ -19977,20 +19960,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1207662057
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1207662054}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66455e440553c8245b2a69b401e84adb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  GameData:
-    LanguageIndex: 0
 --- !u!1 &1216064279
 GameObject:
   m_ObjectHideFlags: 0
@@ -29676,17 +29645,6 @@ MonoBehaviour:
   IsOccupied: 0
   state: 0
   _blockSpriteIndex: 0
---- !u!114 &1832924987 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8123601376786657285, guid: 9017ab5e14a7c494cba305b17d0de33d, type: 3}
-  m_PrefabInstance: {fileID: 4664862107620371966}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7b743370ac3e4ec2a1668f5455a8ef8a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!224 &1832924988 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 7167094209447490337, guid: 9017ab5e14a7c494cba305b17d0de33d, type: 3}

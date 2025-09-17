@@ -383,3 +383,5 @@ public readonly struct GameEntered
     public readonly GameMode mode;
     public GameEntered(GameMode m) { mode = m; }
 }
+
+public readonly struct BlockCommitted { }

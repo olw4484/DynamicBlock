@@ -216,6 +216,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
 
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
+
+        var svc = Game.Save as ISaveService;
+        var data = svc?.Data;
+        if (data != null)
+        {
+            _lastHighScore = data.highScore;
+            if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+            SetAll(_goBestTexts, $"{_lastHighScore:#,0}");
+            Debug.Log($"[UI] Seed Best from Save: {_lastHighScore}");
+        }
     }
 
     private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);

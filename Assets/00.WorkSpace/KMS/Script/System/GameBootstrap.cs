@@ -45,18 +45,15 @@ public class GameBootstrap : MonoBehaviour
         var ui = EnsureInScene<UIManager>("UIManager");
         var input = EnsureInScene<InputManager>("InputManager");
 
-        // 레거시 세이브 매니저 확보(없으면 생성)
-        var legacySave = FindFirstObjectByType<SaveManager>()
-                      ?? new GameObject("SaveManager").AddComponent<SaveManager>();
-        DontDestroyOnLoad(legacySave.gameObject);
+        var save = FindFirstObjectByType<SaveManager>()
+        ?? new GameObject("SaveManager").AddComponent<SaveManager>();
+        DontDestroyOnLoad(save.gameObject);
+
+        save.SetDependencies(bus);
 
         // 브리지 보장 및 생성
         var clearResponder = EnsureInScene<ClearEventResponder>("ClearEventResponder");
         clearResponder.SetDependencies(bus);
-
-        // 어댑터(매니저로 등록)
-        var saveAdapter = new SaveServiceAdapter();              // 40
-        saveAdapter.SetDependencies(bus, legacySave);
 
         // spawnerManager
         var spawner = EnsureInScene<BlockSpawnManager>("BlockSpawnManager");
@@ -75,8 +72,8 @@ public class GameBootstrap : MonoBehaviour
         group.Register(scene);
         group.Register(bgm);
         group.Register(input);
-        group.Register(saveAdapter);
         group.Register(audio);
+        group.Register(save);
         group.Register(ui);
         group.Register(clearResponder);
 

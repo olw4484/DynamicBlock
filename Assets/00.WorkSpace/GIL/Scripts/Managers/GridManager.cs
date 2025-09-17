@@ -1,10 +1,12 @@
 using _00.WorkSpace.GIL.Scripts.Grids;
+using _00.WorkSpace.GIL.Scripts.Messages;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
-using _00.WorkSpace.GIL.Scripts.Messages;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -179,7 +181,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             Debug.Log(sb.ToString());
         }
-        
+
         public void PrintGridSpriteIndexInfo()
         {
             StringBuilder sb = new StringBuilder();
@@ -197,19 +199,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             Debug.Log(sb.ToString());
         }
-        
+
         public bool[,] SnapshotOccupied()
         {
             var occ = new bool[rows, cols];
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                occ[r, c] = gridSquares[r, c] != null && gridSquares[r, c].IsOccupied;
+                for (int c = 0; c < cols; c++)
+                    occ[r, c] = gridSquares[r, c] != null && gridSquares[r, c].IsOccupied;
             return occ;
         }
 
         public bool IsOccupiedAt(int r, int c)
             => gridSquares[r, c] != null && gridSquares[r, c].IsOccupied;
-        
+
 
         public bool CanPlaceShape(List<Transform> shapeBlocks)
         {
@@ -232,7 +234,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private void CheckForCompletedLines(int blockUnits)
         {
-            if (gridSquares == null ) return;
+            if (gridSquares == null) return;
 
             List<int> completedCols = new();
             List<int> completedRows = new();
@@ -296,7 +298,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 // 라인클리어 없음 => 점수만 반영
                 ScoreManager.Instance.ApplyMoveScore(blockUnits, 0);
             }
-            
+
             _lineCount = 0;
         }
 
@@ -326,14 +328,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void ResetRuntime()
         {
             if (gridSquares == null) return;
-            
+
             Debug.Log("[GridManager] Reset Runtime");
-            
+
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-            {
-                gridSquares[r, c]?.SetOccupied(false);
-            }
+                for (int c = 0; c < cols; c++)
+                {
+                    gridSquares[r, c]?.SetOccupied(false);
+                }
 
             _bus.PublishImmediate(new ComboChanged(0));
             _bus.PublishImmediate(new ScoreChanged(0));
@@ -439,35 +441,35 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Game.Fx.PlayColPerimeter(c, sprite);
             }
         }
-        
+
         public List<int> ExportLayoutCodes()
         {
             var list = new List<int>(rows * cols);
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-            {
-                var cell = gridSquares[r, c];
-                int code = (cell != null && cell.IsOccupied) ? cell.BlockSpriteIndex : 0;
-                list.Add(code);
-            }
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = gridSquares[r, c];
+                    int code = (cell != null && cell.IsOccupied) ? cell.BlockSpriteIndex : 0;
+                    list.Add(code);
+                }
             return list;
         }
 
         public void ValidateGridConsistency()
         {
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-            {
-                var cell = gridSquares[r, c];
-                if (cell == null) continue;
-                bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
-                bool occupiedBySquare = cell.IsOccupied;
-                if (occupiedByIndex != occupiedBySquare)
+                for (int c = 0; c < cols; c++)
                 {
-                    Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | spriteIndex={cell.BlockSpriteIndex} vs square.IsOccupied={occupiedBySquare} | cellState={cell.state}");
-                    Debug.Assert(false, "Grid invariant broken: spriteIndex vs IsOccupied mismatch");
+                    var cell = gridSquares[r, c];
+                    if (cell == null) continue;
+                    bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
+                    bool occupiedBySquare = cell.IsOccupied;
+                    if (occupiedByIndex != occupiedBySquare)
+                    {
+                        Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | spriteIndex={cell.BlockSpriteIndex} vs square.IsOccupied={occupiedBySquare} | cellState={cell.state}");
+                        Debug.Assert(false, "Grid invariant broken: spriteIndex vs IsOccupied mismatch");
+                    }
                 }
-            }
         }
         /// <summary>
         /// 보드 전체 정보를 0으로 초기화
@@ -476,24 +478,24 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (gridSquares == null) return;
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-            {
-                var cell = gridSquares[r, c];
-                if (!cell) continue;
-                cell.SetImage(null, changeIndex: true);               // index=0
-                cell.SetFruitImage(false, null, changeIndex: false);  // 과일 오버레이 off
-                cell.SetOccupied(false);                               // Normal
-            }
-            
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = gridSquares[r, c];
+                    if (!cell) continue;
+                    cell.SetImage(null, changeIndex: true);               // index=0
+                    cell.SetFruitImage(false, null, changeIndex: false);  // 과일 오버레이 off
+                    cell.SetOccupied(false);                               // Normal
+                }
+
             Debug.Log("[Grid] Cleared (no GridReady here)");
             _bus?.PublishImmediate(new GridCleared(rows, cols)); // 새 이벤트
         }
-        
+
         public bool HasAnyOccupied()
         {
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                if (IsOccupiedAt(r, c)) return true;
+                for (int c = 0; c < cols; c++)
+                    if (IsOccupiedAt(r, c)) return true;
             return false;
         }
 
@@ -501,18 +503,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (gridSquares == null) return;
             for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-            {
-                var cell = gridSquares[r, c];
-                if (!cell) continue;
-
-                if (!cell.IsOccupied)
+                for (int c = 0; c < cols; c++)
                 {
-                    cell.SetImage(null, changeIndex: true);              // index=0
-                    cell.SetFruitImage(false, null, changeIndex: false);
-                    cell.SetOccupied(false);
+                    var cell = gridSquares[r, c];
+                    if (!cell) continue;
+
+                    if (!cell.IsOccupied)
+                    {
+                        cell.SetImage(null, changeIndex: true);              // index=0
+                        cell.SetFruitImage(false, null, changeIndex: false);
+                        cell.SetOccupied(false);
+                    }
                 }
-            }
         }
 
         public void SetCellOccupied(int r, int c, bool occupied, Sprite sprite = null)
@@ -539,6 +541,94 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             var min = gridSquares[0, 0].transform.position;
             var max = gridSquares[rows - 1, cols - 1].transform.position;
             return (min + max) * 0.5f;
+        }
+        public bool ImportLayoutCodes(IReadOnlyList<int> codes, bool repaint = true, bool doValidate = true)
+        {
+            if (codes == null || gridSquares == null || rows <= 0 || cols <= 0)
+            {
+                Debug.Log($"[IMP] Begin: rows={rows}, cols={cols}, codes={codes?.Count}");
+                return false;
+            }
+
+            int cellCount = rows * cols;
+            if (gridImageList == null) gridImageList = new List<int>(cellCount);
+            gridImageList.Clear();
+
+            int idx = 0;
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++, idx++)
+                {
+                    int saved = (idx < codes.Count) ? codes[idx] : 0;
+
+                    if (saved <= 0)
+                    {
+                        SetCellOccupied(r, c, false, null);
+                        gridImageList.Add(0);
+                        continue;
+                    }
+
+                    Sprite sprite = GDS.I.GetBlockSpriteByLayoutCode(saved);
+                    int layoutCode = saved;
+
+                    if (!sprite) { sprite = GDS.I.GetBlockSpriteByIndex(saved); if (sprite) layoutCode = GDS.I.GetLayoutCodeForSprite(sprite); }
+                    if (!sprite && saved > 0) { sprite = GDS.I.GetBlockSpriteByIndex(saved - 1); if (sprite) layoutCode = GDS.I.GetLayoutCodeForSprite(sprite); }
+
+                    if (sprite)
+                    {
+                        SetCellOccupied(r, c, true, sprite);
+                        gridImageList.Add(layoutCode);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[Grid] Import: sprite not found for saved code={saved} (r={r}, c={c})");
+                        SetCellOccupied(r, c, false, null);
+                        gridImageList.Add(0);
+                    }
+                }
+            }
+
+            if (doValidate) ValidateGridConsistency();
+            Debug.Log($"[Grid] ImportLayoutCodes applied. count={cellCount}");
+
+            return true;
+        }
+        private Sprite ResolveBlockSpriteByIndex(int index)
+        {
+            try
+            {
+                return GDS.I != null ? GDS.I.GetBlockSpriteByIndex(index) : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        public void ImportLayoutIndices(List<int> indices)
+        {
+            if (indices == null || gridSquares == null) return;
+            int rows = this.rows, cols = this.cols;
+            int expected = rows * cols;
+
+            // 길이 보정
+            if (indices.Count != expected)
+            {
+                if (indices.Count < expected) indices.AddRange(Enumerable.Repeat(0, expected - indices.Count));
+                else indices = indices.Take(expected).ToList();
+            }
+
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                {
+                    int idx = indices[r * cols + c];
+                    if (idx <= 0) { SetCellOccupied(r, c, false); continue; }
+
+                    var sprite = GDS.I?.GetBlockSpriteByIndex(idx);
+                    if (sprite) SetCellOccupied(r, c, true, sprite);
+                    else SetCellOccupied(r, c, false);
+                }
+
+            ValidateGridConsistency();
         }
     }
 }
