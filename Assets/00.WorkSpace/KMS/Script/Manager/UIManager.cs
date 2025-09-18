@@ -51,6 +51,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] private int _comboVisibleThreshold = 2;
     [SerializeField] private int[] _comboTierStarts = new int[] { 0, 2, 3, 5, 8 };
 
+    [Header("Revive Settings")]
+    [SerializeField] private float _reviveDelaySec = 1.0f;
+    private Coroutine _reviveDelayJob;
+
     private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
@@ -173,16 +177,14 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
-            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
-            int best = Mathf.Max(e.score, _lastHighScore);
-            SetAll(_goBestTexts, $"{FormatScore(best)}");
-            SetPanel("Revive", true);
-            Game.Audio.PlayContinueTimeCheckSE();
+            CancelReviveDelay();
+            _reviveDelayJob = StartCoroutine(OpenReviveAfterDelay(e.score));
         }, replaySticky: false);
 
         // 리바이브 패널 OFF
         _bus.Subscribe<RevivePerformed>(_ =>
         {
+            CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
             SetPanel("Revive", false);
         }, replaySticky: false);
@@ -190,6 +192,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 리바이브 패널 OFF + 결과 패널 ON (신기록 여부에 따라 분기)
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
+            CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
             SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = e.isNewBest ? e.score : _lastHighScore;
@@ -203,6 +206,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 광고 성공 시 모달/패널 닫기
         _bus.Subscribe<ContinueGranted>(_ =>
         {
+            CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
             SetPanel("Revive", false);
             SetPanel("GameOver", false);
@@ -498,6 +502,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     private void OnGameResetRequest(GameResetRequest req)
     {
+        CancelReviveDelay();
+
         // 1) 보장: 시간/오디오/모달 정리
         Time.timeScale = 1f;
         Game.Audio.StopContinueTimeCheckSE();
@@ -638,6 +644,28 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             float scale = tier switch { 1 => 1.00f, 2 => 1.05f, 3 => 1.10f, 4 => 1.15f, _ => 1f };
             _comboGroup.transform.localScale = Vector3.one * scale;
         }
+    }
+    private void CancelReviveDelay()
+    {
+        if (_reviveDelayJob != null)
+        {
+            StopCoroutine(_reviveDelayJob);
+            _reviveDelayJob = null;
+        }
+    }
+
+    private IEnumerator OpenReviveAfterDelay(int score)
+    {
+        float delay = Mathf.Max(0f, _reviveDelaySec);
+        if (delay > 0f) yield return new WaitForSecondsRealtime(delay);
+
+        SetAll(_goTotalTexts, $"{FormatScore(score)}");
+        int best = Mathf.Max(score, _lastHighScore);
+        SetAll(_goBestTexts, $"{FormatScore(best)}");
+
+        SetPanel("Revive", true);
+        Game.Audio.PlayContinueTimeCheckSE();
+        _reviveDelayJob = null;
     }
 }
 
