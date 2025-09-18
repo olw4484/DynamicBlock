@@ -242,6 +242,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             if (_gameOverFired) { Debug.Log("[Downed] blocked by guard"); return; }
 
+            // 1회 부활 제한 체크
             if (oneRevivePerRun && _reviveUsed)
             {
                 ConfirmGameOverImmediate(reason);
@@ -254,8 +255,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                        : (Game.GM != null ? Game.GM.Score : 0);
             _lastReason = reason;
 
+            // Revive 열지 말고 이벤트만 발행 => UIManager가 1초 후 오픈
             Game.Bus.PublishImmediate(new PlayerDowned(_lastScore, _lastReason));
-            StartCoroutine(Co_PauseAndOpenRevive());
+
+            // 전면광고 큐잉은 유지하되, 실제 표시는 ReviveScreen에서
+            TryQueueInterstitialAfterGameOver();
         }
         void TryQueueInterstitialAfterGameOver()
         {
