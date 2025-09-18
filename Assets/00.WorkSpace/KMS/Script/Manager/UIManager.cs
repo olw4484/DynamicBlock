@@ -49,6 +49,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] private float _comboHoldTime = 0.8f; // 유지시간
     [SerializeField] private float _comboFadeTime = 0.2f; // 페이드아웃 시간
     [SerializeField] private int _comboVisibleThreshold = 2;
+    [SerializeField] private int[] _comboTierStarts = new int[] { 0, 2, 3, 5, 8 };
 
     private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
@@ -145,14 +146,18 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _bus.Subscribe<ComboChanged>(e =>
         {
-            if (e.value < _comboVisibleThreshold)
+            int tier = MapToTier(e.value);
+
+            if (tier <= 0)
             {
                 HideComboImmediate();
                 return;
             }
 
-            // 2 이상부터 표시
-            if (_comboText) _comboText.SetText($"x{e.value}");
+            if (_comboText) _comboText.SetText($"x{e.value - 1}");
+
+            ApplyComboTierVisuals(tier);
+
             ShowComboStartHold();
         }, replaySticky: true);
 
@@ -616,6 +621,23 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (_comboGroup) _comboGroup.alpha = 1f;
         if (_comboFadeJob != null) StopCoroutine(_comboFadeJob);
         if (_comboGroup) _comboFadeJob = StartCoroutine(FadeOutCombo(_comboGroup, _comboHoldTime, _comboFadeTime));
+    }
+    private int MapToTier(int actual)
+    {
+        if (_comboTierStarts == null || _comboTierStarts.Length == 0) return 0;
+        int tier = 0;
+        // 1~4 티어만 검사
+        for (int i = 1; i < _comboTierStarts.Length && i < 5; i++)
+            if (actual >= _comboTierStarts[i]) tier = i;
+        return Mathf.Clamp(tier, 0, 4);
+    }
+    private void ApplyComboTierVisuals(int tier)
+    {
+        if (_comboGroup)
+        {
+            float scale = tier switch { 1 => 1.00f, 2 => 1.05f, 3 => 1.10f, 4 => 1.15f, _ => 1f };
+            _comboGroup.transform.localScale = Vector3.one * scale;
+        }
     }
 }
 
