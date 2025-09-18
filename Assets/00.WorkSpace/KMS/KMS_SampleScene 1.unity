@@ -35626,7 +35626,6 @@ GameObject:
   - component: {fileID: 6618150239657876562}
   - component: {fileID: 1325283634822383375}
   - component: {fileID: 5925930506095085521}
-  - component: {fileID: 8006345388331791673}
   m_Layer: 5
   m_Name: MainOptionsModal
   m_TagString: Untagged
@@ -68621,22 +68620,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
---- !u!114 &8006345388331791673
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4019211927732308260}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2e6985532c0cc7b44a30142a9eba29e1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  hitAreaName: Handle Slide Area
-  snapToSteps: 1
-  steps: 2
-  clickCyclesSteps: 1
 --- !u!114 &8006620055852620860
 MonoBehaviour:
   m_ObjectHideFlags: 0
