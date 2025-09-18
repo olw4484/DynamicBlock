@@ -48,6 +48,12 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] private TMP_Text _comboText;       // Combo 숫자
     [SerializeField] private float _comboHoldTime = 0.8f; // 유지시간
     [SerializeField] private float _comboFadeTime = 0.2f; // 페이드아웃 시간
+    [SerializeField] private int _comboVisibleThreshold = 2;
+    [SerializeField] private int[] _comboTierStarts = new int[] { 0, 2, 3, 5, 8 };
+
+    [Header("Revive Settings")]
+    [SerializeField] private float _reviveDelaySec = 1.0f;
+    private Coroutine _reviveDelayJob;
 
     private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
@@ -144,30 +150,25 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _bus.Subscribe<ComboChanged>(e =>
         {
-            if (e.value <= 0)
+            int tier = MapToTier(e.value);
+
+            if (tier <= 0)
             {
-                if (_rainbowIcon) _rainbowIcon.SetActive(false);
-                if (_comboGroup) _comboGroup.gameObject.SetActive(false);
+                HideComboImmediate();
                 return;
             }
 
-            if (_rainbowIcon && !_rainbowIcon.activeSelf)
-                _rainbowIcon.SetActive(true);
+            if (_comboText) _comboText.SetText($"x{e.value - 1}");
 
-            if (_comboGroup && !_comboGroup.gameObject.activeSelf)
-                _comboGroup.gameObject.SetActive(true);
+            ApplyComboTierVisuals(tier);
 
-            if (_comboText)
-                _comboText.text = $"x{e.value}";
-
-            if (_comboFadeJob != null) StopCoroutine(_comboFadeJob);
-            _comboFadeJob = StartCoroutine(FadeOutCombo(_comboGroup, _comboHoldTime, _comboFadeTime));
+            ShowComboStartHold();
         }, replaySticky: true);
 
         _bus.Subscribe<GameDataChanged>(e =>
         {
             _lastHighScore = e.data.highScore;
-            if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+            if (_hudBestText) _hudBestText.text = $"{_lastHighScore:#,0}";
             // 필요 시 GO 화면의 Best도 최신으로 동기화
             SetAll(_goBestTexts, $"{FormatScore(_lastHighScore)}");
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
@@ -176,16 +177,14 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
-            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
-            int best = Mathf.Max(e.score, _lastHighScore);
-            SetAll(_goBestTexts, $"{FormatScore(best)}");
-            SetPanel("Revive", true);
-            Game.Audio.PlayContinueTimeCheckSE();
+            CancelReviveDelay();
+            _reviveDelayJob = StartCoroutine(OpenReviveAfterDelay(e.score));
         }, replaySticky: false);
 
         // 리바이브 패널 OFF
         _bus.Subscribe<RevivePerformed>(_ =>
         {
+            CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
             SetPanel("Revive", false);
         }, replaySticky: false);
@@ -193,6 +192,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 리바이브 패널 OFF + 결과 패널 ON (신기록 여부에 따라 분기)
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
+            CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
             SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = e.isNewBest ? e.score : _lastHighScore;
@@ -206,6 +206,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 광고 성공 시 모달/패널 닫기
         _bus.Subscribe<ContinueGranted>(_ =>
         {
+            CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
             SetPanel("Revive", false);
             SetPanel("GameOver", false);
@@ -222,7 +223,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (data != null)
         {
             _lastHighScore = data.highScore;
-            if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+            if (_hudBestText) _hudBestText.text = $"{_lastHighScore:#,0}";
             SetAll(_goBestTexts, $"{_lastHighScore:#,0}");
             Debug.Log($"[UI] Seed Best from Save: {_lastHighScore}");
         }
@@ -501,6 +502,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     private void OnGameResetRequest(GameResetRequest req)
     {
+        CancelReviveDelay();
+
         // 1) 보장: 시간/오디오/모달 정리
         Time.timeScale = 1f;
         Game.Audio.StopContinueTimeCheckSE();
@@ -590,9 +593,9 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         var rootCg = root.GetComponent<CanvasGroup>();
         foreach (var g in groups)
         {
-            if (!g || g == rootCg) continue;                          // 루트 제외
-            if (dimOverlay && g.gameObject == dimOverlay.gameObject) continue; // DIM 제외
-            g.alpha = 1f;   // 시각만 1로 정규화 (입력은 루트에서 관리)
+            if (!g || g == rootCg) continue;
+            if (dimOverlay && g.gameObject == dimOverlay.gameObject) continue;
+            g.alpha = 1f;
         }
     }
 
@@ -603,10 +606,100 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         root = p.root;
         return true;
     }
+
+    void HideComboImmediate()
+    {
+        if (_comboFadeJob != null) { StopCoroutine(_comboFadeJob); _comboFadeJob = null; }
+        if (_rainbowIcon) _rainbowIcon.SetActive(false);
+        if (_comboGroup)
+        {
+            _comboGroup.alpha = 0f;
+            _comboGroup.gameObject.SetActive(false);
+            _comboGroup.blocksRaycasts = false;
+            _comboGroup.interactable = false;
+        }
+    }
+
+    void ShowComboStartHold()
+    {
+        if (_rainbowIcon && !_rainbowIcon.activeSelf) _rainbowIcon.SetActive(true);
+        if (_comboGroup && !_comboGroup.gameObject.activeSelf) _comboGroup.gameObject.SetActive(true);
+        if (_comboGroup) _comboGroup.alpha = 1f;
+        if (_comboFadeJob != null) StopCoroutine(_comboFadeJob);
+        if (_comboGroup) _comboFadeJob = StartCoroutine(FadeOutCombo(_comboGroup, _comboHoldTime, _comboFadeTime));
+    }
+    private int MapToTier(int actual)
+    {
+        if (_comboTierStarts == null || _comboTierStarts.Length == 0) return 0;
+        int tier = 0;
+        // 1~4 티어만 검사
+        for (int i = 1; i < _comboTierStarts.Length && i < 5; i++)
+            if (actual >= _comboTierStarts[i]) tier = i;
+        return Mathf.Clamp(tier, 0, 4);
+    }
+    private void ApplyComboTierVisuals(int tier)
+    {
+        if (_comboGroup)
+        {
+            float scale = tier switch { 1 => 1.00f, 2 => 1.05f, 3 => 1.10f, 4 => 1.15f, _ => 1f };
+            _comboGroup.transform.localScale = Vector3.one * scale;
+        }
+    }
+    private void CancelReviveDelay()
+    {
+        if (_reviveDelayJob != null) { StopCoroutine(_reviveDelayJob); _reviveDelayJob = null; }
+        SetTempTouchBlock(false);
+        _bus?.PublishImmediate(new InputLock(false, "DownedDelay"));
+    }
+
+    private IEnumerator OpenReviveAfterDelay(int score)
+    {
+        SetTempTouchBlock(true);
+        _bus?.PublishImmediate(new InputLock(true, "DownedDelay"));
+
+        float delay = Mathf.Max(0f, _reviveDelaySec);
+        if (delay > 0f) yield return new WaitForSecondsRealtime(delay);
+
+        SetAll(_goTotalTexts, $"{FormatScore(score)}");
+        int best = Mathf.Max(score, _lastHighScore);
+        SetAll(_goBestTexts, $"{FormatScore(best)}");
+
+        SetPanel("Revive", true);
+        Game.Audio.PlayContinueTimeCheckSE();
+
+        SetTempTouchBlock(false);
+        _bus?.PublishImmediate(new InputLock(false, "DownedDelay"));
+
+        _reviveDelayJob = null;
+    }
+    private void SetTempTouchBlock(bool on)
+    {
+        if (!dimOverlay) return;
+
+        if (on)
+        {
+            // DIM 페이드 코루틴 중이면 정지
+            if (_dimJob != null) { StopCoroutine(_dimJob); _dimJob = null; }
+            var c = dimOverlay.color; c.a = 0f;
+            dimOverlay.color = c;
+            dimOverlay.enabled = true;
+        }
+        else
+        {
+            // 모달 스택이 없을 때만 끔(있으면 UpdateDimByStack가 관리)
+            if (_modalOrder.Count == 0)
+                dimOverlay.enabled = false;
+        }
+    }
 }
 
 public readonly struct PanelToggle
 {
     public readonly string key; public readonly bool on;
     public PanelToggle(string key, bool on) { this.key = key; this.on = on; }
+}
+public readonly struct InputLock
+{
+    public readonly bool on; public readonly string reason;
+    public InputLock(bool on, string reason) { this.on = on; this.reason = reason; }
 }

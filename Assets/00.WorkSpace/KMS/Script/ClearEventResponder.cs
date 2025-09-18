@@ -21,6 +21,8 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
     [SerializeField] private SfxPolicy sfxPolicy = SfxPolicy.Staggered;
     [SerializeField, Range(0f, 0.5f)] private float comboDelay = 0.12f; // 지연 정책일 때
 
+    private const int ComboStartThreshold = 2;
+
     private Coroutine _perimeterTimeout;
     private EventQueue _bus;
     private bool _subscribed;
@@ -85,15 +87,21 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
         Game.BlockFx?.StopAllLoop();
 
         // 2) 라인 파티클
-        bool combo = e.combo > 1;
+        bool hasCombo = e.combo >= ComboStartThreshold;
         if (Game.Fx != null)
         {
-            if (e.rows != null) foreach (var r in e.rows)
-                    if (combo) Game.Fx.PlayComboRow(r, e.destroySprite);
+            if (e.rows != null)
+            {
+                foreach (var r in e.rows)
+                    if (hasCombo) Game.Fx.PlayComboRow(r, e.destroySprite);
                     else Game.Fx.PlayRow(r, Color.white);
-            if (e.cols != null) foreach (var c in e.cols)
-                    if (combo) Game.Fx.PlayComboCol(c, e.destroySprite);
+            }
+            if (e.cols != null)
+            {
+                foreach (var c in e.cols)
+                    if (hasCombo) Game.Fx.PlayComboCol(c, e.destroySprite);
                     else Game.Fx.PlayCol(c, Color.white);
+            }
         }
 
         // 3) SFX
@@ -102,21 +110,18 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
         switch (sfxPolicy)
         {
             case SfxPolicy.Layered:
-                // 둘 다 동시에 (간단하지만 약간 마스킹 가능)
                 Game.Audio?.PlayLineClear(total);
-                if (combo) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
+                if (hasCombo) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
                 break;
 
             case SfxPolicy.ComboOverridesLine:
-                // 콤보 있을 땐 콤보만, 아니면 라인만
-                if (combo) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
+                if (hasCombo) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
                 else Game.Audio?.PlayLineClear(total);
                 break;
 
             case SfxPolicy.Staggered:
-                // 라인 먼저, 콤보는 살짝 뒤에
                 Game.Audio?.PlayLineClear(total);
-                if (combo) StartCoroutine(PlayComboSfxAfter(comboDelay, e.combo));
+                if (hasCombo) StartCoroutine(PlayComboSfxAfter(comboDelay, e.combo));
                 break;
         }
     }
