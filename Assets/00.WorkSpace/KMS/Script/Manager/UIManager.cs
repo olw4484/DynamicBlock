@@ -168,7 +168,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<GameDataChanged>(e =>
         {
             _lastHighScore = e.data.highScore;
-            if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+            if (_hudBestText) _hudBestText.text = $"{_lastHighScore:#,0}";
             // 필요 시 GO 화면의 Best도 최신으로 동기화
             SetAll(_goBestTexts, $"{FormatScore(_lastHighScore)}");
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
@@ -223,7 +223,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (data != null)
         {
             _lastHighScore = data.highScore;
-            if (_hudBestText) _hudBestText.text = $"Best: {_lastHighScore:#,0}";
+            if (_hudBestText) _hudBestText.text = $"{_lastHighScore:#,0}";
             SetAll(_goBestTexts, $"{_lastHighScore:#,0}");
             Debug.Log($"[UI] Seed Best from Save: {_lastHighScore}");
         }

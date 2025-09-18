@@ -5,15 +5,20 @@ public class SafeArea : MonoBehaviour
 {
     RectTransform rt;
     Rect lastSafe;
-    [SerializeField] int extraBottomPx = 0;   // 배너 높이(px)
+
+    [SerializeField] int extraTopPx = 0;      // 상단 여백(px)
+    [SerializeField] int extraBottomPx = 0;   // 하단 여백(px) (배너 등)
     [SerializeField] bool useTop = true, useBottom = true, useLeft = true, useRight = true;
 
     void Awake() { rt = GetComponent<RectTransform>(); }
     void OnEnable() { Apply(); }
     void Start() { Apply(); }
     void Update() { if (lastSafe != Screen.safeArea) Apply(); }
-
-    // 배너가 뜨거나/사라질 때 호출
+    public void SetExtraTopPx(int px)
+    {
+        extraTopPx = Mathf.Max(0, px);
+        Apply();
+    }
     public void SetExtraBottomPx(int px)
     {
         extraBottomPx = Mathf.Max(0, px);
@@ -24,11 +29,17 @@ public class SafeArea : MonoBehaviour
     {
         var safe = Screen.safeArea;
 
-        // 아래쪽 여백 추가 (배너 높이만큼)
-        if (useBottom)
-        {
+        if (useTop && extraTopPx > 0)
+            safe.yMax -= extraTopPx;
+
+        if (useBottom && extraBottomPx > 0)
             safe.yMin += extraBottomPx;
-            if (safe.yMin > safe.yMax - 1) safe.yMin = safe.yMax - 1; // 클램프
+
+        if (safe.yMax < safe.yMin + 1f)
+        {
+            float mid = (safe.yMin + safe.yMax) * 0.5f;
+            safe.yMin = mid - 0.5f;
+            safe.yMax = mid + 0.5f;
         }
 
         float w = Screen.width, h = Screen.height;
