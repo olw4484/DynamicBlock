@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using TMPro;
+using Unity.VisualScripting.Dependencies.Sqlite;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,11 +16,11 @@ public struct StageLayout
 [Serializable]
 public struct IndexRangeSprite
 {
-    public int stageStart;  // 색칠 시작 시점
+    [Min(0)] public int stageStart;  // 색칠 시작 시점, 0부터 시작
     public int stageEnd;    // 색칠 완료 시점
     public Sprite sprite;   // 적용할 이미지 
 }
-public class StageListGenerator : MonoBehaviour
+public class StageList : MonoBehaviour
 {
     [Header("References")]
     [Tooltip("VerticalLayoutGroup 붙은 부모(콘텐츠)")]
@@ -43,7 +44,7 @@ public class StageListGenerator : MonoBehaviour
     [Tooltip("각 층마다 레이아웃 위치 선정")]
     [SerializeField] private List<StageLayout> stageLayouts = new(); 
     [SerializeField] private List<IndexRangeSprite> indexRangeSprites = new();
-    public readonly List<GameObject> StageButtons = new();
+    public List<GameObject> stageButtons = new();
     
     public void Rebuild()
     {
@@ -57,7 +58,7 @@ public class StageListGenerator : MonoBehaviour
         for (int i = verticalRoot.childCount - 1; i >= 0; i--)
             DestroyImmediate(verticalRoot.GetChild(i).gameObject);
         
-        StageButtons.Clear();
+        stageButtons.Clear();
         
         // 2) VerticalGroup Settings 동기화
         var vlgSetting = verticalRoot.GetComponent<VerticalLayoutGroup>();
@@ -115,19 +116,22 @@ public class StageListGenerator : MonoBehaviour
                 itemLE.preferredWidth = buttonSize < 0 ? stageButtonPrefab.GetComponent<RectTransform>().rect.width : buttonSize;
                 itemLE.preferredHeight = buttonSize < 0 ? stageButtonPrefab.GetComponent<RectTransform>().rect.height : buttonSize;
                 // 5) 생성된 아이템들은 전체 리스트에 넣기
-                StageButtons.Add(item);
+                stageButtons.Add(item);
             }
         }
         
         // 6) 생성된 스테이지 진입 버튼들의 이름 재정렬
         var count = GetStageCount();
-        RenameStageButtons(StageButtons, count);
+        RenameStageButtons(stageButtons, count);
         
         // 7) 생성된 스테이지 진입 버튼들의 진입 스테이지 재정렬
-        SetStageButtonEnterNumber(StageButtons, count);
+        SetStageButtonEnterNumber(stageButtons, count);
         
         // 8) 각각 블럭을 startIndex~endIndex까지 sprite로 색칠하기
-        ApplyClearSpritesByIndex(StageButtons, indexRangeSprites);
+        ApplyClearSpritesByIndex(stageButtons, indexRangeSprites);
+        
+        // 9) 1번 스테이지는 대해 플레이 가능하게 
+        stageButtons[0].GetComponent<EnterStageButton>().SetButtonState(ButtonState.Playable);
         
         // End) 완료 로그 출력
         Debug.Log("[StageListGenerator] 스테이지 레이아웃 생성 완료!");
@@ -148,9 +152,9 @@ public class StageListGenerator : MonoBehaviour
         for (int i = 1; i <= count; i++)
         {
             list[i-1].name = $"Stage_{i}";
-            // 옵션) 숫자 텍스트가 있다면 표시
-            var txt = list[i-1].GetComponentInChildren<TextMeshProUGUI>();
-            txt.text = $"{i}";
+            // 옵션) 숫자 텍스트가 있다면 표시, 없으니 지움
+            // var txt = list[i-1].GetComponentInChildren<TextMeshProUGUI>();
+            // txt.text = $"{i}";
         }
     }
     // 7) 각 스테이지 진입 번호를 설정
@@ -167,7 +171,6 @@ public class StageListGenerator : MonoBehaviour
             for (int i = item.stageStart; i <= item.stageEnd; i++)
             {
                 stageButtons[i].GetComponent<EnterStageButton>().SetClearSprite(item.sprite);
-                //stageButtons[i].GetComponent<Image>().sprite = item.sprite;
             }
         }
     }
@@ -176,21 +179,21 @@ public class StageListGenerator : MonoBehaviour
 /// <summary>
 /// Stage Layout을 재생성하는 Editor의 Tool
 /// </summary>
-[CustomEditor(typeof(StageListGenerator))]
+[CustomEditor(typeof(StageList))]
 public class StageEditor : Editor
 {
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
         
-        StageListGenerator stageListGenerator = (StageListGenerator)target;
+        StageList stageList = (StageList)target;
 
         GUILayout.Space(10);
         
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Create Stage"))
         {
-            stageListGenerator.Rebuild();
+            stageList.Rebuild();
         }
         GUILayout.EndHorizontal();
     }
