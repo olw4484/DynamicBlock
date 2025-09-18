@@ -95,17 +95,14 @@ public class AdManager : MonoBehaviour, IAdService
 
     public void ShowRewarded(Action onReward, Action onClosed = null, Action onFailed = null)
     {
-        if (Reward == null || !Reward.IsReady)
-        {
-            Debug.LogWarning("[Ads] Reward not ready");
-            onFailed?.Invoke();
-            return;
-        }
+        if (Reward == null || !Reward.IsReady) { Debug.LogWarning("[Ads] Reward not ready"); onFailed?.Invoke(); return; }
+
+        bool rewarded = false;
 
         void Cleanup()
         {
             Reward.Closed -= OnClosed;
-            Reward.Failed -= OnFailed;
+            Reward.Failed -= OnFailedEvt;
             Reward.Rewarded -= OnRewardedEvent;
         }
 
@@ -113,10 +110,10 @@ public class AdManager : MonoBehaviour, IAdService
         {
             Cleanup();
             try { onClosed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
-            Refresh(); // 닫히면 다음 로드
+            Refresh();
         }
 
-        void OnFailed()
+        void OnFailedEvt()
         {
             Cleanup();
             try { onFailed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
@@ -125,16 +122,16 @@ public class AdManager : MonoBehaviour, IAdService
 
         void OnRewardedEvent()
         {
+            rewarded = true;
             try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
         }
 
         Reward.Closed += OnClosed;
-        Reward.Failed += OnFailed;
+        Reward.Failed += OnFailedEvt;
         Reward.Rewarded += OnRewardedEvent;
 
         Debug.Log("[Ads] ShowRewarded()");
-        // RewardAdController는 onReward 콜백을 ShowAd 인수로도 받음(내부에서 Rewarded 이벤트도 발생)
-        Reward.ShowAd(() => { /* onReward는 위 이벤트에서도 처리되므로 이중 호출 방지용 no-op */ });
+        Reward.ShowAd(() => { /* no-op: Rewarded 이벤트에서 처리 */ });
     }
 
     public void ShowInterstitial(Action onClosed = null)
@@ -217,35 +214,13 @@ public class AdManager : MonoBehaviour, IAdService
     // 데모: 보상 닫힘 후 소프트 리셋(리바이브 흐름에서는 사용 X)
     void OnClickRewardDemo()
     {
-        if (_rewardLocked)
-        {
-            Debug.Log("[Ads] reward running");
-            return;
-        }
-        if (!IsRewardedReady())
-        {
-            Debug.Log("[Ads] reward not ready (demo) → Refresh");
-            Refresh();
-            return;
-        }
-
-        _rewardLocked = true;
-        if (_rewardBtn) _rewardBtn.interactable = false;
-
         ShowRewarded(
-            onReward: () => Debug.Log("[Ads] demo onReward"),
-            onClosed: () =>
-            {
-                Debug.Log("[Ads] demo onClosed → SoftReset");
-                _rewardLocked = false;
-                if (_rewardBtn) _rewardBtn.interactable = true;
-                RestartFlow.SoftReset();
-            },
+            onReward: () => { Debug.Log("[Ads] demo onReward"); /* ReviveRequest는 브리지에서 발행 */ },
+            onClosed: () => { /* 성공/실패와 무관하게 여기선 SoftReset 금지 */ },
             onFailed: () =>
             {
-                Debug.LogWarning("[Ads] demo onFailed");
-                _rewardLocked = false;
-                if (_rewardBtn) _rewardBtn.interactable = true;
+                Debug.LogWarning("[Ads] demo onFailed → SoftReset");
+                RestartFlow.SoftReset("AdFailed");
             }
         );
     }

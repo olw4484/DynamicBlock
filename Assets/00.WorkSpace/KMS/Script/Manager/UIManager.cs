@@ -647,15 +647,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     }
     private void CancelReviveDelay()
     {
-        if (_reviveDelayJob != null)
-        {
-            StopCoroutine(_reviveDelayJob);
-            _reviveDelayJob = null;
-        }
+        if (_reviveDelayJob != null) { StopCoroutine(_reviveDelayJob); _reviveDelayJob = null; }
+        SetTempTouchBlock(false);
+        _bus?.PublishImmediate(new InputLock(false, "DownedDelay"));
     }
 
     private IEnumerator OpenReviveAfterDelay(int score)
     {
+        SetTempTouchBlock(true);
+        _bus?.PublishImmediate(new InputLock(true, "DownedDelay"));
+
         float delay = Mathf.Max(0f, _reviveDelaySec);
         if (delay > 0f) yield return new WaitForSecondsRealtime(delay);
 
@@ -665,7 +666,30 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         SetPanel("Revive", true);
         Game.Audio.PlayContinueTimeCheckSE();
+
+        SetTempTouchBlock(false);
+        _bus?.PublishImmediate(new InputLock(false, "DownedDelay"));
+
         _reviveDelayJob = null;
+    }
+    private void SetTempTouchBlock(bool on)
+    {
+        if (!dimOverlay) return;
+
+        if (on)
+        {
+            // DIM 페이드 코루틴 중이면 정지
+            if (_dimJob != null) { StopCoroutine(_dimJob); _dimJob = null; }
+            var c = dimOverlay.color; c.a = 0f;
+            dimOverlay.color = c;
+            dimOverlay.enabled = true;
+        }
+        else
+        {
+            // 모달 스택이 없을 때만 끔(있으면 UpdateDimByStack가 관리)
+            if (_modalOrder.Count == 0)
+                dimOverlay.enabled = false;
+        }
     }
 }
 
@@ -673,4 +697,9 @@ public readonly struct PanelToggle
 {
     public readonly string key; public readonly bool on;
     public PanelToggle(string key, bool on) { this.key = key; this.on = on; }
+}
+public readonly struct InputLock
+{
+    public readonly bool on; public readonly string reason;
+    public InputLock(bool on, string reason) { this.on = on; this.reason = reason; }
 }

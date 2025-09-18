@@ -278,7 +278,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         /// <returns>true: 성공(재개) / false: 실패(그대로 GameOver 유지)</returns>
         public bool GenerateAdRewardWave()
         {
-            // 0) 호출 가드
+            // 0) 가드
             if (oneRevivePerRun && _reviveUsed)
             {
                 Debug.LogWarning("[Revive] 이미 Revive를 사용했습니다.");
@@ -286,33 +286,49 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             if (!_gameOverFired)
             {
-                Debug.LogWarning("[Revive] GameOver 상태가 아니라 Revive를 실행하지 않습니다.");
+                Debug.LogWarning("[Revive] GameOver 상태가 아니라 Revive 실행 안 함.");
                 return false;
             }
 
-            // 1) Revive 웨이브 생성 (라인 보정 → 가상 배치 + 라인 제거 반영)
-            if (!BlockSpawnManager.Instance.TryGenerateReviveWave(reviveWaveCount, out var wave, out var fits))
+            // 1) 웨이브 생성
+            if (!BlockSpawnManager.Instance.TryGenerateReviveWave(reviveWaveCount, out var wave, out var fits)
+                || wave == null || wave.Count == 0)
             {
-                Debug.LogWarning("[Revive] 라인 보정 불가 → Revive 웨이브 생성 실패. GameOver 유지");
+                Debug.LogWarning($"[Revive] 웨이브 생성 실패/빈 웨이브. cnt={(wave?.Count ?? -1)} → GameOver 유지");
                 return false;
             }
 
-            // 2) 대기 중인 인터스티셜 광고 예약이 있다면 취소 (재개 직후 광고가 뜨는 것 방지)
+            // 2) 광고 큐 취소
             CancelQueuedInterstitialIfAny();
-            // 3) GameOver 해제 & UI 닫기
+
+            // 3) 상태 복구(가드/일시정지) → 손패 적용 전에!
             _reviveUsed = true;
             _gameOverFired = false;
+            _paused = false;
             Time.timeScale = 1f;
 
+            Game.Bus?.PublishImmediate(new InputLock(false, "Revive"));
+
+            // 4) 손패 적용
+            var previews = ApplyReviveWave(wave);
+
+            // 5) 안전망: 손패가 비어 있으면 즉시 리필
+            if (_currentBlocks == null || _currentBlocks.Count == 0)
+            {
+                Debug.LogError("[Revive] 웨이브 적용 후에도 손패가 비어 있음 → Fallback GenerateAllBlocks()");
+                GenerateAllBlocks();
+            }
+
+            // 6) 훅/저장
+            ScoreManager.Instance?.OnHandRefilled();
+            MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
+
+            Debug.Log($"[Revive] 완료: hand={_currentBlocks.Count}, wave={wave.Count}, spawnSlots={blockSpawnPosList?.Count ?? -1}");
+
+            // 7) 마지막에 UI/상태 이벤트 발행(패널 닫기 등)
             Game.Bus?.PublishImmediate(new RevivePerformed());
             Game.Bus?.PublishImmediate(new ContinueGranted());
 
-            // 4) 손패를 Revive 웨이브로 교체하고, 손패 갱신 훅 호출
-            ApplyReviveWave(wave);
-            ScoreManager.Instance?.OnHandRefilled();
-            //BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
-
-            Debug.Log("[Revive] Revive 웨이브 적용 완료, 게임 재개");
             return true;
         }
 
@@ -320,55 +336,57 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         // === Revive 웨이브 적용 (손패 교체 + 스프라이트 수집) ===
         private List<Sprite> ApplyReviveWave(List<ShapeData> wave)
         {
-            // 1) 기존 손패 제거
+            if (blockSpawnPosList == null || blockSpawnPosList.Count == 0 || shapesPanel == null)
+            {
+                Debug.LogError($"[Revive] SpawnPos/Panel 미지정: slots={(blockSpawnPosList?.Count ?? -1)}, panel={(shapesPanel != null)}");
+            }
+
+            // 기존 손패 제거
             if (_currentBlocks != null)
             {
                 for (int i = _currentBlocks.Count - 1; i >= 0; i--)
-                    if (_currentBlocks[i] != null)
-                        Destroy(_currentBlocks[i].gameObject);
+                    if (_currentBlocks[i] != null) Destroy(_currentBlocks[i].gameObject);
                 _currentBlocks.Clear();
                 _currentBlocksShapeData.Clear();
                 _currentBlocksSpriteData.Clear();
             }
             else _currentBlocks = new List<Block>(wave.Count);
 
-            // 2) GenerateAllBlocks와 동일하게: 슬롯 개수만큼 previewSprites 준비
+            // 프리뷰 배열 준비
             var previewSprites = new List<Sprite>(blockSpawnPosList.Count);
             for (int k = 0; k < blockSpawnPosList.Count; k++) previewSprites.Add(null);
 
-            // 3) 같은 방식으로 생성 + 스프라이트 세팅
-            for (int i = 0; i < blockSpawnPosList.Count && i < wave.Count; i++)
+            // 생성
+            int spawnCount = Mathf.Min(blockSpawnPosList.Count, wave.Count);
+            for (int i = 0; i < spawnCount; i++)
             {
                 var shape = wave[i];
-                if (shape == null)
-                {
-                    Debug.LogWarning($"[Revive] wave[{i}] is null → skip this slot.");
-                    continue;
-                }
+                if (shape == null) { Debug.LogWarning($"[Revive] wave[{i}] null → skip"); continue; }
 
-                // GenerateAllBlocks와 동일한 부모/좌표 체계
-                var go = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
+                var parent = shapesPanel;
+                var pos = blockSpawnPosList[i].position;
+                var go = Instantiate(blockPrefab, pos, Quaternion.identity, parent);
                 var blk = go.GetComponent<Block>();
                 if (!blk) { Debug.LogError("[Revive] Block component missing"); Destroy(go); continue; }
                 blk.SpawnSlotIndex = i;
 
-                // 스프라이트 선택 로직도 GenerateAllBlocks와 동일하게
-                Sprite sprite = shapeImageSprites[GetRandomImageIndex()];
-                // 프리팹 내 이미지 적용
+                // 스프라이트
+                Sprite sprite = (shapeImageSprites != null && shapeImageSprites.Count > 0)
+                                ? shapeImageSprites[GetRandomImageIndex()]
+                                : null;
                 var img = blk.shapePrefab ? blk.shapePrefab.GetComponent<Image>() : null;
                 if (img) img.sprite = sprite;
-
                 previewSprites[i] = sprite;
 
                 // 블록 초기화
                 blk.GenerateBlock(shape);
                 _currentBlocks.Add(blk);
                 _currentBlocksShapeData.Add(blk.GetShapeData());
-                _currentBlocksSpriteData.Add(blk.GetSpriteData());
+                _currentBlocksSpriteData.Add(sprite);
             }
 
+            Debug.Log($"[Revive] ApplyWave: spawned={_currentBlocks.Count}/{spawnCount}, panelActive={shapesPanel.gameObject.activeInHierarchy}");
             MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
-
             return previewSprites;
         }
         private void CancelQueuedInterstitialIfAny() //
