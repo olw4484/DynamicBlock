@@ -1,16 +1,24 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
-[System.Serializable]
+[Serializable]
 public struct StageLayout
 {
     public int stageCount;             // 이 층에 몇 개?
     public TextAnchor alignment;       // 왼/가운데/오른쪽 정렬
 }
 
+[Serializable]
+public struct IndexRangeSprite
+{
+    public int stageStart;  // 색칠 시작 시점
+    public int stageEnd;    // 색칠 완료 시점
+    public Sprite sprite;   // 적용할 이미지 
+}
 public class StageListGenerator : MonoBehaviour
 {
     [Header("References")]
@@ -24,13 +32,17 @@ public class StageListGenerator : MonoBehaviour
     [Header("Layout Settings")]
     
     [Tooltip("층 사이 간격, horizontalSpacing과 동일하게 하나 커스텀 가능")]
-    [SerializeField] private float verticalSpacing = 8f;
+    [SerializeField, Min(0)] private float verticalSpacing = 8f;
     [Tooltip("층 내부 간격, verticalSpacing과 동일하게 하나 커스텀 가능")]
-    [SerializeField] private float horizontalSpacing = 8f;
-
+    [SerializeField, Min(0)] private float horizontalSpacing = 8f;
+    
+    [Tooltip("각 스테이지 입장 버튼의 크기, 0일 경우 프리팹 크기 사용")] 
+    [SerializeField, Min(0)] private float buttonSize;
+    
     [Header("Stage Layout Info")]
     [Tooltip("각 층마다 레이아웃 위치 선정")]
     [SerializeField] private List<StageLayout> stageLayouts = new(); 
+    [SerializeField] private List<IndexRangeSprite> indexRangeSprites = new();
     public readonly List<GameObject> StageButtons = new();
     
     public void Rebuild()
@@ -75,7 +87,8 @@ public class StageListGenerator : MonoBehaviour
             // Row 높이 ( Preferred Height ) 보장
             var rowLE = row.GetComponent<LayoutElement>();
             if(!rowLE) rowLE = row.AddComponent<LayoutElement>();
-            rowLE.preferredHeight = stageButtonPrefab.GetComponent<RectTransform>().rect.height;
+            // 추가 설정이 없을 경우 stageButtonPrefab의 크기를 따라감
+            rowLE.preferredHeight = buttonSize < 0 ? stageButtonPrefab.GetComponent<RectTransform>().rect.height : buttonSize;
             
             // Row의 HorizontalLayoutGroup 세팅
             var hlgSetting = row.GetComponent<HorizontalLayoutGroup>();
@@ -98,8 +111,9 @@ public class StageListGenerator : MonoBehaviour
                 // 버튼 크기 보장
                 var itemLE = item.GetComponent<LayoutElement>();
                 if (!itemLE) itemLE = item.AddComponent<LayoutElement>();
-                itemLE.preferredHeight = stageButtonPrefab.GetComponent<RectTransform>().rect.height;
-                
+                // 추가 설정이 없을 경우 stageButtonPrefab의 크기를 따라감
+                itemLE.preferredWidth = buttonSize < 0 ? stageButtonPrefab.GetComponent<RectTransform>().rect.width : buttonSize;
+                itemLE.preferredHeight = buttonSize < 0 ? stageButtonPrefab.GetComponent<RectTransform>().rect.height : buttonSize;
                 // 5) 생성된 아이템들은 전체 리스트에 넣기
                 StageButtons.Add(item);
             }
@@ -112,10 +126,13 @@ public class StageListGenerator : MonoBehaviour
         // 7) 생성된 스테이지 진입 버튼들의 진입 스테이지 재정렬
         SetStageButtonEnterNumber(StageButtons, count);
         
-        // 8) 완료 로그 출력
+        // 8) 각각 블럭을 startIndex~endIndex까지 sprite로 색칠하기
+        ApplyClearSpritesByIndex(StageButtons, indexRangeSprites);
+        
+        // End) 완료 로그 출력
         Debug.Log("[StageListGenerator] 스테이지 레이아웃 생성 완료!");
     }
-    
+    // 6) 전체 스테이지 갯수 반환
     private int GetStageCount()
     {
         var result = 0;
@@ -125,7 +142,7 @@ public class StageListGenerator : MonoBehaviour
         }
         return result;
     }
-
+    // 6) 각각 스테이지 번호를 Stage_번호 로 변환
     private void RenameStageButtons(List<GameObject> list, int count)
     {
         for (int i = 1; i <= count; i++)
@@ -136,13 +153,24 @@ public class StageListGenerator : MonoBehaviour
             txt.text = $"{i}";
         }
     }
-    
+    // 7) 각 스테이지 진입 번호를 설정
     private void SetStageButtonEnterNumber(List<GameObject> list, int count)
     {
         for (int i = 0; i < count; i++)
             list[i].GetComponent<EnterStageButton>().SetStageNumber(i+1);
     }
-    
+    // 8) 스테이지 클리어 시 버튼을 리스트 안의 정보에 따라 색칠함
+    private void ApplyClearSpritesByIndex(List<GameObject> stageButtons, List<IndexRangeSprite> list)
+    {
+        foreach (var item in list)
+        {
+            for (int i = item.stageStart; i <= item.stageEnd; i++)
+            {
+                stageButtons[i].GetComponent<EnterStageButton>().SetClearSprite(item.sprite);
+                //stageButtons[i].GetComponent<Image>().sprite = item.sprite;
+            }
+        }
+    }
 }
 
 /// <summary>
