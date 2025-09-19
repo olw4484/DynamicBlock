@@ -10,7 +10,7 @@ public sealed class AudioSourcePool : MonoBehaviour
     private readonly List<AudioSource> _pool = new();
     private int _cursor;
 
-    [SerializeField] private AudioMixerGroup _mixer; // º±≈√
+    [SerializeField] private AudioMixerGroup _mixer;
 
     void Awake()
     {

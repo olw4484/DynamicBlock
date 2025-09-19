@@ -797,7 +797,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         if (gameData == null) LoadGame();
         if (gameData == null || !gameData.classicDownedPending) return false;
 
-        // 선택: TTL 검사
+        // TTL 검사
         if (ttlSeconds > 0)
         {
             var elapsed = (DateTime.UtcNow - new DateTime(gameData.classicDownedUtc)).TotalSeconds;
