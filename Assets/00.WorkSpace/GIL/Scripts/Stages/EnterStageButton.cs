@@ -25,8 +25,7 @@ public class EnterStageButton : MonoBehaviour
     
     [HideInInspector] public int stageNumber;               // 클릭 했을 때 들어갈 번호
     private ButtonState stageButtonState;  // 현재 버튼의 상태 ( 언젠가 쓰일 수도 있기에 )
-    
-    
+    public ButtonState StageButtonState => stageButtonState;
     // Setter
     public void SetStageNumber(int number)
     {

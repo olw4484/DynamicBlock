@@ -151,10 +151,13 @@ public class StageList : MonoBehaviour
     {
         for (int i = 1; i <= count; i++)
         {
-            list[i-1].name = $"Stage_{i}";
+            list[i - 1].name = $"Stage_{i}";
             // 옵션) 숫자 텍스트가 있다면 표시, 없으니 지움
-            // var txt = list[i-1].GetComponentInChildren<TextMeshProUGUI>();
-            // txt.text = $"{i}";
+            // 250919_GIL : 디버그용 스테이지 번호 표시 기능이 있는게 좋을 듯
+            var txt = list[i - 1].GetComponentInChildren<TextMeshProUGUI>();
+            txt.text = $"{i}";
+            // 지금은 비활성화, 필요 시 StageManager에서 활성화
+            txt.enabled = false;
         }
     }
     // 7) 각 스테이지 진입 번호를 설정
