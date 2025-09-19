@@ -86,7 +86,5 @@ Assets/StreamingAssets/google-services-desktop.json
 /Assets/AddressableAssetsData
 /Assets/GoogleMobileAds
 google-services.json
-Assets/00.WorkSpace/SJH/Scripts/Ad/BannerAdController.cs
-Assets/00.WorkSpace/SJH/Scripts/Ad/RewardAdController.cs
-Assets/00.WorkSpace/SJH/Scripts/Ad/InterstitialAdController.cs
-
+Assets/Configs/Ads/AdIds.sample.cs
+Assets/Configs/Ads/AdIds.cs
