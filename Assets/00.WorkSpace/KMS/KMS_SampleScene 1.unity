@@ -7924,33 +7924,49 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 697557687060499568, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 7916212578122634481}
+    - target: {fileID: 697557687060499568, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: Hide
+      objectReference: {fileID: 0}
+    - target: {fileID: 697557687060499568, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: PopupBinder, Assembly-CSharp
+      objectReference: {fileID: 0}
     - target: {fileID: 5152034645993210679, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 0
+      value: -11.370972
       objectReference: {fileID: 0}
     - target: {fileID: 5730617594506460979, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5730617594506460979, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5730617594506460979, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 910
       objectReference: {fileID: 0}
     - target: {fileID: 5730617594506460979, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 535
       objectReference: {fileID: 0}
     - target: {fileID: 5730617594506460979, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: -375
       objectReference: {fileID: 0}
     - target: {fileID: 6232019383030479672, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
       propertyPath: m_Name
       value: Info-Chiron
+      objectReference: {fileID: 0}
+    - target: {fileID: 6232019383030479672, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -23516,6 +23532,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1397423802}
   m_CullTransparentMesh: 1
+--- !u!1 &1398479800 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6232019383030479672, guid: c6796c6cf8576994faaf0edbca3b68ac, type: 3}
+  m_PrefabInstance: {fileID: 423155746}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1400240518
 GameObject:
   m_ObjectHideFlags: 0
@@ -57635,6 +57656,7 @@ GameObject:
   - component: {fileID: 5482391093929965683}
   - component: {fileID: 1746144128423644758}
   - component: {fileID: 7916212578122634480}
+  - component: {fileID: 7916212578122634481}
   m_Layer: 5
   m_Name: info_button
   m_TagString: Untagged
@@ -57899,7 +57921,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 7916212578122634481}
+        m_TargetAssemblyTypeName: PopupBinder, Assembly-CSharp
+        m_MethodName: Show
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!224 &5487642901286925210
 RectTransform:
   m_ObjectHideFlags: 0
@@ -68992,6 +69026,19 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &7916212578122634481
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5441354188418397031}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: abdbe2805f52b924db00061596e4a0fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 1398479800}
 --- !u!224 &7918859958890565677
 RectTransform:
   m_ObjectHideFlags: 0
