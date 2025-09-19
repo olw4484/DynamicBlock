@@ -19,7 +19,6 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
 
     [Header("SFX Policy")]
     [SerializeField] private SfxPolicy sfxPolicy = SfxPolicy.Staggered;
-    [SerializeField, Range(0f, 0.5f)] private float comboDelay = 0.12f; // 지연 정책일 때
 
     private const int ComboStartThreshold = 2;
 
@@ -109,27 +108,17 @@ public sealed class ClearEventResponder : MonoBehaviour, IManager
 
         switch (sfxPolicy)
         {
-            case SfxPolicy.Layered:
-                Game.Audio?.PlayLineClear(total);
-                if (hasCombo) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
-                break;
-
-            case SfxPolicy.ComboOverridesLine:
-                if (hasCombo) Game.Audio?.PlayClearCombo(Mathf.Min(e.combo, 8));
-                else Game.Audio?.PlayLineClear(total);
-                break;
-
             case SfxPolicy.Staggered:
                 Game.Audio?.PlayLineClear(total);
-                if (hasCombo) StartCoroutine(PlayComboSfxAfter(comboDelay, e.combo));
+
+                break;
+
+            case SfxPolicy.Layered:
+            case SfxPolicy.ComboOverridesLine:
+
+                Game.Audio?.PlayLineClear(total);
                 break;
         }
-    }
-
-    private IEnumerator PlayComboSfxAfter(float delay, int combo)
-    {
-        if (delay > 0f) yield return new WaitForSeconds(delay);
-        Game.Audio?.PlayClearCombo(Mathf.Min(combo, 8));
     }
 
     // AllClear는 유지

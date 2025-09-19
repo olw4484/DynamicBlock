@@ -17,10 +17,16 @@ public class BusSnifferTap : MonoBehaviour
 
     readonly Queue<string> _lines = new();
     bool _enabled = true;
+    int _dbgClears;
 
     void OnEnable()
     {
         TryAttach();
+        Game.Bus.AddTap(evt => {
+            if (evt is _00.WorkSpace.GIL.Scripts.Messages.LinesCleared lc)
+                Debug.Log($"[DBG] LinesCleared #{++_dbgClears} at frame={Time.frameCount}, total={lc.Total}, combo={lc.combo}");
+        });
+
     }
 
     void Start()

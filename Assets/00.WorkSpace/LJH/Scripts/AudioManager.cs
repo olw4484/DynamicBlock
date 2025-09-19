@@ -233,6 +233,7 @@ public class AudioManager : MonoBehaviour
     // 줄 클리어 SE 재생 (1~6줄)
     public void PlayLineClearSE(int lineCount)
     {
+        Debug.Log($"[AUD][AM] LineClearSE({lineCount}) @frame={Time.frameCount}");
         if (lineCount <= 0) return;
         if (lineCount > SE_LineClear.Length) lineCount = SE_LineClear.Length;
         PlaySE(SE_LineClear[lineCount - 1]);
@@ -240,6 +241,7 @@ public class AudioManager : MonoBehaviour
     // 클리어 콤보 SE 재생 (1~8콤보)
     public void PlayClearComboSE(int comboCount)
     {
+        Debug.Log($"[AUD][AM] ClearComboSE({comboCount}) @frame={Time.frameCount}");
         if (comboCount <= 0) return;
         if (comboCount > SE_ClearCombo.Length) comboCount = SE_ClearCombo.Length;
         PlaySE(SE_ClearCombo[comboCount - 1], vibrate: true);
