@@ -1,117 +1,151 @@
 ﻿using GoogleMobileAds.Api;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class BannerAdController
 {
-	/*
-	 * 배너 테스트 광고 : "ca-app-pub-3940256099942544/6300978111"
-	 * 배너 광고 갱신은 구글 애드몹에서 갱신되게 설정하면 자동 갱신
-	 */
-	private const string _bannerAdId = "ca-app-pub-3940256099942544/6300978111";
-	private BannerView _loadedAd;
-	private bool _isShow = false;
-	private bool _isLoaded = false;
+    // ==========================
+    // 1) 유닛ID 분기
+    // ==========================
+#if UNITY_ANDROID
+    private const string TEST_BANNER = "ca-app-pub-3940256099942544/6300978111";
+    private const string PROD_BANNER = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX"; // TODO: 실제 ID
+#elif UNITY_IOS
+    private const string TEST_BANNER = "ca-app-pub-3940256099942544/2934735716";
+    private const string PROD_BANNER = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX"; // TODO: 실제 ID
+#else
+    private const string TEST_BANNER = "unexpected_platform";
+    private const string PROD_BANNER = "unexpected_platform";
+#endif
 
-    public bool IsVisible => _isShow;
+    private string BannerId =>
+#if TEST_ADS || DEVELOPMENT_BUILD
+        TEST_BANNER;
+#else
+        PROD_BANNER;
+#endif
 
-    public void Init()
-	{
-		if (_loadedAd != null) _loadedAd.Destroy();
+    // ==========================
+    // 2) 상태
+    // ==========================
+    private BannerView _loadedAd;
+    private bool _isLoaded;
+    private bool _isShown;
 
-		Debug.Log("배너 광고 초기화 시작");
+    public bool IsVisible => _isShown;
+    public bool IsLoaded => _isLoaded;
 
-		//AdSize adSize = new AdSize(100, 80);
-		//_loadedBanner = new BannerView(_bannerAdId, adSize, 0, 100);
-		//_loadedBanner = new BannerView(_bannerAdId, AdSize.Banner, 0, 100);
-		_loadedAd = new BannerView(_bannerAdId, AdSize.Banner, AdPosition.Bottom);
+    // ==========================
+    // 테스트 기기 설정
+    // 앱 시작 시 1회 호출
+    // ==========================
+    public static void ConfigureTestDevices(params string[] testDeviceIds)
+    {
+#if TEST_ADS || DEVELOPMENT_BUILD
+        var list = (testDeviceIds == null) ? null : new List<string>(testDeviceIds);
+        var conf = new RequestConfiguration.Builder()
+            .SetTestDeviceIds(list)
+            .build();
+        MobileAds.SetRequestConfiguration(conf);
+#endif
+    }
 
-        Debug.Log("배너 광고 초기화 성공");
+    // ==========================
+    // 3) 초기화 & 로드
+    // ==========================
+    public void Init(AdSize size = null, AdPosition pos = AdPosition.Bottom)
+    {
+        // 중복 생성 방지
+        if (_loadedAd != null)
+        {
+            _loadedAd.Destroy();
+            _loadedAd = null;
+        }
 
-		EventConnect();
+        var adSize = size ?? AdSize.Banner; // 필요시 Adaptive로 교체 가능
+        _loadedAd = new BannerView(BannerId, adSize, pos);
 
+        HookEvents(_loadedAd);
+
+        Debug.Log($"[Banner] Init & Load... id={BannerId}, size={adSize}, pos={pos}");
+        _isLoaded = false;
+        _isShown = false;
         _loadedAd.LoadAd(new AdRequest());
     }
-	public void AdToggle()
-	{
-		if (_loadedAd == null) Init();
 
-		if (_isShow) HideAd();
-		else ShowAd();
-	}
+    // ==========================
+    // 4) 토글 / 표시 / 숨김 / 제거
+    // ==========================
+    public void AdToggle()
+    {
+        if (_isShown) HideAd();
+        else ShowAd();
+    }
+
     public void ShowAd()
     {
         if (_loadedAd == null) { Init(); return; }
-        if (!_isLoaded) _loadedAd.LoadAd(new AdRequest());
+        if (!_isLoaded) { _loadedAd.LoadAd(new AdRequest()); return; }
+
         _loadedAd.Show();
-        _isShow = true;
+        _isShown = true;
+        Debug.Log("[Banner] Show");
     }
+
     public void HideAd()
-	{
-		if (_loadedAd != null)
-		{
-			Debug.Log("배너 광고 Off");
-			_loadedAd.Hide();
-			_isShow = false;
-		}
-	}
-	public void DestroyAd()
-	{
-		if (_loadedAd == null) return;
+    {
+        if (_loadedAd == null) return;
 
-		Debug.Log("배너 광고 제거");
-		_loadedAd.Destroy();
-		_loadedAd = null;
-	}
-	public void EventConnect()
-	{
-		if (_loadedAd == null)
-		{
-			Init();
-			return;
-		}
-		Debug.Log("배너 광고 이벤트 추가");
+        _loadedAd.Hide();
+        _isShown = false;
+        Debug.Log("[Banner] Hide");
+    }
 
-		// 배너 광고가 등록됐을 때
-		_loadedAd.OnBannerAdLoaded += () =>
-		{
-			Debug.Log("배너 광고 등록");
-			_isLoaded = true;
-		};
+    public void DestroyAd()
+    {
+        if (_loadedAd == null) return;
 
-		// 배너 광고 등록 실패
-		_loadedAd.OnBannerAdLoadFailed += (LoadAdError error) =>
-		{
-			Debug.LogError($"배너 광고 등록 실패 : [{error}]");
-		};
+        Debug.Log("[Banner] Destroy");
+        _loadedAd.Destroy();
+        _loadedAd = null;
+        _isLoaded = false;
+        _isShown = false;
+    }
 
-		// 광고 수익 발생했을 때
-		_loadedAd.OnAdPaid += (AdValue adValue) =>
-		{
-			Debug.Log($"배너 광고 수익 {adValue.CurrencyCode} / {adValue.Value}");
-		};
+    // ==========================
+    // 5) 이벤트 연결
+    // ==========================
+    private void HookEvents(BannerView view)
+    {
+        if (view == null) return;
 
-		// 유저가 광고를 봤을 때
-		_loadedAd.OnAdImpressionRecorded += () =>
-		{
-			Debug.Log("배너 광고 봄");
-		};
+        view.OnBannerAdLoaded += () =>
+        {
+            _isLoaded = true;
+            Debug.Log("[Banner] Loaded");
+            // 자동 표시를 원하면: ShowAd();
+        };
 
-		// 유저가 광고를 클릭했을 때
-		_loadedAd.OnAdClicked += () =>
-		{
-			Debug.Log("배너 광고 클릭");
-		};
+        view.OnBannerAdLoadFailed += (LoadAdError error) =>
+        {
+            _isLoaded = false;
+            Debug.LogError($"[Banner] Load failed: {error}");
+            // 재시도 전략이 필요하면 여기서 처리 가능 (지수 백오프 등)
+        };
 
-		// 배너 광고가 활성화됐을 때
-		_loadedAd.OnAdFullScreenContentOpened += () =>
-		{
-			Debug.Log("배너 광고 활성화");
-		};
+        view.OnAdPaid += (AdValue v) =>
+            Debug.Log($"[Banner] Paid: {v.CurrencyCode}/{v.Value}");
 
-		// 배너 광고 닫았을 때
-		_loadedAd.OnAdFullScreenContentClosed += () =>
-		{
-			Debug.Log("배너 광고 닫음");
-		};
-	}
+        view.OnAdImpressionRecorded += () =>
+            Debug.Log("[Banner] Impression recorded");
+
+        view.OnAdClicked += () =>
+            Debug.Log("[Banner] Clicked");
+
+        view.OnAdFullScreenContentOpened += () =>
+            Debug.Log("[Banner] Fullscreen opened");
+
+        view.OnAdFullScreenContentClosed += () =>
+            Debug.Log("[Banner] Fullscreen closed");
+    }
 }
