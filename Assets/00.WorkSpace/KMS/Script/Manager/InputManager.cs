@@ -63,7 +63,7 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
             esc = true;
 #endif
 
-        // Old Input System (Both/Old에서 항상 동작)
+        // Old Input System
         if (Input.GetKeyDown(KeyCode.Escape))
             esc = true;
 

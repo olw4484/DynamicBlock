@@ -876,7 +876,7 @@ public class ParticleManager : MonoBehaviour
             em.enabled = true;
             em.rateOverTime = 0f;
 
-            // 만약 프리팹에 버스트가 전혀 없다면 1회 폭발 보정(선택)
+            // 만약 프리팹에 버스트가 전혀 없다면 1회 폭발 보정
             EnsureExplosionFallback(s);
 
             m.scalingMode = scalingMode;
