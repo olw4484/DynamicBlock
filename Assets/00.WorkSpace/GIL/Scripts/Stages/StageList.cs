@@ -130,8 +130,8 @@ public class StageList : MonoBehaviour
         // 8) 각각 블럭을 startIndex~endIndex까지 sprite로 색칠하기
         ApplyClearSpritesByIndex(stageButtons, indexRangeSprites);
         
-        // 9) 1번 스테이지는 대해 플레이 가능하게 
-        stageButtons[0].GetComponent<EnterStageButton>().SetButtonState(ButtonState.Playable);
+        // 9) 1번 스테이지는 대해 플레이 가능하게, 250919_GIL : 지금은 StageManager에서 처리
+        // stageButtons[0].GetComponent<EnterStageButton>().SetButtonState(ButtonState.Playable);
         
         // End) 완료 로그 출력
         Debug.Log("[StageListGenerator] 스테이지 레이아웃 생성 완료!");
@@ -154,10 +154,12 @@ public class StageList : MonoBehaviour
             list[i - 1].name = $"Stage_{i}";
             // 옵션) 숫자 텍스트가 있다면 표시, 없으니 지움
             // 250919_GIL : 디버그용 스테이지 번호 표시 기능이 있는게 좋을 듯
+            // 스테이지 번호가 플레이 가능, 잠긴 스테이지에 대해 출력되게 함
             var txt = list[i - 1].GetComponentInChildren<TextMeshProUGUI>();
             txt.text = $"{i}";
-            // 지금은 비활성화, 필요 시 StageManager에서 활성화
-            txt.enabled = false;
+            // 지금은 활성화, 필요 시 StageManager에서 변경
+            // SetState에 의해 자동으로 바뀌게 될 것
+            txt.enabled = true;
         }
     }
     // 7) 각 스테이지 진입 번호를 설정

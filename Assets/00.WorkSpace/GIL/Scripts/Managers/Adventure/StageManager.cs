@@ -7,13 +7,17 @@ public class StageManager : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private StageList generator; // 호출할 StageList를 가지고 있는 오브젝트
-
+    [SerializeField] private Button enterCurrentStageButton; // 현재 스테이지 진입 버튼
+    [SerializeField] private Image trophyImage;
+    [SerializeField] private Sprite normalTrophyImage;
+    [SerializeField] private Sprite clearTrophyImage; // 클리어 이미지
     [Header("Test / QA Debug"), Tooltip("테스트 및 QA용 디버그 버튼")]
     [SerializeField] private Button showStageNumberButton;      // 스테이지 번호 숫자 Text 표시 버튼
     [SerializeField] private Button setAllStageActiveButton;    // 모든 스테이지 활성화 버튼
     [SerializeField] private TMP_InputField setCurrentStageInputField; // 현재 활성화 스테이지 설정용 InputField
 
-    [SerializeField] private int currentStage = 0;
+    [SerializeField] private int currentStage = 0; // 0-based index
+    [SerializeField] public bool isAllStagesCleared = false;
     private void OnValidate()
     {
         if (generator == null)
@@ -21,6 +25,11 @@ public class StageManager : MonoBehaviour
             Debug.LogWarning("[StageManager] StageListGenerator is null, Auto Adding");
             generator = FindAnyObjectByType<StageList>();
         }
+    }
+
+    private void Awake()
+    {
+        SetCurrentActiveStage(1); // 기본값 1로 설정
     }
 
     private void Update()
@@ -39,12 +48,21 @@ public class StageManager : MonoBehaviour
     {
         // 현재 스테이지가 전체 스테이지를 벗어났는가?
         // Index Out of Range Exit Condition
-        if (currentStage >= generator.stageButtons.Count) return;
+        if (currentStage >= generator.stageButtons.Count)
+        {
+            SetAllStagesCleared(true);
+            return;
+        }
         generator.stageButtons[currentStage].GetComponent<EnterStageButton>().SetButtonState(ButtonState.Cleared);
         // Index Out of Range Exit Condition
         currentStage++;
-        if (currentStage >= generator.stageButtons.Count) return;
+        if (currentStage >= generator.stageButtons.Count)
+        {
+            SetAllStagesCleared(true);
+            return;
+        }
         generator.stageButtons[currentStage].GetComponent<EnterStageButton>().SetButtonState(ButtonState.Playable);
+        SetCurrentStageButton(currentStage+1);
     }
     /// <summary>
     /// 현재 활성화 스테이지 설정
@@ -84,14 +102,53 @@ public class StageManager : MonoBehaviour
                 enterButton.SetButtonState(ButtonState.Playable);
         }
 
+        // 5) 현재 스테이지 진입 버튼에 현재 스테이지 정보 설정
+        SetCurrentStageButton(stageNumber);
+
         Debug.Log($"[StageManager] Debug : Set Current Active Stage to {stageNumber}");
+    }
+
+    /// <summary>
+    /// 현재 스테이지 진입 버튼 설정, 이름과 기능을 변경
+    /// </summary>
+    /// <param name="stageNumber">진입할 스테이지 번호 및 텍스트 번호</param>
+    private void SetCurrentStageButton(int stageNumber)
+    {
+        enterCurrentStageButton.GetComponentInChildren<TextMeshProUGUI>().text = $"Level {stageNumber}";
+        // 이전 리스너 제거 ( 안전 처리 )
+        enterCurrentStageButton.onClick.RemoveAllListeners();
+        // 최신 스테이지에 대한 리스너 추가
+        enterCurrentStageButton.onClick.AddListener(() =>
+        {
+            var enterButton = generator.stageButtons[currentStage].GetComponent<EnterStageButton>();
+            if (enterButton != null)
+                enterButton.EnterStage();
+        });
+    }
+    /// <summary>
+    /// 모든 스테이지 클리어 상태 설정
+    /// </summary>
+    /// <param name="flag">클리어 여부, true일 경우 텍스트 변경</param>
+    public void SetAllStagesCleared(bool flag)
+    {
+        isAllStagesCleared = flag;
+        if (isAllStagesCleared)
+        {
+            // 모든 스테이지 클리어 텍스트로 변경
+            enterCurrentStageButton.GetComponentInChildren<TextMeshProUGUI>().text = "All Clear!";
+            // 트로피 이미지 변경
+            trophyImage.sprite = clearTrophyImage;
+            // 스테이지 진입 버튼 비활성화
+            enterCurrentStageButton.transition = Selectable.Transition.None;
+            enterCurrentStageButton.interactable = false;
+        }
     }
 
     #region // Test / QA Debug Button Events
     /// <summary>
     /// 디버그용 스테이지 번호 표시
     /// </summary>
-    public void ShowStageNumber()
+    public void ShowStageNumber_Debug()
     {
         foreach (var button in generator.stageButtons)
         {

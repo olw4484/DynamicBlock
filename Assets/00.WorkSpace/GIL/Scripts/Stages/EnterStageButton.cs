@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -18,6 +19,7 @@ public class EnterStageButton : MonoBehaviour
     [Header("References")] 
     [SerializeField] private Image stageButtonImage;        // 기본 이미지
     [SerializeField] private Button button;
+    [SerializeField] private TextMeshProUGUI buttonText; // 버튼 텍스트
     [Header("Button State Images")]
     [SerializeField] private Sprite normalSprite;           // 일반 상태 Sprite
     [SerializeField] private Sprite activeSprite;           // 플레이 가능 상태 Sprite
@@ -65,18 +67,23 @@ public class EnterStageButton : MonoBehaviour
             button.interactable = true;
         else
             button.interactable = false;
-        
+
         // 3) 상태에 따른 이미지 설정
+        // Cleared일 경우 텍스트 비활성화
+        // Playable, Locked일 경우 텍스트 활성화
         switch (state)
         {
             case ButtonState.Cleared:
                 stageButtonImage.sprite = clearSprite;
+                buttonText.enabled = false;
                 break;
             case ButtonState.Playable:
                 stageButtonImage.sprite = activeSprite;
+                buttonText.enabled = false;
                 break;
             case ButtonState.Locked:
                 stageButtonImage.sprite = normalSprite;
+                buttonText.enabled = true;
                 break;
         }
     }
