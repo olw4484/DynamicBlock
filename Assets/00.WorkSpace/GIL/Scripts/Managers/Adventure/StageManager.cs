@@ -107,7 +107,7 @@ public class StageManager : MonoBehaviour
     /// <summary>
     /// 디버그용 모든 스테이지 활성화
     /// </summary>
-    public void SetAllStageActive()
+    public void SetAllStageActive_Debug()
     {
         foreach (var button in generator.stageButtons)
         {
@@ -137,5 +137,5 @@ public class StageManager : MonoBehaviour
         // 2) 현재 활성화 스테이지 설정
         SetCurrentActiveStage(stageNumber);
     }
-#endregion
+    #endregion
 }
