@@ -54,6 +54,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [Header("Revive Settings")]
     [SerializeField] private float _reviveDelaySec = 1.0f;
     private Coroutine _reviveDelayJob;
+    [SerializeField] private CanvasGroup _preReviveBlocker; // 풀스크린 Image+CanvasGroup, 투명 OK
 
     private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
@@ -66,6 +67,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     // HUD state
     private int _lastHighScore = 0;
+    int _pendingDownedScore;
 
     private EventQueue _bus;
     private GameManager _game;
@@ -177,17 +179,20 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
-            CancelReviveDelay();
-            _reviveDelayJob = StartCoroutine(OpenReviveAfterDelay(e.score));
+            _pendingDownedScore = e.score;
+            if (_reviveDelayJob != null) StopCoroutine(_reviveDelayJob);
+            _reviveDelayJob = StartCoroutine(Co_OpenReviveAfterDelay(_reviveDelaySec));
         }, replaySticky: false);
 
+
         // 리바이브 패널 OFF
-        _bus.Subscribe<RevivePerformed>(_ =>
+        void CancelReviveDelay()
         {
-            CancelReviveDelay();
-            Game.Audio.StopContinueTimeCheckSE();
-            SetPanel("Revive", false);
-        }, replaySticky: false);
+            if (_reviveDelayJob != null) { StopCoroutine(_reviveDelayJob); _reviveDelayJob = null; }
+            SetPreReviveBlock(false);
+            _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
+            Time.timeScale = 1f;
+        }
 
         // 리바이브 패널 OFF + 결과 패널 ON (신기록 여부에 따라 분기)
         _bus.Subscribe<GameOverConfirmed>(e =>
@@ -645,54 +650,58 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _comboGroup.transform.localScale = Vector3.one * scale;
         }
     }
-    private void CancelReviveDelay()
+    void CancelReviveDelay()
     {
-        if (_reviveDelayJob != null) { StopCoroutine(_reviveDelayJob); _reviveDelayJob = null; }
-        SetTempTouchBlock(false);
-        _bus?.PublishImmediate(new InputLock(false, "DownedDelay"));
+        if (_reviveDelayJob != null)
+        {
+            StopCoroutine(_reviveDelayJob);
+            _reviveDelayJob = null;
+        }
+        SetPreReviveBlock(false);
+        Time.timeScale = 1f;
     }
 
-    private IEnumerator OpenReviveAfterDelay(int score)
+    void SetPreReviveBlock(bool on)
     {
-        SetTempTouchBlock(true);
-        _bus?.PublishImmediate(new InputLock(true, "DownedDelay"));
-
-        float delay = Mathf.Max(0f, _reviveDelaySec);
-        if (delay > 0f) yield return new WaitForSecondsRealtime(delay);
-
-        SetAll(_goTotalTexts, $"{FormatScore(score)}");
-        int best = Mathf.Max(score, _lastHighScore);
-        SetAll(_goBestTexts, $"{FormatScore(best)}");
-
-        SetPanel("Revive", true);
-        Game.Audio.PlayContinueTimeCheckSE();
-
-        SetTempTouchBlock(false);
-        _bus?.PublishImmediate(new InputLock(false, "DownedDelay"));
-
-        _reviveDelayJob = null;
-    }
-    private void SetTempTouchBlock(bool on)
-    {
-        if (!dimOverlay) return;
+        if (!_preReviveBlocker) return;
 
         if (on)
         {
-            // DIM 페이드 코루틴 중이면 정지
-            if (_dimJob != null) { StopCoroutine(_dimJob); _dimJob = null; }
-            var c = dimOverlay.color; c.a = 0f;
-            dimOverlay.color = c;
-            dimOverlay.enabled = true;
+            _preReviveBlocker.gameObject.SetActive(true);
+            _preReviveBlocker.alpha = 0f;            // 완전 투명
+            _preReviveBlocker.blocksRaycasts = true; // 클릭 완전 차단
+            _preReviveBlocker.interactable = false;
+            _preReviveBlocker.transform.SetAsLastSibling(); // 항상 맨 위
         }
         else
         {
-            // 모달 스택이 없을 때만 끔(있으면 UpdateDimByStack가 관리)
-            if (_modalOrder.Count == 0)
-                dimOverlay.enabled = false;
+            _preReviveBlocker.blocksRaycasts = false;
+            _preReviveBlocker.interactable = false;
+            _preReviveBlocker.gameObject.SetActive(false);
         }
     }
-}
 
+    IEnumerator Co_OpenReviveAfterDelay(float delay)
+    {
+        // 1) UI 터치 차단(오버레이)
+        SetPreReviveBlock(true);
+
+        // 2) 전역 입력 락 (직접 Input 읽는 스크립트용)
+        _bus?.PublishImmediate(new InputLock(true, "PreRevive"));
+
+        Time.timeScale = 0f;
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, delay));
+
+        SetPreReviveBlock(false);
+        SetPanel("Revive", true);
+        Game.Audio.PlayContinueTimeCheckSE();
+
+        // 3) 전역 입력락 해제
+        _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
+
+        _reviveDelayJob = null;
+    }
+}
 public readonly struct PanelToggle
 {
     public readonly string key; public readonly bool on;
