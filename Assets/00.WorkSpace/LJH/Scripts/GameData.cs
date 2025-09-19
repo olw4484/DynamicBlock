@@ -35,6 +35,10 @@ public class GameData
     public int currentScore;                // �� ���� ����
     public int currentCombo;                // �� ���� ���� ����
 
+    public bool classicDownedPending;   // 사망 보류 여부
+    public int classicDownedScore;     // 사망 당시 점수
+    public long classicDownedUtc;
+
     public static GameData NewDefault(int stages = 200)
     {
         return new GameData

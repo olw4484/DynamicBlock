@@ -37,8 +37,17 @@ public sealed class AudioServiceAdapter : IAudioService
     public void SetSeVolume(float v) => AM?.SetSEVolume(v);
 
     // 패턴형
-    public void PlayLineClear(int lineCount) => AM?.PlayLineClearSE(lineCount);
-    public void PlayClearCombo(int n) => AM?.PlayClearComboSE(n);
+    public void PlayLineClear(int lineCount)
+    {
+        Debug.Log($"[AUD] PlayLineClear({lineCount}) @frame={Time.frameCount}");
+        AM?.PlayLineClearSE(lineCount);
+    }
+
+    public void PlayClearCombo(int n)
+    {
+        Debug.Log($"[AUD] PlayClearCombo({n}) @frame={Time.frameCount}");
+        AM?.PlayClearComboSE(n);
+    }
 
     // 전체 일시정지 / 재시작
     public void StopAllSe() => AM?.StopAllSe();

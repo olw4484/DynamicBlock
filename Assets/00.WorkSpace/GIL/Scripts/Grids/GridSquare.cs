@@ -61,16 +61,29 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         // 모든 이미지 변경 -> active 이미지만 바꾸기
         public void SetImage(Sprite sprite, bool changeIndex = true)
         {
-            if (activeImage) activeImage.sprite = sprite;
-            if (changeIndex) _blockSpriteIndex = ParseSpriteIndex(sprite);
+            if (activeImage)
+            {
+                activeImage.sprite = sprite;
+                activeImage.enabled = (sprite != null);
+            }
 
             if (changeIndex)
-                _blockSpriteIndex = (sprite != null) ? GDS.I.GetBlockSpriteIndex(sprite) : 0;
+                _blockSpriteIndex = (sprite != null) ? GDS.I.GetLayoutCodeForSprite(sprite) : 0;
         }
-        
+
+        public void SetImage(Sprite sprite, int layoutCode)
+        {
+            if (activeImage)
+            {
+                activeImage.sprite = sprite;
+                activeImage.enabled = (sprite != null);
+            }
+            _blockSpriteIndex = (sprite != null && layoutCode > 0) ? layoutCode : 0;
+        }
+
         public void ClearImage()
         {
-            SetImage(null, changeIndex: true); // -> index 0
+            SetImage(null, changeIndex: true); // index → 0
         }
 
         private static int ParseSpriteIndex(Sprite s)

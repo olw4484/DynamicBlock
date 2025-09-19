@@ -2,6 +2,7 @@ using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Messages;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
@@ -486,8 +487,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     cell.SetOccupied(false);                               // Normal
                 }
 
-            Debug.Log("[Grid] Cleared (no GridReady here)");
+            Game.Bus.ClearSticky<GridReady>();
             _bus?.PublishImmediate(new GridCleared(rows, cols)); // 새 이벤트
+            Debug.Log("[Grid] Cleared (no GridReady here)");
         }
 
         public bool HasAnyOccupied()
@@ -545,49 +547,44 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (codes == null || gridSquares == null || rows <= 0 || cols <= 0)
             {
-                Debug.LogWarning("[Grid] ImportLayoutCodes: invalid state.");
+                Debug.Log($"[IMP] Begin: rows={rows}, cols={cols}, codes={codes?.Count}");
                 return false;
             }
 
             int cellCount = rows * cols;
-
-            // gridImageList 동기화
             if (gridImageList == null) gridImageList = new List<int>(cellCount);
             gridImageList.Clear();
-            for (int i = 0; i < cellCount; i++)
-                gridImageList.Add(i < codes.Count ? codes[i] : 0);
 
-            // 보드에 실제로 적용
             int idx = 0;
             for (int r = 0; r < rows; r++)
             {
                 for (int c = 0; c < cols; c++, idx++)
                 {
-                    var cell = gridSquares[r, c];
-                    int code = gridImageList[idx];
-                    if (!cell) continue;
+                    int saved = (idx < codes.Count) ? codes[idx] : 0;
 
-                    if (code <= 0)
+                    if (saved <= 0)
                     {
-                        cell.SetImage(null, changeIndex: true);
-                        cell.SetFruitImage(false, null, changeIndex: false);
-                        cell.SetOccupied(false);
+                        SetCellOccupied(r, c, false, null);
+                        gridImageList.Add(0);
+                        continue;
+                    }
+
+                    Sprite sprite = GDS.I.GetBlockSpriteByLayoutCode(saved);
+                    int layoutCode = saved;
+
+                    if (!sprite) { sprite = GDS.I.GetBlockSpriteByIndex(saved); if (sprite) layoutCode = GDS.I.GetLayoutCodeForSprite(sprite); }
+                    if (!sprite && saved > 0) { sprite = GDS.I.GetBlockSpriteByIndex(saved - 1); if (sprite) layoutCode = GDS.I.GetLayoutCodeForSprite(sprite); }
+
+                    if (sprite)
+                    {
+                        SetCellOccupied(r, c, true, sprite);
+                        gridImageList.Add(layoutCode);
                     }
                     else
                     {
-                        var sprite = ResolveBlockSpriteByIndex(code);
-                        if (sprite != null)
-                        {
-                            cell.SetImage(sprite, changeIndex: true);
-                            cell.SetOccupied(true);
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"[Grid] Import: sprite not found for index={code} (r={r}, c={c})");
-                            cell.SetImage(null, changeIndex: true);
-                            cell.SetFruitImage(false, null, changeIndex: false);
-                            cell.SetOccupied(false);
-                        }
+                        Debug.LogWarning($"[Grid] Import: sprite not found for saved code={saved} (r={r}, c={c})");
+                        SetCellOccupied(r, c, false, null);
+                        gridImageList.Add(0);
                     }
                 }
             }
@@ -608,5 +605,40 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return null;
             }
         }
+        public void ImportLayoutIndices(List<int> indices)
+        {
+            if (indices == null || gridSquares == null) return;
+            int rows = this.rows, cols = this.cols;
+            int expected = rows * cols;
+
+            // 길이 보정
+            if (indices.Count != expected)
+            {
+                if (indices.Count < expected) indices.AddRange(Enumerable.Repeat(0, expected - indices.Count));
+                else indices = indices.Take(expected).ToList();
+            }
+
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                {
+                    int idx = indices[r * cols + c];
+                    if (idx <= 0) { SetCellOccupied(r, c, false); continue; }
+
+                    var sprite = GDS.I?.GetBlockSpriteByIndex(idx);
+                    if (sprite) SetCellOccupied(r, c, true, sprite);
+                    else SetCellOccupied(r, c, false);
+                }
+
+            ValidateGridConsistency();
+        }
+
+        public void PublishGridReady()
+        {
+            var evt = new GridReady(rows, cols);
+            Game.Bus.PublishSticky(evt, alsoEnqueue: false);
+            Game.Bus.PublishImmediate(evt);
+            Debug.Log($"[Grid] PublishSticky(GridReady) {rows}x{cols}");
+        }
+
     }
 }

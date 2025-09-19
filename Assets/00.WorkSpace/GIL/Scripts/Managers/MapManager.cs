@@ -228,7 +228,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 var map = _mapList[idx];
                 if (!map) { Debug.LogError($"[MapManager] MapData[{idx}] is null."); return; }
 
-                ApplyMapToCurrentGrid(map, publishGridReady); // ← 아래 패치 2와 함께
+                ApplyMapToCurrentGrid(map, publishGridReady);
                 StartCoroutine(RestoreScoreNextFrame());
             }
             finally { _isApplyingMap = false; }
@@ -240,25 +240,39 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void LoadCurrentClassicMap()
         {
             var gm = GridManager.Instance;
-            if (!gm) { Debug.LogError("[MapManager] LoadCurrentClassicMap: GridManager missing"); return; }
+            if (!gm)
+            {
+                Debug.LogError("[MapManager] LoadCurrentClassicMap: GridManager missing");
+                return;
+            }
 
             var layout = saveManager?.gameData?.currentMapLayout;
             if (layout == null || layout.Count == 0)
             {
-                Debug.LogWarning("[MapManager] LoadCurrentClassicMap: no saved layout -> fallback StartNewClassicMap");
+                Debug.LogWarning("[MapManager] LoadCurrentClassicMap: no saved layout -> fallback StartNewClassicMap()");
                 StartNewClassicMap();
                 return;
             }
 
+            // 길이 보정 (패딩/트림)
             int expected = gm.rows * gm.cols;
             if (layout.Count != expected)
             {
-                if (layout.Count < expected) layout = layout.Concat(Enumerable.Repeat(0, expected - layout.Count)).ToList();
-                else layout = layout.Take(expected).ToList();
+                if (layout.Count < expected)
+                    layout = layout.Concat(Enumerable.Repeat(0, expected - layout.Count)).ToList();
+                else
+                    layout = layout.Take(expected).ToList();
             }
 
-            gm.ResetBoardToEmpty();
-            gm.ImportLayoutCodes(layout, repaint: true, doValidate: true);
+            Debug.Log($"[MM] LoadCurrentClassicMap: layoutCount={saveManager?.gameData?.currentMapLayout?.Count}");
+
+            // ImportLayoutCodes로 바로 반영 (내부에서 SetCellOccupied 호출)
+            if (!gm.ImportLayoutCodes(layout, repaint: true, doValidate: true))
+            {
+                Debug.Log($"[MM] After Import: gm.HasAnyOccupied()={GridManager.Instance.HasAnyOccupied()}");
+                StartNewClassicMap();
+                return;
+            }
 
             StartCoroutine(RestoreScoreNextFrame());
             StartCoroutine(Co_PostEnterSignals(GameMode.Classic));
@@ -281,10 +295,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 for (int c = 0; c < cols; c++)
                 {
                     int code = map.layout[r * map.cols + c];
-                    if (code > 0 && _codeToSprite.TryGetValue(code, out var sprite) && sprite)
-                        gm.SetCellOccupied(r, c, true, sprite);
-                    else
+                    if (code <= 0)
+                    {
                         gm.SetCellOccupied(r, c, false);
+                        continue;
+                    }
+
+                    var sprite = GDS.I?.GetBlockSpriteByLayoutCode(code);
+
+                    if (!sprite && _codeToSprite != null)
+                        _codeToSprite.TryGetValue(code, out sprite);
+
+                    gm.SetCellOccupied(r, c, sprite != null, sprite);
                 }
 
             gm.ValidateGridConsistency();
@@ -293,6 +315,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             Game.Bus?.PublishSticky(new GridReady(gm.rows, gm.cols), alsoEnqueue: false);
             // Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
+            GridManager.Instance.PublishGridReady();
         }
 
         // 블록 규칙성
@@ -391,8 +414,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             // 4) 실제 보드에 반영(시각/상태) — 반드시 GridManager 경유
             ApplyPlacementsToGridViaGridManager(placed);
-
-            // 5) 상태 동기화(안전장치)
 
             Debug.Log($"[ClassicStart] placed={placed.Count}, sumTiles={sumTiles}");
         }
@@ -697,17 +718,24 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void EnterClassic(ClassicEnterPolicy policy = ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew)
         {
             var gm = GridManager.Instance;
-            if (!gm) { Debug.LogError("[MapManager] GridManager missing"); return; }
+            if (!gm) { Debug.LogError("[ClassicEnter] GridManager missing"); return; }
 
             bool hasLiveBoard = gm.HasAnyOccupied();
 
             var gd = saveManager?.gameData;
             int savedCount = gd?.currentMapLayout?.Count ?? 0;
+            int expected = gm.rows * gm.cols;
+
             bool hasSavable =
                 gd != null &&
                 gd.isClassicModePlaying &&
                 gd.currentMapLayout != null &&
-                savedCount == (gm.rows * gm.cols); // 여기서는 grid가 준비됐으니 엄격히 ==
+                gd.currentMapLayout.Count == gm.rows * gm.cols &&
+                gd.currentMapLayout.Any(v => v > 0);
+
+            Debug.Log($"[ClassicEnter] policy={policy}, hasLiveBoard={hasLiveBoard}, " +
+                      $"isClassicModePlaying={gd?.isClassicModePlaying}, savedCount={savedCount}, expected={expected}, " +
+                      $"hasSavable={hasSavable}");
 
             switch (policy)
             {
@@ -721,17 +749,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     gm.ResetBoardToEmpty();
                     if (hasSavable)
                     {
+                        Debug.Log("[ClassicEnter] -> LoadCurrentClassicMap()");
                         LoadCurrentClassicMap();
-
-                        // 안전성 체크: 불러왔는데도 비어있으면 신규로 폴백
-                        if (!gm.HasAnyOccupied())
-                        {
-                            Debug.LogWarning("[ClassicEnter] Loaded map empty -> fallback to StartNewClassicMap()");
-                            StartNewClassicMap();
-                        }
                     }
                     else
                     {
+                        Debug.Log("[ClassicEnter] -> StartNewClassicMap() (no savable)");
                         StartNewClassicMap();
                     }
                     break;
@@ -739,21 +762,24 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 default: // ResumeIfAliveElseLoadSaveElseNew
                     if (hasLiveBoard)
                     {
+                        Debug.Log("[ClassicEnter] Resume live board");
                         gm.HealBoardFromStates();
                         gm.ValidateGridConsistency();
                     }
                     else if (hasSavable)
                     {
+                        Debug.Log("[ClassicEnter] Resume -> Load save");
                         gm.ResetBoardToEmpty();
                         LoadCurrentClassicMap();
-                        if (!gm.HasAnyOccupied())
+                        if (!gm.HasAnyOccupied() && !hasSavable)
                         {
-                            Debug.LogWarning("[ClassicEnter] Loaded map empty -> fallback to StartNewClassicMap()");
-                            StartNewClassicMap();
+                            Debug.Log("[Hand] No live board & no save → StartNewClassicMap()");
+                            MapManager.Instance.StartNewClassicMap();
                         }
                     }
                     else
                     {
+                        Debug.Log("[ClassicEnter] No live/save -> Start new");
                         gm.ResetBoardToEmpty();
                         StartNewClassicMap();
                         GameSnapShot.SaveGridSnapshot();
@@ -799,6 +825,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             // 타임아웃 강행도 동일하게 가드
             StartCoroutine(Co_ForceEnterClassicAfterTimeout(2f));
+            Debug.Log($"[MM] RequestClassicEnter: policy={policy}, gridReady={IsGridFullyReady(GridManager.Instance)}");
         }
 
         private IEnumerator Co_ForceEnterClassicAfterTimeout(float sec)
@@ -820,6 +847,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void StartNewClassicMap()
         {
+            Debug.Log("[MM] StartNewClassicMap()");
+
             var gm = GridManager.Instance;
             if (!gm || gm.gridSquares == null)
             {
@@ -908,6 +937,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             // 입장은 Immediate 1회 (손패/스폰은 이걸 듣는다)
             Game.Bus?.PublishImmediate(new GameEntered(mode));
+        }
+
+        public void RestartClassicAfterReset(bool clearRun)
+        {
+            StartCoroutine(CoRestartClassicAfterReset(clearRun));
+        }
+
+        private IEnumerator CoRestartClassicAfterReset(bool clearRun)
+        {
+            yield return null;
+            yield return new WaitForEndOfFrame();
+
+            if (clearRun)
+            {
+                saveManager?.ClearRunState(true);
+                ScoreManager.Instance?.ResetAll();
+                yield break;
+            }
+
+            EnterClassic(ClassicEnterPolicy.ForceNew);
         }
     }
 }

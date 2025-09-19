@@ -1,12 +1,11 @@
-﻿using _00.WorkSpace.GIL.Scripts.Grids;
-using _00.WorkSpace.GIL.Scripts.Managers;
+﻿using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
@@ -62,7 +61,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         string _lastReason;
         bool _paused;
         private bool _initialized;
-
+        bool _handRestoredTried = false;
+        private bool _subscribed;
         #endregion
 
         #region Block Image Load
@@ -84,31 +84,25 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         void OnEnable()
         {
-            Game.Bus?.Subscribe<GridReady>(_ =>
-            {
-                if (_paused) return;
-                if (_handSpawnedOnce) return;
-                GenerateAllBlocks();
-                _handSpawnedOnce = true;
-            }, replaySticky: true);
-
-            Game.Bus?.Subscribe<GameResetting>(e =>
-            {
-                if (Time.frameCount == _lastResetFrame) return;
-                _lastResetFrame = Time.frameCount;
-
-                if (e.reason == ResetReason.ToMain || e.reason == ResetReason.Restart)
-                    MapManager.Instance?.saveManager?.ClearCurrentBlocks(true);
-            }, replaySticky: false);
-
-            Game.Bus?.Subscribe<GameEntered>(OnGameEntered /*, replaySticky:false*/);
+            StartCoroutine(CoBindWhenBusReady());
         }
 
         void OnDisable()
         {
             if (Game.IsBound && _onContinue != null)
                 Game.Bus.Unsubscribe(_onContinue);
-            Game.Bus?.Unsubscribe<GameEntered>(OnGameEntered);
+
+            if (_subscribed)
+            {
+                _bus.Unsubscribe<GridReady>(OnGridReady);
+                _bus.Unsubscribe<GameEntered>(OnGameEntered);
+                _bus.Unsubscribe<GameResetting>(OnGameResetting);
+                _bus.Unsubscribe<GameResetRequest>(OnGameResetRequest);
+                _bus.Unsubscribe<ReviveRequest>(OnReviveRequest);
+                _bus.Unsubscribe<GiveUpRequest>(OnGiveUpRequest);
+                _bus.Unsubscribe<GameDataChanged>(OnGameDataChanged);
+                _subscribed = false;
+            }
         }
 
         #endregion
@@ -122,7 +116,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Debug.Log($"[Storage] >>> ENTER GenerateAllBlocks | paused={_paused} | " +
                       $"spawnPos={(blockSpawnPosList == null ? -1 : blockSpawnPosList.Count)} | " +
                       $"sprites={(shapeImageSprites == null ? -1 : shapeImageSprites.Count)} | " +
-                      $"hasSpawner={(blockManager != null)} | this={GetInstanceID()}");
+                      $"hasSpawner={blockManager != null} | this={GetInstanceID()}");
 
             if (_paused)
             {
@@ -248,6 +242,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             if (_gameOverFired) { Debug.Log("[Downed] blocked by guard"); return; }
 
+            // 1회 부활 제한 체크
             if (oneRevivePerRun && _reviveUsed)
             {
                 ConfirmGameOverImmediate(reason);
@@ -260,8 +255,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                        : (Game.GM != null ? Game.GM.Score : 0);
             _lastReason = reason;
 
+            // Revive 열지 말고 이벤트만 발행 => UIManager가 1초 후 오픈
             Game.Bus.PublishImmediate(new PlayerDowned(_lastScore, _lastReason));
-            StartCoroutine(Co_PauseAndOpenRevive());
+
+            // 전면광고 큐잉은 유지하되, 실제 표시는 ReviveScreen에서
+            TryQueueInterstitialAfterGameOver();
         }
         void TryQueueInterstitialAfterGameOver()
         {
@@ -280,7 +278,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         /// <returns>true: 성공(재개) / false: 실패(그대로 GameOver 유지)</returns>
         public bool GenerateAdRewardWave()
         {
-            // 0) 호출 가드
+            // 0) 가드
             if (oneRevivePerRun && _reviveUsed)
             {
                 Debug.LogWarning("[Revive] 이미 Revive를 사용했습니다.");
@@ -288,33 +286,49 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             if (!_gameOverFired)
             {
-                Debug.LogWarning("[Revive] GameOver 상태가 아니라 Revive를 실행하지 않습니다.");
+                Debug.LogWarning("[Revive] GameOver 상태가 아니라 Revive 실행 안 함.");
                 return false;
             }
 
-            // 1) Revive 웨이브 생성 (라인 보정 → 가상 배치 + 라인 제거 반영)
-            if (!BlockSpawnManager.Instance.TryGenerateReviveWave(reviveWaveCount, out var wave, out var fits))
+            // 1) 웨이브 생성
+            if (!BlockSpawnManager.Instance.TryGenerateReviveWave(reviveWaveCount, out var wave, out var fits)
+                || wave == null || wave.Count == 0)
             {
-                Debug.LogWarning("[Revive] 라인 보정 불가 → Revive 웨이브 생성 실패. GameOver 유지");
+                Debug.LogWarning($"[Revive] 웨이브 생성 실패/빈 웨이브. cnt={(wave?.Count ?? -1)} → GameOver 유지");
                 return false;
             }
 
-            // 2) 대기 중인 인터스티셜 광고 예약이 있다면 취소 (재개 직후 광고가 뜨는 것 방지)
+            // 2) 광고 큐 취소
             CancelQueuedInterstitialIfAny();
-            // 3) GameOver 해제 & UI 닫기
+
+            // 3) 상태 복구(가드/일시정지) → 손패 적용 전에!
             _reviveUsed = true;
             _gameOverFired = false;
+            _paused = false;
             Time.timeScale = 1f;
 
+            Game.Bus?.PublishImmediate(new InputLock(false, "Revive"));
+
+            // 4) 손패 적용
+            var previews = ApplyReviveWave(wave);
+
+            // 5) 안전망: 손패가 비어 있으면 즉시 리필
+            if (_currentBlocks == null || _currentBlocks.Count == 0)
+            {
+                Debug.LogError("[Revive] 웨이브 적용 후에도 손패가 비어 있음 → Fallback GenerateAllBlocks()");
+                GenerateAllBlocks();
+            }
+
+            // 6) 훅/저장
+            ScoreManager.Instance?.OnHandRefilled();
+            MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
+
+            Debug.Log($"[Revive] 완료: hand={_currentBlocks.Count}, wave={wave.Count}, spawnSlots={blockSpawnPosList?.Count ?? -1}");
+
+            // 7) 마지막에 UI/상태 이벤트 발행(패널 닫기 등)
             Game.Bus?.PublishImmediate(new RevivePerformed());
             Game.Bus?.PublishImmediate(new ContinueGranted());
 
-            // 4) 손패를 Revive 웨이브로 교체하고, 손패 갱신 훅 호출
-            ApplyReviveWave(wave);
-            ScoreManager.Instance?.OnHandRefilled();
-            //BlockSpawnManager.Instance.PreviewWaveNonOverlapping(wave, fits, previewSprites);
-
-            Debug.Log("[Revive] Revive 웨이브 적용 완료, 게임 재개");
             return true;
         }
 
@@ -322,55 +336,57 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         // === Revive 웨이브 적용 (손패 교체 + 스프라이트 수집) ===
         private List<Sprite> ApplyReviveWave(List<ShapeData> wave)
         {
-            // 1) 기존 손패 제거
+            if (blockSpawnPosList == null || blockSpawnPosList.Count == 0 || shapesPanel == null)
+            {
+                Debug.LogError($"[Revive] SpawnPos/Panel 미지정: slots={(blockSpawnPosList?.Count ?? -1)}, panel={(shapesPanel != null)}");
+            }
+
+            // 기존 손패 제거
             if (_currentBlocks != null)
             {
                 for (int i = _currentBlocks.Count - 1; i >= 0; i--)
-                    if (_currentBlocks[i] != null)
-                        Destroy(_currentBlocks[i].gameObject);
+                    if (_currentBlocks[i] != null) Destroy(_currentBlocks[i].gameObject);
                 _currentBlocks.Clear();
                 _currentBlocksShapeData.Clear();
                 _currentBlocksSpriteData.Clear();
             }
             else _currentBlocks = new List<Block>(wave.Count);
 
-            // 2) GenerateAllBlocks와 동일하게: 슬롯 개수만큼 previewSprites 준비
+            // 프리뷰 배열 준비
             var previewSprites = new List<Sprite>(blockSpawnPosList.Count);
             for (int k = 0; k < blockSpawnPosList.Count; k++) previewSprites.Add(null);
 
-            // 3) 같은 방식으로 생성 + 스프라이트 세팅
-            for (int i = 0; i < blockSpawnPosList.Count && i < wave.Count; i++)
+            // 생성
+            int spawnCount = Mathf.Min(blockSpawnPosList.Count, wave.Count);
+            for (int i = 0; i < spawnCount; i++)
             {
                 var shape = wave[i];
-                if (shape == null)
-                {
-                    Debug.LogWarning($"[Revive] wave[{i}] is null → skip this slot.");
-                    continue;
-                }
+                if (shape == null) { Debug.LogWarning($"[Revive] wave[{i}] null → skip"); continue; }
 
-                // GenerateAllBlocks와 동일한 부모/좌표 체계
-                var go = Instantiate(blockPrefab, blockSpawnPosList[i].position, Quaternion.identity, shapesPanel);
+                var parent = shapesPanel;
+                var pos = blockSpawnPosList[i].position;
+                var go = Instantiate(blockPrefab, pos, Quaternion.identity, parent);
                 var blk = go.GetComponent<Block>();
                 if (!blk) { Debug.LogError("[Revive] Block component missing"); Destroy(go); continue; }
                 blk.SpawnSlotIndex = i;
 
-                // 스프라이트 선택 로직도 GenerateAllBlocks와 동일하게
-                Sprite sprite = shapeImageSprites[GetRandomImageIndex()];
-                // 프리팹 내 이미지 적용
+                // 스프라이트
+                Sprite sprite = (shapeImageSprites != null && shapeImageSprites.Count > 0)
+                                ? shapeImageSprites[GetRandomImageIndex()]
+                                : null;
                 var img = blk.shapePrefab ? blk.shapePrefab.GetComponent<Image>() : null;
                 if (img) img.sprite = sprite;
-
                 previewSprites[i] = sprite;
 
                 // 블록 초기화
                 blk.GenerateBlock(shape);
                 _currentBlocks.Add(blk);
                 _currentBlocksShapeData.Add(blk.GetShapeData());
-                _currentBlocksSpriteData.Add(blk.GetSpriteData());
+                _currentBlocksSpriteData.Add(sprite);
             }
 
+            Debug.Log($"[Revive] ApplyWave: spawned={_currentBlocks.Count}/{spawnCount}, panelActive={shapesPanel.gameObject.activeInHierarchy}");
             MapManager.Instance?.saveManager?.SaveCurrentBlocksFromStorage(this);
-
             return previewSprites;
         }
         private void CancelQueuedInterstitialIfAny() //
@@ -445,44 +461,19 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void SetDependencies(EventQueue bus)
         {
             _bus = bus;
+            if (_subscribed) return; // 중복 가드
+
             Debug.Log($"[Storage] Bind bus={_bus.GetHashCode()}");
 
-            // 1) 리셋 시작: 가드/타임스케일 초기화 (이중 안전망)
-            _bus.Subscribe<GameResetting>(_ =>
-            {
-                _gameOverFired = false;
-                Time.timeScale = 1f;
-            }, replaySticky: false);
-
-            // 2) 리셋 처리: 내부 상태 정리
-            _bus.Subscribe<GameResetRequest>(_ =>
-            {
-                Debug.Log("[Storage] ResetRuntime received");
-                ResetRuntime();
-            }, replaySticky: false);
-
-            // 3) 그리드 준비됨: 초기 블록 생성
+            _bus.Subscribe<GameResetting>(OnGameResetting, replaySticky: false);
+            _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
             _bus.Subscribe<GridReady>(OnGridReady, replaySticky: true);
+            _bus.Subscribe<GameEntered>(OnGameEntered, replaySticky: false);
+            _bus.Subscribe<ReviveRequest>(OnReviveRequest, replaySticky: false);
+            _bus.Subscribe<GiveUpRequest>(OnGiveUpRequest, replaySticky: false);
+            _bus.Subscribe<GameDataChanged>(OnGameDataChanged, replaySticky: true);
 
-            // 4) 폴백: 이미 그리드가 있으면 바로 한 번 호출
-            if (GridManager.Instance != null && GridManager.Instance.gridSquares != null)
-            {
-                Debug.Log("[Storage] Fallback OnGridReady (grid already built)");
-                OnGridReady(new GridReady(GridManager.Instance.rows, GridManager.Instance.cols));
-            }
-
-            _bus.Subscribe<ReviveRequest>(_ =>
-            {
-                if (!GenerateAdRewardWave())
-                    ConfirmGameOver(); // 실패 시 곧바로 확정 오버
-            }, replaySticky: false);
-
-            _bus.Subscribe<GiveUpRequest>(_ => { ConfirmGameOver(); }, replaySticky: false);
-            _bus.Subscribe<GameDataChanged>(e =>
-            {
-                _persistedHigh = e.data.highScore;
-                Debug.Log($"[BlockStorage] HighScore cached = {_persistedHigh}");
-            }, replaySticky: true);
+            _subscribed = true;
         }
 
         public void ResetRuntime()
@@ -492,42 +483,33 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Time.timeScale = 1f;
             CancelQueuedInterstitialIfAny();
 
-            Game.Bus?.ClearSticky<PlayerDowned>();
-            Game.Bus?.ClearSticky<GameOverConfirmed>();
-
-            // 생성/체크 잠깐 중지
             _paused = true;
 
-            // 기존 블록 정리
+            _handSpawnedOnce = false;
+            _handRestoredTried = false;
+
             for (int i = 0; i < _currentBlocks.Count; i++)
                 if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
             _currentBlocks.Clear();
             _currentBlocksShapeData.Clear();
             _currentBlocksSpriteData.Clear();
-            // 생성은 GridReady에서 재개
         }
 
         private void OnGridReady(GridReady e)
         {
             Debug.Log("[BlockStorage] OnGridReady 수신됨");
-
-            if (_paused == false && _initialized)
-            {
-                Debug.Log("[Storage] OnGridReady SKIP: already running");
-                return;
-            }
-
             _paused = false;
-            if (!_initialized) _initialized = true;
 
-            Debug.Log("[Storage] OnGridReady → call GenerateAllBlocks()");
-            GenerateAllBlocks();
+            if (!HasAnyHand())
+                RefillHand();
         }
 
         private void TryBindBus()
         {
-            if (_bus != null || !Game.IsBound) return;
-            SetDependencies(Game.Bus);
+            if (!Game.IsBound) return;
+
+            if (_bus == null) _bus = Game.Bus;
+            if (!_subscribed) SetDependencies(_bus);
         }
 
         void ConfirmGameOverImmediate(string reason)
@@ -707,8 +689,13 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             if (HasAnyHand()) { Debug.Log("[Hand] Already has hand, skip refill"); return; }
 
-            Debug.Log("[Hand] GameEntered(Classic) -> RefillHand");
+            var gm = GridManager.Instance;
+            var gd = MapManager.Instance?.saveManager?.gameData;
+            bool hasSavable = gd != null && gd.isClassicModePlaying &&
+                              gd.currentMapLayout != null && gd.currentMapLayout.Any(v => v > 0);
+            Debug.Log($"[HAND] OnGameEntered → RefillHand: gm.HasAnyOccupied()={gm.HasAnyOccupied()}, hasSavable={hasSavable}");
             RefillHand();
+
         }
         bool HasAnyHand()
         {
@@ -718,38 +705,66 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             return _currentBlocks.Count > 0;
         }
 
-        void RefillHand()
+        public void RefillHand()
         {
-            if (_paused)
+            if (!_handRestoredTried)
             {
-                Debug.LogWarning("[Hand] Refill requested while paused → forcing unpause for safety");
-                _paused = false;
-            }
+                _handRestoredTried = true;
 
-            if (HasAnyHand())
-            {
-                Debug.Log("[Hand] Already has hand. Skip refill.");
-                return;
-            }
+                var sm = MapManager.Instance?.saveManager;
+                int nameCnt = sm?.Data?.currentShapeNames?.Count ?? 0;
+                Debug.Log($"[Hand] Try restore before generate. names={nameCnt}");
 
-            if (blockPrefab == null || shapesPanel == null || blockSpawnPosList == null || blockSpawnPosList.Count == 0)
-            {
-                Debug.LogError("[Hand] Missing deps: blockPrefab/shapesPanel/slots");
-                return;
-            }
-
-            // 보드 준비 보장
-            var gm = GridManager.Instance;
-            if (MapManager.Instance != null && gm != null && !gm.HasAnyOccupied())
-            {
-                Debug.Log("[Hand] Board empty → StartNewClassicMap()");
-                MapManager.Instance.StartNewClassicMap();
+                if (sm != null && sm.TryRestoreBlocksToStorage(this))
+                {
+                    Debug.Log("[Hand] Restored from save → skip generation");
+                    return;
+                }
             }
 
             Debug.Log("[Hand] Refill → GenerateAllBlocks()");
             GenerateAllBlocks();
+        }
+    private void OnGameResetting(GameResetting _)
+        {
+            _gameOverFired = false;
+            Time.timeScale = 1f;
+        }
 
-            _handSpawnedOnce = true; // GridReady 경로 중복 생성 방지
+        private void OnGameResetRequest(GameResetRequest e)
+        {
+            Debug.Log("[Storage] ResetRuntime (scene-only) — no SaveManager clear");
+            ResetRuntime();
+        }
+
+        private void OnReviveRequest(ReviveRequest _)
+        {
+            if (!GenerateAdRewardWave()) ConfirmGameOver();
+        }
+
+        private void OnGiveUpRequest(GiveUpRequest _)
+        {
+            ConfirmGameOver();
+        }
+
+        private void OnGameDataChanged(GameDataChanged e)
+        {
+            _persistedHigh = e.data.highScore;
+            Debug.Log($"[BlockStorage] HighScore cached = {_persistedHigh}");
+        }
+        IEnumerator CoBindWhenBusReady()
+        {
+            while (!Game.IsBound) yield return null;
+
+            if (!_subscribed) SetDependencies(Game.Bus);
+
+            yield return null;
+
+            if (!HasAnyHand())
+            {
+                Debug.Log("[Storage] Boot fallback: no hand after bind → GenerateAllBlocks");
+                GenerateAllBlocks();
+            }
         }
     }
 }

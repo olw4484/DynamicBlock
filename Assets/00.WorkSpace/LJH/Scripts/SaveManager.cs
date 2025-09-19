@@ -12,6 +12,7 @@ using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Messages;
 using System.Collections;
+using UnityEngine.Localization.Settings;
 
 // ================================
 // System : SaveManager (Unified)
@@ -52,7 +53,20 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     private float _lastSnapshotAt = -999f;
     private bool _pendingSnapshotApply;
     private const int DefaultStages = 200;
+    bool _suppressSnapshot;
+    bool _internalClearGuard;
 
+    public enum SnapshotSource { Auto, Manual, EnterRequest, EnterIntent, Reset }
+
+    public void SuppressSnapshotsFor(float seconds)
+    => StartCoroutine(CoSuppress(seconds));
+
+    IEnumerator CoSuppress(float s)
+    {
+        _suppressSnapshot = true;
+        yield return new WaitForSecondsRealtime(s);
+        _suppressSnapshot = false;
+    }
 
     // ------------- Lifecycle (Mono) -------------
     private void Awake()
@@ -65,6 +79,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
         TryMigrateLegacyLanguageOnce();
         LoadGame();
+        StartCoroutine(CoApplyLocale(gameData?.LanguageIndex ?? 0));
     }
 
 
@@ -108,26 +123,58 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         // (권장) 블록 커밋 시점 이벤트가 있다면 여기도 연결
         // _bus.Subscribe<BlockCommitted>(_ => MarkSnapshotDirty(), replaySticky: false);
 
-        // ---- 런 종료: GameOver에서만 스냅샷 삭제 ----
+        // ---- 런 종료/재시작: GameOver/Restart에서 스냅샷 삭제 ----
         _bus.Subscribe<GameResetRequest>(e =>
         {
-            if (e.reason == ResetReason.GameOver)
+            if (e.reason == ResetReason.Restart)
             {
                 ClearRunState(save: true);
-                Debug.Log("[Save] Snapshot cleared by GameResetRequest(GameOver).");
+                Debug.Log("[Save] Snapshot cleared by Restart.");
             }
         }, replaySticky: false);
 
         // ---- 클래식 입장: '대기'만 설정 ----
         _bus.Subscribe<GameEnterRequest>(e =>
         {
-            if (e.mode == GameMode.Classic) ArmSnapshotApply("EnterRequest");
+            if (e.mode != GameMode.Classic) return;
+
+            // 앱을 껐다 켜서 들어오는 경우 → 리바이브 포기로 간주
+            if (TryConsumeDownedPending(out var lastScore))
+            {
+                ClearClassicRun();
+                bool isNewBest = lastScore > (gameData?.highScore ?? 0);
+                _bus.PublishImmediate(new GameOverConfirmed(lastScore, isNewBest, "PendingFinalizedOnEnter"));
+                return; // 실제 게임 시작 절차는 상위에서 이 이벤트 보고 멈추도록
+            }
+
+            SuppressSnapshotsFor(0.5f);
+            ArmSnapshotApply("EnterRequest");
         }, replaySticky: false);
 
         _bus.Subscribe<GameEnterIntent>(e =>
         {
-            if (e.mode == GameMode.Classic && (e.forceLoadSave || HasRunSnapshot()))
-                ArmSnapshotApply(e.forceLoadSave ? "EnterIntent(force)" : "EnterIntent");
+            if (e.mode != GameMode.Classic) return;
+
+            if (TryConsumeDownedPending(out var lastScore))
+            {
+                ClearClassicRun();
+                bool isNewBest = lastScore > (gameData?.highScore ?? 0);
+                _bus.PublishImmediate(new GameOverConfirmed(lastScore, isNewBest, "PendingFinalizedOnEnter"));
+                return;
+            }
+
+            SuppressSnapshotsFor(0.5f);
+            ArmSnapshotApply(e.forceLoadSave ? "EnterIntent(force)" : "EnterIntent");
+        }, replaySticky: false);
+
+        _bus.Subscribe<RevivePerformed>(_ =>
+        {
+            if (gameData == null) LoadGame();
+            if (gameData != null && gameData.classicDownedPending)
+            {
+                gameData.classicDownedPending = false;
+                SaveGame();
+            }
         }, replaySticky: false);
 
         // ---- 실제 복원 타이밍: 보드/그리드 준비 or 게임 진입 완료 ----
@@ -147,10 +194,19 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             UpdateClassicScore(e.score);
             if (e.isNewBest) { Game.Fx.PlayNewScoreAt(); Sfx.NewRecord(); }
             else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
+            ClearRunState(save: true);
+
             Debug.Log($"[Save] FINAL total={e.score}, persistedHigh={gameData?.highScore}");
         }, replaySticky: false);
         _bus.Subscribe<LanguageChangeRequested>(e => SetLanguageIndex(e.index), replaySticky: false);
         _bus.Subscribe<AllClear>(_ => Debug.Log("[Save] ALL CLEAR!"), replaySticky: false);
+
+        _bus.Subscribe<PlayerDowned>(e =>
+        {
+            MarkDownedPending(e.score);
+            // 리바이브 창 열릴 동안은 자동 스냅샷 방지
+            SuppressSnapshotsFor(5f);
+        }, replaySticky: false);
     }
 
     // ------------- Public Save/Load -------------
@@ -322,11 +378,41 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     public void SetLanguageIndex(int index)
     {
         if (gameData == null) LoadGame();
-        if (gameData.LanguageIndex == index) return;
+
+        var locales = LocalizationSettings.AvailableLocales?.Locales;
+        if (locales == null || locales.Count == 0)
+        {
+            Debug.LogWarning("[Lang] No locales. Will only persist index.");
+            gameData.LanguageIndex = index;
+            PublishState(gameData);
+            SaveGame();
+            return;
+        }
+        index = Mathf.Clamp(index, 0, locales.Count - 1);
 
         gameData.LanguageIndex = index;
+        StartCoroutine(CoApplyLocale(index));
+
         PublishState(gameData);
         SaveGame();
+    }
+
+    private IEnumerator CoApplyLocale(int index)
+    {
+        var initOp = LocalizationSettings.InitializationOperation;
+        if (!initOp.IsDone) yield return initOp;
+
+        var locales = LocalizationSettings.AvailableLocales.Locales;
+        if (locales == null || locales.Count == 0) yield break;
+
+        index = Mathf.Clamp(index, 0, locales.Count - 1);
+        var target = locales[index];
+
+        if (LocalizationSettings.SelectedLocale != target)
+        {
+            Debug.Log($"[Lang] Apply locale: {target?.Identifier.Code} (index={index})");
+            LocalizationSettings.SelectedLocale = target;
+        }
     }
 
     // ------------- Score/Stage API -------------
@@ -385,6 +471,13 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     // ------------- Hand/Blocks Snapshot -------------
     public void ClearCurrentBlocks(bool save = true)
     {
+        if (!_internalClearGuard)
+        {
+            Debug.LogWarning("[Save] ClearCurrentBlocks ignored (external caller)");
+            return; // 외부 호출 차단
+        }
+        Debug.Log("[Save] Cleared current blocks (by reset).\n" +
+          new System.Diagnostics.StackTrace(true));
         if (gameData == null) return;
 
         if (gameData.currentShapes == null) gameData.currentShapes = new List<ShapeData>();
@@ -404,61 +497,71 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     public void SaveCurrentBlocksFromStorage(BlockStorage storage, bool save = true)
     {
         if (gameData == null || storage == null) return;
-        if (gameData.currentShapes == null) gameData.currentShapes = new List<ShapeData>();
-        if (gameData.currentShapeSprites == null) gameData.currentShapeSprites = new List<Sprite>();
-        gameData.currentShapes.Clear();
-        gameData.currentShapeSprites.Clear();
+
+        // 런타임 캐시(동세션 빠른 복원용)
+        gameData.currentShapes = new List<ShapeData>();
+        gameData.currentShapeSprites = new List<Sprite>();
+
+        // 영속 데이터(세션 넘어도 유효)
+        gameData.currentShapeNames = new List<string>();
+        gameData.currentSpriteNames = new List<string>();
+        gameData.currentBlockSlots = new List<int>();
 
         var shapes = storage.CurrentBlocksShapedata;
         var sprites = storage.CurrentBlocksSpriteData;
-        if (shapes == null || sprites == null) return;
+        var blocks = storage.CurrentBlocks;
 
-        int n = Mathf.Min(shapes.Count, sprites.Count);
+        int n = Mathf.Min(shapes?.Count ?? 0, sprites?.Count ?? 0);
         for (int i = 0; i < n; i++)
         {
-            gameData.currentShapes.Add(shapes[i]);
-            gameData.currentShapeSprites.Add(sprites[i]);
+            var sh = shapes[i];
+            var sp = sprites[i];
+
+            gameData.currentShapes.Add(sh);
+            gameData.currentShapeSprites.Add(sp);
+
+            gameData.currentShapeNames.Add(sh ? sh.name : string.Empty);
+            gameData.currentSpriteNames.Add(sp ? sp.name : string.Empty);
+            gameData.currentBlockSlots.Add(blocks != null && i < blocks.Count && blocks[i] ? blocks[i].SpawnSlotIndex : -1);
         }
 
-        gameData.currentShapeNames = new List<string>(n);
-        gameData.currentSpriteNames = new List<string>(n);
-        for (int i = 0; i < n; i++)
-        {
-            gameData.currentShapeNames.Add(shapes[i] ? shapes[i].name : string.Empty);
-            gameData.currentSpriteNames.Add(sprites[i] ? sprites[i].name : string.Empty);
-        }
-
-        gameData.currentBlockSlots = storage.CurrentBlocks
-            .Select(b => b ? b.SpawnSlotIndex : -1)
-            .ToList();
-
-        if (save) SaveGame();             // <-- 선택 저장
-        Debug.Log($"[Save] Saved current blocks: {n}");
+        if (save) SaveGame();
+        Debug.Log($"[Save] Saved current blocks (persisted by names): {n}");
     }
 
     public bool TryRestoreBlocksToStorage(BlockStorage storage)
     {
         if (gameData == null || storage == null) return false;
+
         var shapes = gameData.currentShapes;
         var sprites = gameData.currentShapeSprites;
         var slots = gameData.currentBlockSlots;
 
-        if ((shapes == null || shapes.Count == 0) &&
-            gameData.currentShapeNames != null && gameData.currentShapeNames.Count > 0)
+        // 필요시 이름→객체 복원
+        if ((shapes == null || shapes.Count == 0)
+            && (gameData.currentShapeNames?.Count ?? 0) > 0)
         {
             shapes = gameData.currentShapeNames.Select(n => GDS.I.GetShapeByName(n)).ToList();
             sprites = (gameData.currentSpriteNames ?? new List<string>())
-                .Select(n => GDS.I.GetBlockSpriteByName(n)).ToList();
+                        .Select(n => GDS.I.GetBlockSpriteByName(n)).ToList();
 
             gameData.currentShapes = shapes;
             gameData.currentShapeSprites = sprites;
         }
 
-        if (shapes != null && sprites != null && slots != null
-            && shapes.Count > 0 && shapes.Count == sprites.Count && shapes.Count == slots.Count)
+        int nShapes = shapes?.Count ?? 0;
+        int nSprites = sprites?.Count ?? 0;
+
+        if (nShapes == 0 || nSprites == 0)
         {
-            return storage.RebuildBlocksFromLists(shapes, sprites, slots);
+            Debug.Log("[Save] TryRestoreBlocksToStorage: empty -> false");
+            return false;
         }
+
+        int n = Mathf.Min(nShapes, nSprites);
+
+        if (slots != null && slots.Count == n)
+            return storage.RebuildBlocksFromLists(shapes, sprites, slots);
 
         return storage.RebuildBlocksFromLists(shapes, sprites);
     }
@@ -467,6 +570,9 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     public void ClearRunState(bool save = true)
     {
         Debug.Log("[Save] ClearRunState CALLED");
+        _internalClearGuard = true;
+        ClearCurrentBlocks(false);
+        _internalClearGuard = false;
         if (gameData == null) return;
 
         ClearCurrentBlocks(false);
@@ -483,15 +589,35 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         if (save) SaveGame();
         Debug.Log("[Save] ClearRunState: grid/blocks/score cleared.");
     }
+    private static bool HasMeaningfulBoard(List<int> layout)
+    => layout != null && layout.Count > 0 && layout.Any(v => v > 0);
 
-    public void SaveRunSnapshot(bool saveBlocksToo = true)
+    public void SaveRunSnapshot(bool saveBlocksToo = true, SnapshotSource src = SnapshotSource.Auto)
     {
+        if (_suppressSnapshot) { Debug.Log($"[Save] Snapshot suppressed ({src})"); return; }
+
+        if (gameData != null && gameData.classicDownedPending)
+        {
+            Debug.Log("[Save] Skip snapshot: DownedPending");
+            return;
+        }
+
+        if (src == SnapshotSource.EnterRequest || src == SnapshotSource.EnterIntent || src == SnapshotSource.Reset)
+        {
+            Debug.Log($"[Save] Skip snapshot on {src}.");
+            return;
+        }
+
         var gm = GridManager.Instance;
-        Debug.Log($"[Save] SaveRunSnapshot START rows*cols={gm?.rows * gm?.cols}");
+        int cellCount = (gm != null) ? gm.rows * gm.cols : -1;
+        Debug.Log($"[Save] SaveRunSnapshot START rows*cols={cellCount}");
 
         if (gm != null)
         {
-            gameData.currentMapLayout = gm.ExportLayoutCodes();
+            var layout = gm.ExportLayoutCodes();
+            if (!HasMeaningfulBoard(layout)) { Debug.Log("[Save] Skip snapshot: layout empty."); return; }
+
+            gameData.currentMapLayout = layout;
             gameData.isClassicModePlaying = true;
 
             gameData.currentScore = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
@@ -501,11 +627,13 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         if (saveBlocksToo)
         {
             var storage = UnityEngine.Object.FindFirstObjectByType<BlockStorage>();
-            if (storage) SaveCurrentBlocksFromStorage(storage, save: false); // ★ 여기
+            if (storage) SaveCurrentBlocksFromStorage(storage, save: false);
         }
 
-        SaveGame(); // 단 한 번만 저장
-        Debug.Log($"[Save] SaveRunSnapshot DONE: layoutCount={gameData?.currentMapLayout?.Count}, score={gameData?.currentScore}, combo={gameData?.currentCombo}, classicFlag={gameData?.isClassicModePlaying}");
+        SaveGame();
+        Debug.Log($"[Save] SaveRunSnapshot DONE: layoutCount={gameData?.currentMapLayout?.Count}, " +
+                  $"score={gameData?.currentScore}, combo={gameData?.currentCombo}, " +
+                  $"classicFlag={gameData?.isClassicModePlaying}");
     }
 
     public bool HasRunSnapshot()
@@ -513,8 +641,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         if (gameData == null) LoadGame();
         return gameData != null
             && gameData.isClassicModePlaying
-            && gameData.currentMapLayout != null
-            && gameData.currentMapLayout.Count > 0;
+            && HasMeaningfulBoard(gameData.currentMapLayout);
     }
 
     public bool TryApplyRunSnapshot()
@@ -575,17 +702,14 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
     private IEnumerator CoDebouncedSnapshot()
     {
-        // 1) 디바운스
         yield return new WaitForSecondsRealtime(_snapshotDebounce);
-
-        // 2) 최소 간격 보장
         float dt = Time.realtimeSinceStartup - _lastSnapshotAt;
         if (dt < _snapshotMinInterval)
             yield return new WaitForSecondsRealtime(_snapshotMinInterval - dt);
 
         if (_snapshotDirty)
         {
-            SaveRunSnapshot(saveBlocksToo: true);
+            SaveRunSnapshot(saveBlocksToo: true, src: SnapshotSource.Auto);
             _lastSnapshotAt = Time.realtimeSinceStartup;
             _snapshotDirty = false;
         }
@@ -618,6 +742,40 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
                   $"layout={gameData?.currentMapLayout?.Count}, score={gameData?.currentScore}, combo={gameData?.currentCombo}");
         _pendingSnapshotApply = false;
     }
+    public void MarkDownedPending(int score)
+    {
+        if (gameData == null) LoadGame();
+        gameData.classicDownedPending = true;
+        gameData.classicDownedScore = score;
+        gameData.classicDownedUtc = DateTime.UtcNow.Ticks;
+        SaveGame();
+    }
+
+    public bool TryConsumeDownedPending(out int score, double ttlSeconds = 0) // ttl 0=무한
+    {
+        score = 0;
+        if (gameData == null) LoadGame();
+        if (gameData == null || !gameData.classicDownedPending) return false;
+
+        // 선택: TTL 검사
+        if (ttlSeconds > 0)
+        {
+            var elapsed = (DateTime.UtcNow - new DateTime(gameData.classicDownedUtc)).TotalSeconds;
+            if (elapsed > ttlSeconds) { /* 만료 처리해도 됨 */ }
+        }
+
+        score = gameData.classicDownedScore;
+        gameData.classicDownedPending = false; // 소비
+        SaveGame();
+        return true;
+    }
+
+    // 런 정리(이름만, 기존 ClearRunState 써도 OK)
+    public void ClearClassicRun()
+    {
+        ClearRunState(save: true);
+    }
+
     public void SkipNextSnapshot(string reason = null) { skipNextGridSnapshot = true; Debug.Log($"[Save] Skip next grid snapshot (reason: {reason})"); }
     // ------------- ISaveService (직접 호출 경로) -------------
     public bool LoadOrCreate() { LoadGame(); return true; }
