@@ -908,22 +908,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             ForceLoadSave,                     // 항상 저장 복원
             ForceNew                           // Retry/패배: 완전 초기화 -> 신규
         }
-
-        private void ApplyEnterIntent(GameEnterRequest req)
-        {
-            SetGameMode(req.mode);
-
-            if (req.mode == GameMode.Tutorial)
-            {
-                RequestTutorialApply();
-                Debug.Log("[Map] Tutorial apply requested via intent");
-            }
-            else
-            {
-                RequestClassicEnter(req.policy); // 예: ForceLoadSave
-                Debug.Log($"[Map] Classic enter requested via intent: {req.policy}");
-            }
-        }
         IEnumerator Co_PostEnterSignals(GameMode mode)
         {
             // 동기 재귀 차단

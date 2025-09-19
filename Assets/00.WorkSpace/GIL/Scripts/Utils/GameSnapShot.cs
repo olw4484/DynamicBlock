@@ -11,7 +11,14 @@ namespace _00.WorkSpace.GIL.Scripts.Utils
             var gm = GridManager.Instance;
             var sm = MapManager.Instance?.saveManager;
             if (gm == null || sm == null) { return; }
-            
+
+            if (sm?.gameData?.classicDownedPending == true)
+            {
+                Debug.Log("[Snap] Skip SaveGridSnapshot: DownedPending");
+                return;
+            }
+
+
             // 1회 스킵: 홈/리트라이 등에서 의도적으로 비웠을 때
             if (sm.skipNextGridSnapshot)
             {

@@ -185,7 +185,7 @@ public class AdManager : MonoBehaviour, IAdService
         // Banner?.Init(); // 필요할 때만
     }
 
-    // ===== 데모/디버그 UI (선택) =====
+    // ===== 데모/디버그 UI =====
     void WireDemoUI()
     {
         if (_showBtn)

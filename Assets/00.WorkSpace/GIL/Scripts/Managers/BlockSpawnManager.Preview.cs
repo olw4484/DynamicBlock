@@ -108,7 +108,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (_lastGeneratedFits != null && _lastGeneratedFits.Count == wave.Count)
             {
-                PreviewWaveNonOverlapping(wave, _lastGeneratedFits, spritesOrNull); // ✅ 실제 선택 위치 사용
+                PreviewWaveNonOverlapping(wave, _lastGeneratedFits, spritesOrNull);
                 return;
             }
 
