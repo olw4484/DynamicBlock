@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class InterstitialAdController
 {
+    public event Action Opened;
+
 #if UNITY_ANDROID
     private const string TEST_INTERSTITIAL = "ca-app-pub-3940256099942544/1033173712";
 #elif UNITY_IOS
@@ -112,7 +114,10 @@ public class InterstitialAdController
         ad.OnAdClicked += () => Debug.Log("[Interstitial] Clicked");
 
         ad.OnAdFullScreenContentOpened += () =>
-            Debug.Log("[Interstitial] Opened");
+        {
+            Debug.Log("[Ad] Opened");
+            Opened?.Invoke();
+        };
 
         ad.OnAdFullScreenContentClosed += () =>
         {

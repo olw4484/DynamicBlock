@@ -12,6 +12,9 @@ public class AdManager : MonoBehaviour, IAdService
     public BannerAdController Banner { get; private set; }
     public RewardAdController Reward { get; private set; }
 
+    bool _rewardInProgress;
+    bool _guardsWired;
+
     public int Order => 80;
 
     [Header("UI Buttons (optional demo)")]
@@ -67,12 +70,15 @@ public class AdManager : MonoBehaviour, IAdService
         {
             _adsReady = false;
 
-            // 이제 메인 쓰레드에서 안전하게 실행
             Interstitial = new InterstitialAdController(); Interstitial.Init();
             Banner = new BannerAdController(); Banner.Init();
             Reward = new RewardAdController(); Reward.Init();
 
+            WireAdGuards(Interstitial, Reward);
+
+#if UNITY_EDITOR
             WireDemoUI();
+#endif
 
             if (_btnUpdateLoop == null)
                 _btnUpdateLoop = StartCoroutine(Co_UpdateRewardButton());
@@ -95,43 +101,29 @@ public class AdManager : MonoBehaviour, IAdService
 
     public void ShowRewarded(Action onReward, Action onClosed = null, Action onFailed = null)
     {
+        if (_rewardInProgress) { Debug.LogWarning("[Ads] Reward already in progress"); return; }
         if (Reward == null || !Reward.IsReady) { Debug.LogWarning("[Ads] Reward not ready"); onFailed?.Invoke(); return; }
 
-        bool rewarded = false;
+        _rewardInProgress = true;
 
         void Cleanup()
         {
             Reward.Closed -= OnClosed;
             Reward.Failed -= OnFailedEvt;
             Reward.Rewarded -= OnRewardedEvent;
+            _rewardInProgress = false;
         }
 
-        void OnClosed()
-        {
-            Cleanup();
-            try { onClosed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
-            Refresh();
-        }
-
-        void OnFailedEvt()
-        {
-            Cleanup();
-            try { onFailed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
-            Refresh();
-        }
-
-        void OnRewardedEvent()
-        {
-            rewarded = true;
-            try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
-        }
+        void OnClosed() { Cleanup(); try { onClosed?.Invoke(); } catch (Exception e) { Debug.LogException(e); } Refresh(); }
+        void OnFailedEvt() { Cleanup(); try { onFailed?.Invoke(); } catch (Exception e) { Debug.LogException(e); } Refresh(); }
+        void OnRewardedEvent() { try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); } }
 
         Reward.Closed += OnClosed;
         Reward.Failed += OnFailedEvt;
         Reward.Rewarded += OnRewardedEvent;
 
         Debug.Log("[Ads] ShowRewarded()");
-        Reward.ShowAd(() => { /* no-op: Rewarded 이벤트에서 처리 */ });
+        Reward.ShowAd(); // 보상은 Rewarded 이벤트에서 처리
     }
 
     public void ShowInterstitial(Action onClosed = null)
@@ -211,12 +203,13 @@ public class AdManager : MonoBehaviour, IAdService
         }
     }
 
-    // 데모: 보상 닫힘 후 소프트 리셋(리바이브 흐름에서는 사용 X)
+#if UNITY_EDITOR
+    // 데모: 보상 닫힘 후 소프트 리셋(빌드 금지)
     void OnClickRewardDemo()
     {
         ShowRewarded(
-            onReward: () => { Debug.Log("[Ads] demo onReward"); /* ReviveRequest는 브리지에서 발행 */ },
-            onClosed: () => { /* 성공/실패와 무관하게 여기선 SoftReset 금지 */ },
+            onReward: () => Debug.Log("[Ads] demo onReward"),
+            onClosed: () => { },
             onFailed: () =>
             {
                 Debug.LogWarning("[Ads] demo onFailed → SoftReset");
@@ -224,6 +217,9 @@ public class AdManager : MonoBehaviour, IAdService
             }
         );
     }
+#else
+void OnClickRewardDemo() { /* no-op in build */ }
+#endif
 
     IEnumerator Co_UpdateRewardButton()
     {
@@ -234,6 +230,25 @@ public class AdManager : MonoBehaviour, IAdService
                 _rewardBtn.interactable = IsRewardedReady();
             yield return wait;
         }
+    }
+
+    void WireAdGuards(InterstitialAdController i, RewardAdController r)
+    {
+        if (_guardsWired) return;
+
+        if (i != null)
+        {
+            i.Opened += AdPauseGuard.OnAdOpened;
+            i.Closed += AdPauseGuard.OnAdClosedOrFailed;
+            i.Failed += AdPauseGuard.OnAdClosedOrFailed;
+        }
+        if (r != null)
+        {
+            r.Opened += AdPauseGuard.OnAdOpened;
+            r.Closed += AdPauseGuard.OnAdClosedOrFailed;
+            r.Failed += AdPauseGuard.OnAdClosedOrFailed;
+        }
+        _guardsWired = true;
     }
 
     public void PreInit()

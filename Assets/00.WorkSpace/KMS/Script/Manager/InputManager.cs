@@ -65,7 +65,15 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
 
         // Old Input System
         if (Input.GetKeyDown(KeyCode.Escape))
-            esc = true;
+        {
+            if (AdPauseGuard.ShouldIgnoreBackNow())
+            {
+                Debug.Log("[Back] ignored (ad showing or just returned)");
+                return;
+            }
+            // 기존 백키 로직
+            Game.UI.SetPanel("ExitConfirm", true);
+        }
 
         if (!esc || !Ready()) return;
 

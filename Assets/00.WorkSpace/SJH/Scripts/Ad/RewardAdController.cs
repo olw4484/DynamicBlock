@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class RewardAdController
 {
+    public event Action Opened;
+
 #if UNITY_ANDROID
     private const string TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
 #elif UNITY_IOS
@@ -91,6 +93,12 @@ public class RewardAdController
     private void HookEvents(RewardedAd ad)
     {
         if (ad == null) return;
+
+        ad.OnAdFullScreenContentOpened += () =>
+        {
+            Debug.Log("[Ad] Opened");
+            Opened?.Invoke();
+        };
 
         ad.OnAdFullScreenContentClosed += () =>
         {
