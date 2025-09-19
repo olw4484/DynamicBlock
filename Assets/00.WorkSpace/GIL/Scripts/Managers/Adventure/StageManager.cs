@@ -134,7 +134,7 @@ public class StageManager : MonoBehaviour
             Debug.LogWarning("[StageManager] Invalid Stage Number Input");
             return;
         }
-
+        // 2) 현재 활성화 스테이지 설정
         SetCurrentActiveStage(stageNumber);
     }
 #endregion

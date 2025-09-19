@@ -6,9 +6,9 @@ using UnityEngine.UI;
 [Serializable]
 public enum ButtonState
 {
+    Locked,
     Cleared,
     Playable,
-    Locked
 }
 
 [RequireComponent(typeof(Button), typeof(Image))]
