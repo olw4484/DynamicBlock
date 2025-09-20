@@ -1,133 +1,124 @@
 ﻿using GoogleMobileAds.Api;
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 
 public class BannerAdController
 {
 #if UNITY_ANDROID
     private const string TEST_BANNER = "ca-app-pub-3940256099942544/6300978111";
+    private const string PROD_BANNER = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX";
 #elif UNITY_IOS
     private const string TEST_BANNER = "ca-app-pub-3940256099942544/2934735716";
+    private const string PROD_BANNER = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX";
 #else
     private const string TEST_BANNER = "unexpected_platform";
+    private const string PROD_BANNER = "unexpected_platform";
 #endif
 
-    // ▶ 테스트/개발 빌드: 테스트ID, 릴리스: AdIds.Banner
-    private string BannerUnitId =>
+    private string BannerId =>
 #if TEST_ADS || DEVELOPMENT_BUILD
-        TEST_BANNER;
+    TEST_BANNER;
 #else
         AdIds.Banner;
 #endif
 
-    private BannerView _banner;
-    private bool _isLoaded;
-    private bool _isShown;
+    private BannerView _view;
+    bool _isLoaded;
+    bool _isShown;
 
     public bool IsVisible => _isShown;
     public bool IsLoaded => _isLoaded;
 
-    // 테스트 디바이스 등록 — 앱 시작 1회
+    // 배너 클릭으로 전면(브라우저/웹뷰) 전환될 때 게임 일시정지/복구용
+    public event Action FullOpened;
+    public event Action FullClosed;
+
     public static void ConfigureTestDevices(params string[] testDeviceIds)
     {
 #if TEST_ADS || DEVELOPMENT_BUILD
         var list = (testDeviceIds == null) ? null : new List<string>(testDeviceIds);
-        var conf = new RequestConfiguration.Builder().SetTestDeviceIds(list).build();
+        var conf = new RequestConfiguration { TestDeviceIds = list };
         MobileAds.SetRequestConfiguration(conf);
 #endif
     }
 
-    // --- 초기화 & 로드 ---
-    public void Init(bool useAdaptive = false, AdPosition pos = AdPosition.Bottom)
+    public void Init(AdSize size = null, AdPosition pos = AdPosition.Bottom)
     {
-        DestroyAd();
+        if (_view != null)
+        {
+            _view.Destroy();
+            _view = null;
+        }
 
-        AdSize size = useAdaptive ? GetAdaptiveSize() : AdSize.Banner;
+        var adSize = size ?? AdSize.Banner; // 필요시 Adaptive로 교체
+        _view = new BannerView(BannerId, adSize, pos);
 
-        _banner = new BannerView(BannerUnitId, size, pos);
-        HookEvents(_banner);
+        HookEvents(_view);
 
+        Debug.Log($"[Banner] Init & Load... id={BannerId}, size={adSize}, pos={pos}");
         _isLoaded = false;
         _isShown = false;
-
-        Debug.Log($"[Banner] Init & Load... id={BannerUnitId}, size={size}, pos={pos}");
-        _banner.LoadAd(new AdRequest());
+        _view.LoadAd(new AdRequest());
     }
 
-    // Adaptive 배너 사이즈 계산 (현재 화면 폭 기준)
-    private AdSize GetAdaptiveSize()
-    {
-#if UNITY_ANDROID || UNITY_IOS
-        int width = Screen.width; // px
-        // DPI 변환 없이도 AdMob가 내부적으로 맞춰줌. 필요시 dp 변환 추가 가능.
-        return AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(width);
-#else
-        return AdSize.Banner;
-#endif
-    }
-
-    // --- 표시/숨김/제거 ---
     public void ShowAd()
     {
-        if (_banner == null) { Init(); return; }
-        if (!_isLoaded) { _banner.LoadAd(new AdRequest()); return; }
+        if (_view == null) { Init(); return; }
+        if (!_isLoaded) { _view.LoadAd(new AdRequest()); return; }
 
-        _banner.Show();
+        _view.Show();
         _isShown = true;
         Debug.Log("[Banner] Show");
     }
 
     public void HideAd()
     {
-        if (_banner == null) return;
-
-        _banner.Hide();
+        if (_view == null) return;
+        _view.Hide();
         _isShown = false;
         Debug.Log("[Banner] Hide");
     }
 
     public void DestroyAd()
     {
-        if (_banner == null) return;
-        _banner.Destroy();
-        _banner = null;
+        if (_view == null) return;
+        _view.Destroy();
+        _view = null;
         _isLoaded = false;
         _isShown = false;
-        Debug.Log("[Banner] Destroy");
     }
 
-    // --- 이벤트 ---
-    private void HookEvents(BannerView view)
+    void HookEvents(BannerView v)
     {
-        if (view == null) return;
+        if (v == null) return;
 
-        view.OnBannerAdLoaded += () =>
+        v.OnBannerAdLoaded += () =>
         {
             _isLoaded = true;
             Debug.Log("[Banner] Loaded");
-            // 자동 표시 원하면: ShowAd();
         };
 
-        view.OnBannerAdLoadFailed += (LoadAdError error) =>
+        v.OnBannerAdLoadFailed += (LoadAdError error) =>
         {
             _isLoaded = false;
             Debug.LogError($"[Banner] Load failed: {error}");
-            // 필요시 재시도 로직(지수 백오프) 추가 가능
         };
 
-        view.OnAdPaid += (AdValue v) => Debug.Log($"[Banner] Paid: {v.CurrencyCode}/{v.Value}");
-        view.OnAdImpressionRecorded += () => Debug.Log("[Banner] Impression");
-        view.OnAdClicked += () => Debug.Log("[Banner] Click");
-        view.OnAdFullScreenContentOpened += () => Debug.Log("[Banner] Fullscreen opened");
-        view.OnAdFullScreenContentClosed += () => Debug.Log("[Banner] Fullscreen closed");
-    }
+        v.OnAdPaid += (AdValue val) => Debug.Log($"[Banner] Paid: {val.CurrencyCode}/{val.Value}");
+        v.OnAdImpressionRecorded += () => Debug.Log("[Banner] Impression recorded");
+        v.OnAdClicked += () => Debug.Log("[Banner] Clicked");
 
-    // 회전/해상도 변경 시 Adaptive 재생성 호출
-    public void RecreateForOrientationChange()
-    {
-        if (_banner == null) return;
-        bool wasShown = _isShown;
-        Init(useAdaptive: true);
-        if (wasShown) ShowAd();
+        // 일부 단말/상황에서 배너 클릭 → 전체화면 컨텐츠가 열릴 수 있음
+        v.OnAdFullScreenContentOpened += () =>
+        {
+            Debug.Log("[Banner] Fullscreen opened");
+            FullOpened?.Invoke();
+        };
+        v.OnAdFullScreenContentClosed += () =>
+        {
+            Debug.Log("[Banner] Fullscreen closed");
+            FullClosed?.Invoke();
+        };
     }
 }

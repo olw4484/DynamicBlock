@@ -213,9 +213,17 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         {
             CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
+
             SetPanel("Revive", false);
             SetPanel("GameOver", false);
             SetPanel("NewRecord", false);
+
+            ForceCloseAllModals();
+            NormalizeAllPanelsAlpha();
+            ForceMainUIClean();
+
+            // 한 프레임 뒤 재검증(혹시 비동기 꼬임 대비)
+            StartCoroutine(CoPostContinueSanity());
         }, replaySticky: false);
 
         // 패널 토글 이벤트 구독 (Sticky 재생 켜둠)
@@ -272,7 +280,11 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         StopFade(key);
         _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on, key));
-        if (on) StartCoroutine(FailsafeOpenSnap(key, p.root, cg));
+        if (on) StartCoroutine(FailsafeOpenSnap(key, p.root, EnsureCanvasGroup(p.root)));
+        if (on && key == "Revive")
+        {
+            Game.Ads?.Refresh();   // Reward/Interstitial 준비 안됐으면 바로 로드 시작
+        }
     }
 
     private IEnumerator FadeRoutine(CanvasGroup cg, float target, float dur, bool finalActive, string key)
@@ -700,6 +712,12 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
 
         _reviveDelayJob = null;
+    }
+    IEnumerator CoPostContinueSanity()
+    {
+        yield return null;
+        Debug.Log($"[Sanity] modals={_modalOrder.Count} dim.enabled={(dimOverlay && dimOverlay.enabled)}");
+        SetPreReviveBlock(false);
     }
 }
 public readonly struct PanelToggle

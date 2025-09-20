@@ -1,100 +1,142 @@
 ﻿using GoogleMobileAds.Api;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class RewardAdController
 {
 #if UNITY_ANDROID
     private const string TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
+    private const string PROD_REWARDED = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX";
 #elif UNITY_IOS
     private const string TEST_REWARDED = "ca-app-pub-3940256099942544/1712485313";
+    private const string PROD_REWARDED = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX";
 #else
     private const string TEST_REWARDED = "unexpected_platform";
+    private const string PROD_REWARDED = "unexpected_platform";
 #endif
 
     private string RewardId =>
 #if TEST_ADS || DEVELOPMENT_BUILD
-        TEST_REWARDED;
+    TEST_REWARDED;
 #else
         AdIds.Rewarded;
 #endif
 
-    private RewardedAd _loadedAd;
+    private RewardedAd _ad;
     private Action _externalOnReward;
 
     public bool IsReady { get; private set; }
-    public event Action Rewarded;
+    public bool IsLoading { get; private set; }
+
+    public event Action Opened;
     public event Action Closed;
     public event Action Failed;
+    public event Action Rewarded;
 
     public static void ConfigureTestDevices(params string[] testDeviceIds)
     {
 #if TEST_ADS || DEVELOPMENT_BUILD
-        var list = (testDeviceIds == null) ? null : new System.Collections.Generic.List<string>(testDeviceIds);
-        var conf = new RequestConfiguration.Builder()
-            .SetTestDeviceIds(list)
-            .build();
+        var list = (testDeviceIds == null) ? null : new List<string>(testDeviceIds);
+        var conf = new RequestConfiguration { TestDeviceIds = list };
         MobileAds.SetRequestConfiguration(conf);
 #endif
     }
 
     public void Init()
     {
+        if (IsLoading || IsReady) return;
+
         DestroyAd();
         IsReady = false;
+        IsLoading = true;
 
-        Debug.Log("[Rewarded] Loading...");
-
+        Debug.Log("[Rewarded] Loading.");
         RewardedAd.Load(RewardId, new AdRequest(), (ad, error) =>
         {
+            IsLoading = false;
+
             if (error != null || ad == null)
             {
                 Debug.LogError($"[Rewarded] Load failed: {error}");
                 IsReady = false;
+
+                // 5~15초 백오프 재시도 (포커스일 때만)
+                if (Application.isFocused && AdManager.Instance != null)
+                    AdManager.Instance.StartCoroutine(RetryAfter(10f));
                 return;
             }
 
-            _loadedAd = ad;
+            _ad = ad;
             IsReady = true;
             Debug.Log("[Rewarded] Load success");
-            HookEvents(_loadedAd);
+            HookEvents(_ad);
         });
     }
 
     public void DestroyAd()
     {
-        if (_loadedAd == null) return;
-        _loadedAd.Destroy();
-        _loadedAd = null;
-        IsReady = false;
+        if (_ad == null) return;
+        _ad.Destroy();
+        _ad = null;
         _externalOnReward = null;
+        IsReady = false;
+        IsLoading = false;
     }
 
-    public void ShowAd(Action onReward = null)
+    // onReward는 AdManager에서 처리하므로 여기서는 null로 넘겨도 됨
+    public bool ShowAd(Action onReward = null, bool ignoreCooldown = false)
     {
-        if (_loadedAd == null || !_loadedAd.CanShowAd() || !IsReady)
+        // 자동노출(쿨다운) 정책은 AdManager에서 관리하지만 혹시 남아있다면 방지
+        if (!ignoreCooldown && AdManager.Instance != null &&
+            AdManager.Instance.NextRewardTime > DateTime.UtcNow)
         {
+            Debug.Log("[Rewarded] Skipped due to cooldown");
+            Failed?.Invoke();
+            return false;
+        }
+
+        if (_ad == null || !_ad.CanShowAd() || !IsReady)
+        {
+            Debug.Log("[Rewarded] Not ready → Load");
             Init();
-            return;
+            Failed?.Invoke();
+            return false;
         }
 
         _externalOnReward = onReward;
-        IsReady = false;
+        IsReady = false; // 1로딩 1재생 원칙
 
-        _loadedAd.Show(reward =>
+        _ad.Show(reward =>
         {
-            Rewarded?.Invoke();
-            _externalOnReward?.Invoke();
+            Debug.Log($"[Rewarded] Granted: {reward.Type} x{reward.Amount}");
+            try { Rewarded?.Invoke(); } catch { }
+            try { _externalOnReward?.Invoke(); } catch { }
         });
+
+        return true;
     }
 
     private void HookEvents(RewardedAd ad)
     {
         if (ad == null) return;
 
+        ad.OnAdFullScreenContentOpened += () =>
+        {
+            Debug.Log("[Rewarded] Opened");
+            Opened?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
+        };
+
         ad.OnAdFullScreenContentClosed += () =>
         {
+            Debug.Log("[Rewarded] Closed");
             Closed?.Invoke();
+
+            EventSystemRescue.EnsureAlive();
+            Game.UI?.ForceMainUIClean();
+
             _externalOnReward = null;
             IsReady = false;
             Init();
@@ -102,10 +144,21 @@ public class RewardAdController
 
         ad.OnAdFullScreenContentFailed += (AdError e) =>
         {
+            Debug.LogError($"[Rewarded] Show error: {e}");
             Failed?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+
             _externalOnReward = null;
             IsReady = false;
             Init();
         };
+    }
+
+
+    private IEnumerator RetryAfter(float sec)
+    {
+        float until = Time.realtimeSinceStartup + sec;
+        while (Time.realtimeSinceStartup < until) yield return null;
+        if (!IsReady && !IsLoading && Application.isFocused) Init();
     }
 }

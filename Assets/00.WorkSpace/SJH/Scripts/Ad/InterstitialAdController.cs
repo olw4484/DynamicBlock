@@ -1,105 +1,112 @@
 ﻿using GoogleMobileAds.Api;
 using System;
+using System.Collections;
 using UnityEngine;
 
 public class InterstitialAdController
 {
 #if UNITY_ANDROID
     private const string TEST_INTERSTITIAL = "ca-app-pub-3940256099942544/1033173712";
+    private const string PROD_INTERSTITIAL = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX";
 #elif UNITY_IOS
     private const string TEST_INTERSTITIAL = "ca-app-pub-3940256099942544/4411468910";
+    private const string PROD_INTERSTITIAL = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX";
 #else
     private const string TEST_INTERSTITIAL = "unexpected_platform";
+    private const string PROD_INTERSTITIAL = "unexpected_platform";
 #endif
 
-    // 테스트/개발 빌드: 테스트ID, 릴리스: AdIds.Interstitial
     private string InterstitialId =>
 #if TEST_ADS || DEVELOPMENT_BUILD
-        TEST_INTERSTITIAL;
+    TEST_INTERSTITIAL;
 #else
         AdIds.Interstitial;
 #endif
 
     private static readonly TimeSpan CacheValidity = TimeSpan.FromHours(1);
 
-    private InterstitialAd _loadedAd;
+    private InterstitialAd _ad;
     private DateTime _expiresAtUtc = DateTime.MinValue;
 
     public bool IsReady { get; private set; }
+    public bool IsLoading { get; private set; }
+
+    public event Action Opened;
     public event Action Closed;
     public event Action Failed;
 
-    // 테스트 디바이스 등록 - 앱 시작 시 1회
     public static void ConfigureTestDevices(params string[] testDeviceIds)
     {
 #if TEST_ADS || DEVELOPMENT_BUILD
-        var list = testDeviceIds == null ? null : new System.Collections.Generic.List<string>(testDeviceIds);
-        var conf = new RequestConfiguration.Builder().SetTestDeviceIds(list).build();
+        var conf = new RequestConfiguration
+        {
+            TestDeviceIds = (testDeviceIds == null) ? null : new System.Collections.Generic.List<string>(testDeviceIds)
+        };
         MobileAds.SetRequestConfiguration(conf);
 #endif
     }
 
     public void Init()
     {
-        // 이미 로드되어 있고 유효하면 스킵
-        if (_loadedAd != null && DateTime.UtcNow < _expiresAtUtc)
-        {
-            Debug.Log("[Interstitial] Already loaded & valid.");
-            IsReady = true;
-            return;
-        }
+        // 이미 로드되어 있고 캐시 유효하면 그대로 사용
+        if (_ad != null && DateTime.UtcNow < _expiresAtUtc) { IsReady = true; return; }
+        if (IsLoading) return;
 
-        DestroyAd(); // 만료/없음 → 정리 후 재로드
-
+        DestroyAd();
+        IsLoading = true;
         Debug.Log($"[Interstitial] Loading... id={InterstitialId}");
+
         InterstitialAd.Load(InterstitialId, new AdRequest(), (ad, error) =>
         {
+            IsLoading = false;
+
             if (error != null || ad == null)
             {
                 Debug.LogError($"[Interstitial] Load failed: {error}");
-                _loadedAd = null;
+                _ad = null;
                 IsReady = false;
+
+                if (Application.isFocused && AdManager.Instance != null)
+                    AdManager.Instance.StartCoroutine(RetryAfter(15f));
                 return;
             }
 
-            _loadedAd = ad;
-            _expiresAtUtc = DateTime.UtcNow + CacheValidity - TimeSpan.FromMinutes(1); // 살짝 여유
+            _ad = ad;
+            _expiresAtUtc = DateTime.UtcNow + CacheValidity - TimeSpan.FromMinutes(1);
             IsReady = true;
 
             Debug.Log("[Interstitial] Load success.");
-            HookEvents(_loadedAd);
+            HookEvents(_ad);
         });
     }
 
     public void ShowAd()
     {
-        // 빈도 제한
-        if (AdManager.Instance.NextInterstitialTime > DateTime.UtcNow)
+        // 자동노출 쿨다운은 AdManager에서 관리하지만 여기서도 방어
+        if (AdManager.Instance != null && AdManager.Instance.NextInterstitialTime > DateTime.UtcNow)
         {
             Debug.Log("[Interstitial] Skipped due to cooldown.");
             AdManager.Instance.NextInterstitialTime = DateTime.UtcNow; // 보정
             return;
         }
 
-        // 유효성 체크
-        if (_loadedAd == null || DateTime.UtcNow >= _expiresAtUtc || !_loadedAd.CanShowAd())
+        if (_ad == null || DateTime.UtcNow >= _expiresAtUtc || !_ad.CanShowAd())
         {
             Debug.Log("[Interstitial] Not ready. Try load again.");
             Init();
             return;
         }
 
-        _loadedAd.Show(); // 1로딩 1재생
+        _ad.Show();
     }
 
     public void DestroyAd()
     {
-        if (_loadedAd == null) return;
-
-        Debug.Log("[Interstitial] Destroy.");
-        _loadedAd.Destroy();
-        _loadedAd = null;
+        if (_ad == null) return;
+        _ad.Destroy();
+        _ad = null;
         IsReady = false;
+        IsLoading = false;
         _expiresAtUtc = DateTime.MinValue;
     }
 
@@ -111,24 +118,31 @@ public class InterstitialAdController
         ad.OnAdImpressionRecorded += () => Debug.Log("[Interstitial] Impression recorded");
         ad.OnAdClicked += () => Debug.Log("[Interstitial] Clicked");
 
-        ad.OnAdFullScreenContentOpened += () =>
+        ad.OnAdFullScreenContentOpened += () => {
             Debug.Log("[Interstitial] Opened");
-
-        ad.OnAdFullScreenContentClosed += () =>
-        {
+            Opened?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
+        };
+        ad.OnAdFullScreenContentClosed += () => {
             Debug.Log("[Interstitial] Closed");
-            AdManager.Instance.NextInterstitialTime = DateTime.UtcNow.AddSeconds(AdManager.Instance.InterstitialTime);
             IsReady = false;
             Closed?.Invoke();
-            Init(); // 다음 로드 예약
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+            Init();
         };
-
-        ad.OnAdFullScreenContentFailed += (AdError e) =>
-        {
+        ad.OnAdFullScreenContentFailed += (AdError e) => {
             Debug.LogError($"[Interstitial] Show error: {e}");
             IsReady = false;
             Failed?.Invoke();
-            Init(); // 재시도
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+            Init();
         };
+    }
+
+    private IEnumerator RetryAfter(float sec)
+    {
+        float until = Time.realtimeSinceStartup + sec;
+        while (Time.realtimeSinceStartup < until) yield return null;
+        if (!IsReady && !IsLoading && Application.isFocused) Init();
     }
 }
