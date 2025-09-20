@@ -18,9 +18,9 @@ public class BannerAdController
 
     private string BannerId =>
 #if TEST_ADS || DEVELOPMENT_BUILD
-        TEST_BANNER;
+    TEST_BANNER;
 #else
-        PROD_BANNER;
+        AdIds.Banner;
 #endif
 
     private BannerView _view;

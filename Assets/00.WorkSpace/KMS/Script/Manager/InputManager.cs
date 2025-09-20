@@ -42,10 +42,18 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
         _bus.Subscribe<SceneChanged>(_ => { _inputEnabled = true; _cool = 0f; Debug.Log("[Input] unlock: SceneChanged"); }, false);
 
         _bus.Subscribe<AdPlaying>(_ => { _inputEnabled = false; Debug.Log("[Input] lock: AdPlaying"); }, false);
-        _bus.Subscribe<AdFinished>(_ => { _inputEnabled = true; _cool = 0f; Debug.Log("[Input] unlock: AdFinished"); }, false);
+        _bus.Subscribe<AdFinished>(_ => {
+            _inputEnabled = true; _cool = 0f;
+            EventSystemRescue.EnsureAlive();
+        }, false);
 
         _bus.Subscribe<GameResetting>(_ => { _inputEnabled = false; Debug.Log("[Input] lock: GameResetting"); }, false);
         _bus.Subscribe<GameResetDone>(_ => { _inputEnabled = true; _cool = 0f; Debug.Log("[Input] unlock: GameResetDone"); }, false);
+
+        _bus.Subscribe<InputLock>(e => {
+            _inputEnabled = !e.on;
+            Debug.Log($"[Input] {(e.on ? "lock" : "unlock")} via InputLock: {e.reason}");
+        }, false);
     }
 
     // New Input System

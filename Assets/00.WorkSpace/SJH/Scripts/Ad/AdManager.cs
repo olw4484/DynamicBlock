@@ -106,6 +106,8 @@ public class AdManager : MonoBehaviour, IAdService
     void OnApplicationFocus(bool focus)
     {
         if (focus) Refresh();
+        if (focus && Game.IsBound)
+            Game.Bus.PublishImmediate(new AdFinished());
     }
 
     // ===== IAdService =====
@@ -283,9 +285,8 @@ public class AdManager : MonoBehaviour, IAdService
 
     IEnumerator Co_ShowRewardedSafely(Action onReward, Action onClosed, Action onFailed)
     {
-        // 마지막 클릭 직후 약간의 안정화 대기 + 포그라운드 보장
+        // 1) 포그라운드 보장
         yield return WaitUntilForeground(1.0f);
-
         if (!Application.isFocused || !AndroidHasWindowFocus())
         {
             Debug.LogWarning("[Ads] Still not foreground → cancel show");
@@ -293,16 +294,24 @@ public class AdManager : MonoBehaviour, IAdService
             yield break;
         }
 
-        // 결국 여기서 한 번 더 준비 상태 확인
+        // 2) 준비 안됐으면 "짧은 대기 후 1회 재시도"
+        const float QUICK_WAIT = 2.5f; // 2~3초 권장
         if (Reward == null || !Reward.IsReady)
         {
-            Debug.LogWarning("[Ads] Reward not ready at safe point → refresh only");
-            Refresh();
+            Debug.LogWarning("[Ads] Reward not ready at safe point → quick wait & retry");
+            Refresh();                                  // 로딩 트리거
+            yield return WaitUntilRewardReady(QUICK_WAIT);
+        }
+
+        // 3) 그래도 준비 안됐으면 실패
+        if (Reward == null || !Reward.IsReady)
+        {
+            Debug.LogWarning("[Ads] Reward still not ready → fail");
             onFailed?.Invoke();
             yield break;
         }
 
-        // 이벤트 구독/정리 로직은 기존과 동일
+        // 4) 이벤트 구독 및 Show (쿨다운 무시)
         bool opened = false;
         void CleanupLocal()
         {
@@ -321,18 +330,16 @@ public class AdManager : MonoBehaviour, IAdService
         void OnFailedEvt() { CleanupLocal(); try { onFailed?.Invoke(); } catch (Exception e) { Debug.LogException(e); } Refresh(); }
         void OnRewardedEvt() { try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); } }
 
-        // 구독
         CleanupLocal();
         Reward.Opened += OnOpenedEvt;
         Reward.Closed += OnClosedEvt;
         Reward.Failed += OnFailedEvt;
         Reward.Rewarded += OnRewardedEvt;
 
-        // 실제 Show
         Debug.Log("[Ads] ShowRewarded(safe)");
         _lastRewardShowAt = Time.realtimeSinceStartup;
 
-        if (!Reward.ShowAd(onReward: null))
+        if (!Reward.ShowAd(onReward: null, ignoreCooldown: true))
         {
             CleanupLocal();
             onFailed?.Invoke();
@@ -340,6 +347,16 @@ public class AdManager : MonoBehaviour, IAdService
         }
 
         _rewardWatchdog = StartCoroutine(Co_Watchdog(isReward: true, timeout: WATCHDOG_SEC));
+    }
+
+    IEnumerator WaitUntilRewardReady(float maxWaitSec)
+    {
+        float end = Time.realtimeSinceStartup + maxWaitSec;
+        while (Time.realtimeSinceStartup < end)
+        {
+            if (Reward != null && Reward.IsReady) yield break;
+            yield return null;
+        }
     }
 
     // (필요하면) 생명주기용 훅

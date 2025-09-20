@@ -19,9 +19,9 @@ public class RewardAdController
 
     private string RewardId =>
 #if TEST_ADS || DEVELOPMENT_BUILD
-        TEST_REWARDED;
+    TEST_REWARDED;
 #else
-        PROD_REWARDED;
+        AdIds.Rewarded;
 #endif
 
     private RewardedAd _ad;
@@ -122,14 +122,11 @@ public class RewardAdController
     {
         if (ad == null) return;
 
-        ad.OnAdPaid += (AdValue v) => Debug.Log($"[Rewarded] Paid: {v.CurrencyCode}/{v.Value}");
-        ad.OnAdImpressionRecorded += () => Debug.Log("[Rewarded] Impression recorded");
-        ad.OnAdClicked += () => Debug.Log("[Rewarded] Clicked");
-
         ad.OnAdFullScreenContentOpened += () =>
         {
             Debug.Log("[Rewarded] Opened");
             Opened?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
         };
 
         ad.OnAdFullScreenContentClosed += () =>
@@ -137,21 +134,26 @@ public class RewardAdController
             Debug.Log("[Rewarded] Closed");
             Closed?.Invoke();
 
+            EventSystemRescue.EnsureAlive();
+            Game.UI?.ForceMainUIClean();
+
             _externalOnReward = null;
             IsReady = false;
-            Init(); // 다음 로드
+            Init();
         };
 
         ad.OnAdFullScreenContentFailed += (AdError e) =>
         {
             Debug.LogError($"[Rewarded] Show error: {e}");
             Failed?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
 
             _externalOnReward = null;
             IsReady = false;
-            Init(); // 재시도
+            Init();
         };
     }
+
 
     private IEnumerator RetryAfter(float sec)
     {

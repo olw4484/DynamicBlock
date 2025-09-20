@@ -18,9 +18,9 @@ public class InterstitialAdController
 
     private string InterstitialId =>
 #if TEST_ADS || DEVELOPMENT_BUILD
-        TEST_INTERSTITIAL;
+    TEST_INTERSTITIAL;
 #else
-        PROD_INTERSTITIAL;
+        AdIds.Interstitial;
 #endif
 
     private static readonly TimeSpan CacheValidity = TimeSpan.FromHours(1);
@@ -118,26 +118,24 @@ public class InterstitialAdController
         ad.OnAdImpressionRecorded += () => Debug.Log("[Interstitial] Impression recorded");
         ad.OnAdClicked += () => Debug.Log("[Interstitial] Clicked");
 
-        ad.OnAdFullScreenContentOpened += () =>
-        {
+        ad.OnAdFullScreenContentOpened += () => {
             Debug.Log("[Interstitial] Opened");
             Opened?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
         };
-
-        ad.OnAdFullScreenContentClosed += () =>
-        {
+        ad.OnAdFullScreenContentClosed += () => {
             Debug.Log("[Interstitial] Closed");
             IsReady = false;
             Closed?.Invoke();
-            Init(); // 다음 로드
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+            Init();
         };
-
-        ad.OnAdFullScreenContentFailed += (AdError e) =>
-        {
+        ad.OnAdFullScreenContentFailed += (AdError e) => {
             Debug.LogError($"[Interstitial] Show error: {e}");
             IsReady = false;
             Failed?.Invoke();
-            Init(); // 재시도
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+            Init();
         };
     }
 
