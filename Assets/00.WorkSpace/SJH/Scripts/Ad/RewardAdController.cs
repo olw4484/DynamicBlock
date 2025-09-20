@@ -5,15 +5,12 @@ using UnityEngine;
 
 public class RewardAdController
 {
-    // ==========================
-    // 1) 유닛ID 분기
-    // ==========================
 #if UNITY_ANDROID
     private const string TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
-    private const string PROD_REWARDED = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX"; // TODO: 실제 ID
+    private const string PROD_REWARDED = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX";
 #elif UNITY_IOS
     private const string TEST_REWARDED = "ca-app-pub-3940256099942544/1712485313";
-    private const string PROD_REWARDED = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX"; // TODO: 실제 ID
+    private const string PROD_REWARDED = "ca-app-pub-XXXXXXXXXXXXXXX/XXXXXXXXXX";
 #else
     private const string TEST_REWARDED = "unexpected_platform";
     private const string PROD_REWARDED = "unexpected_platform";
@@ -26,44 +23,31 @@ public class RewardAdController
         PROD_REWARDED;
 #endif
 
-    // ==========================
-    // 2) 상태
-    // ==========================
-    private RewardedAd _loadedAd;
-    private Action _externalOnReward; // 외부 보상 콜백(선택)
+    private RewardedAd _ad;
+    private Action _externalOnReward;
 
     public bool IsReady { get; private set; }
-    public event Action Rewarded; // 내부 이벤트(보상 지급 시)
-    public event Action Opened;
-    public event Action Closed;   // 닫힘
-    public event Action Failed;   // 실패
 
-    // ==========================
-    // (선택) 테스트 디바이스 강제
-    // 앱 시작 시 1회 호출
-    // ==========================
+    public event Action Opened;
+    public event Action Closed;
+    public event Action Failed;
+    public event Action Rewarded;
+
     public static void ConfigureTestDevices(params string[] testDeviceIds)
     {
 #if TEST_ADS || DEVELOPMENT_BUILD
-    var list = (testDeviceIds == null) ? null : new List<string>(testDeviceIds);
-    var conf = new RequestConfiguration
-    {
-        TestDeviceIds = list
-    };
-    MobileAds.SetRequestConfiguration(conf);
+        var list = (testDeviceIds == null) ? null : new List<string>(testDeviceIds);
+        var conf = new RequestConfiguration { TestDeviceIds = list };
+        MobileAds.SetRequestConfiguration(conf);
 #endif
     }
 
-    // ==========================
-    // 3) 초기화 & 로드
-    // ==========================
     public void Init()
     {
         DestroyAd();
         IsReady = false;
 
         Debug.Log("[Rewarded] Loading...");
-
         RewardedAd.Load(RewardId, new AdRequest(), (ad, error) =>
         {
             if (error != null || ad == null)
@@ -73,73 +57,63 @@ public class RewardAdController
                 return;
             }
 
-            _loadedAd = ad;
+            _ad = ad;
             IsReady = true;
             Debug.Log("[Rewarded] Load success");
-            HookEvents(_loadedAd);
+            HookEvents(_ad);
         });
     }
 
     public void DestroyAd()
     {
-        if (_loadedAd == null) return;
-
-        Debug.Log("[Rewarded] Destroy");
-        _loadedAd.Destroy();
-        _loadedAd = null;
-        IsReady = false;
+        if (_ad == null) return;
+        _ad.Destroy();
+        _ad = null;
         _externalOnReward = null;
+        IsReady = false;
     }
 
-    // ==========================
-    // 4) 표시
-    // ==========================
-    public void ShowAd(Action onReward = null)
+    // onReward는 AdManager에서 처리하므로 여기서는 null로 넘겨도 됨
+    public bool ShowAd(Action onReward = null, bool ignoreCooldown = false)
     {
-        // 쿨다운(다음 가능 시간) 체크
-        if (AdManager.Instance.NextRewardTime > DateTime.UtcNow)
+        // 자동노출(쿨다운) 정책은 AdManager에서 처리해도 되지만,
+        // 혹시 남아있다면 방지
+        if (!ignoreCooldown && AdManager.Instance != null &&
+            AdManager.Instance.NextRewardTime > DateTime.UtcNow)
         {
             Debug.Log("[Rewarded] Skipped due to cooldown");
-            // 스킵 시 즉시 가능하게 보정
-            AdManager.Instance.NextRewardTime = DateTime.UtcNow;
-            return;
+            Failed?.Invoke();
+            return false;
         }
 
-        if (_loadedAd == null || !_loadedAd.CanShowAd() || !IsReady)
+        if (_ad == null || !_ad.CanShowAd() || !IsReady)
         {
             Debug.Log("[Rewarded] Not ready → Load");
             Init();
-            return;
+            Failed?.Invoke();
+            return false;
         }
 
         _externalOnReward = onReward;
-        IsReady = false; // 1로딩 1표시 원칙
+        IsReady = false;
 
-        _loadedAd.Show(reward =>
+        _ad.Show(reward =>
         {
-            Debug.Log($"[Rewarded] Granted: Type={reward.Type}, Amount={reward.Amount}");
-            Rewarded?.Invoke();      // 내부 이벤트
-            _externalOnReward?.Invoke(); // 외부 보상 콜백
+            Debug.Log($"[Rewarded] Granted: {reward.Type} x{reward.Amount}");
+            try { Rewarded?.Invoke(); } catch { }
+            try { _externalOnReward?.Invoke(); } catch { }
         });
+
+        return true;
     }
 
-    public void ShowAdSimple() => ShowAd();
-
-    // ==========================
-    // 5) 이벤트 연결
-    // ==========================
-    private void HookEvents(RewardedAd ad)
+    void HookEvents(RewardedAd ad)
     {
         if (ad == null) return;
 
-        ad.OnAdPaid += (AdValue v) =>
-            Debug.Log($"[Rewarded] Paid: {v.CurrencyCode}/{v.Value}");
-
-        ad.OnAdImpressionRecorded += () =>
-            Debug.Log("[Rewarded] Impression recorded");
-
-        ad.OnAdClicked += () =>
-            Debug.Log("[Rewarded] Clicked");
+        ad.OnAdPaid += (AdValue v) => Debug.Log($"[Rewarded] Paid: {v.CurrencyCode}/{v.Value}");
+        ad.OnAdImpressionRecorded += () => Debug.Log("[Rewarded] Impression recorded");
+        ad.OnAdClicked += () => Debug.Log("[Rewarded] Clicked");
 
         ad.OnAdFullScreenContentOpened += () =>
         {
@@ -147,17 +121,10 @@ public class RewardAdController
             Opened?.Invoke();
         };
 
-
         ad.OnAdFullScreenContentClosed += () =>
         {
             Debug.Log("[Rewarded] Closed");
             Closed?.Invoke();
-
-            // 쿨다운(Reward 전용 간격이 있다면 사용)
-            // 예: AdManager.Instance.RewardTime (초) 존재 가정
-            if (AdManager.Instance != null && AdManager.Instance.RewardTime > 0)
-                AdManager.Instance.NextRewardTime = DateTime.UtcNow.AddSeconds(AdManager.Instance.RewardTime);
-
             _externalOnReward = null;
             IsReady = false;
             Init(); // 다음 로드
