@@ -1,5 +1,6 @@
 ﻿using GoogleMobileAds.Api;
 using System;
+using System.Collections;
 using UnityEngine;
 
 public class InterstitialAdController
@@ -28,6 +29,7 @@ public class InterstitialAdController
     private DateTime _expiresAtUtc = DateTime.MinValue;
 
     public bool IsReady { get; private set; }
+    public bool IsLoading { get; private set; }
 
     public event Action Opened;
     public event Action Closed;
@@ -46,28 +48,33 @@ public class InterstitialAdController
 
     public void Init()
     {
-        if (_ad != null && DateTime.UtcNow < _expiresAtUtc)
-        {
-            IsReady = true;
-            return;
-        }
+        // 이미 로드되어 있고 캐시 유효하면 그대로 사용
+        if (_ad != null && DateTime.UtcNow < _expiresAtUtc) { IsReady = true; return; }
+        if (IsLoading) return;
 
         DestroyAd();
+        IsLoading = true;
         Debug.Log($"[Interstitial] Loading... id={InterstitialId}");
 
         InterstitialAd.Load(InterstitialId, new AdRequest(), (ad, error) =>
         {
+            IsLoading = false;
+
             if (error != null || ad == null)
             {
                 Debug.LogError($"[Interstitial] Load failed: {error}");
                 _ad = null;
                 IsReady = false;
+
+                if (Application.isFocused && AdManager.Instance != null)
+                    AdManager.Instance.StartCoroutine(RetryAfter(15f));
                 return;
             }
 
             _ad = ad;
             _expiresAtUtc = DateTime.UtcNow + CacheValidity - TimeSpan.FromMinutes(1);
             IsReady = true;
+
             Debug.Log("[Interstitial] Load success.");
             HookEvents(_ad);
         });
@@ -75,7 +82,7 @@ public class InterstitialAdController
 
     public void ShowAd()
     {
-        // 자동노출 쿨다운은 AdManager에서 관리하지만, 여기서도 한번 더 방어
+        // 자동노출 쿨다운은 AdManager에서 관리하지만 여기서도 방어
         if (AdManager.Instance != null && AdManager.Instance.NextInterstitialTime > DateTime.UtcNow)
         {
             Debug.Log("[Interstitial] Skipped due to cooldown.");
@@ -99,6 +106,7 @@ public class InterstitialAdController
         _ad.Destroy();
         _ad = null;
         IsReady = false;
+        IsLoading = false;
         _expiresAtUtc = DateTime.MinValue;
     }
 
@@ -131,5 +139,12 @@ public class InterstitialAdController
             Failed?.Invoke();
             Init(); // 재시도
         };
+    }
+
+    private IEnumerator RetryAfter(float sec)
+    {
+        float until = Time.realtimeSinceStartup + sec;
+        while (Time.realtimeSinceStartup < until) yield return null;
+        if (!IsReady && !IsLoading && Application.isFocused) Init();
     }
 }

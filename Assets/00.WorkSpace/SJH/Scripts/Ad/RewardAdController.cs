@@ -1,5 +1,6 @@
 ﻿using GoogleMobileAds.Api;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -27,6 +28,7 @@ public class RewardAdController
     private Action _externalOnReward;
 
     public bool IsReady { get; private set; }
+    public bool IsLoading { get; private set; }
 
     public event Action Opened;
     public event Action Closed;
@@ -44,16 +46,25 @@ public class RewardAdController
 
     public void Init()
     {
+        if (IsLoading || IsReady) return;
+
         DestroyAd();
         IsReady = false;
+        IsLoading = true;
 
-        Debug.Log("[Rewarded] Loading...");
+        Debug.Log("[Rewarded] Loading.");
         RewardedAd.Load(RewardId, new AdRequest(), (ad, error) =>
         {
+            IsLoading = false;
+
             if (error != null || ad == null)
             {
                 Debug.LogError($"[Rewarded] Load failed: {error}");
                 IsReady = false;
+
+                // 5~15초 백오프 재시도 (포커스일 때만)
+                if (Application.isFocused && AdManager.Instance != null)
+                    AdManager.Instance.StartCoroutine(RetryAfter(10f));
                 return;
             }
 
@@ -71,13 +82,13 @@ public class RewardAdController
         _ad = null;
         _externalOnReward = null;
         IsReady = false;
+        IsLoading = false;
     }
 
     // onReward는 AdManager에서 처리하므로 여기서는 null로 넘겨도 됨
     public bool ShowAd(Action onReward = null, bool ignoreCooldown = false)
     {
-        // 자동노출(쿨다운) 정책은 AdManager에서 처리해도 되지만,
-        // 혹시 남아있다면 방지
+        // 자동노출(쿨다운) 정책은 AdManager에서 관리하지만 혹시 남아있다면 방지
         if (!ignoreCooldown && AdManager.Instance != null &&
             AdManager.Instance.NextRewardTime > DateTime.UtcNow)
         {
@@ -95,7 +106,7 @@ public class RewardAdController
         }
 
         _externalOnReward = onReward;
-        IsReady = false;
+        IsReady = false; // 1로딩 1재생 원칙
 
         _ad.Show(reward =>
         {
@@ -107,7 +118,7 @@ public class RewardAdController
         return true;
     }
 
-    void HookEvents(RewardedAd ad)
+    private void HookEvents(RewardedAd ad)
     {
         if (ad == null) return;
 
@@ -125,6 +136,7 @@ public class RewardAdController
         {
             Debug.Log("[Rewarded] Closed");
             Closed?.Invoke();
+
             _externalOnReward = null;
             IsReady = false;
             Init(); // 다음 로드
@@ -134,9 +146,17 @@ public class RewardAdController
         {
             Debug.LogError($"[Rewarded] Show error: {e}");
             Failed?.Invoke();
+
             _externalOnReward = null;
             IsReady = false;
             Init(); // 재시도
         };
+    }
+
+    private IEnumerator RetryAfter(float sec)
+    {
+        float until = Time.realtimeSinceStartup + sec;
+        while (Time.realtimeSinceStartup < until) yield return null;
+        if (!IsReady && !IsLoading && Application.isFocused) Init();
     }
 }
