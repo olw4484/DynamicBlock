@@ -1,73 +1,61 @@
 ﻿using Firebase.Extensions;
 using Firebase.Firestore;
-using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[Serializable]
-public class StageClearRate
-{
-	public int Rate;		// 스테이지 첫 시도시 성공 확률
-	public long Success;	// 성공
-	public long Failed;		// 실패
-}
-
 public class FirestoreManager : MonoBehaviour
 {
 	public static FirebaseFirestore Instance;
 
-	// test
-	[SerializeField] private TMP_Text _firestoreText;
-	[SerializeField] private FirebaseFirestore _firestore;
-	[SerializeField] private Button _initBtn;
-	[SerializeField] private TMP_Text _readText;
-	[SerializeField] private Button _readBtn;
-	[SerializeField] private TMP_Text _writeText;
-	[SerializeField] private Button _writeBtn;
-
-	[SerializeField] private bool _isReset = false;
-	[Header("스테이지 이름")]
+	//Test
 	[SerializeField] private string _stageName;
-	[Header("스테이지 클리어 여부")]
-	[SerializeField] private bool _isClear = false;
+	[SerializeField] private bool _isClear;
+	[SerializeField] private Button _readBtn;
+	[SerializeField] private Button _writeBtn;
+	[SerializeField] private Button _isClearBtn;
+	[SerializeField] private TMP_Text _isClearText;
+	[SerializeField] private TMP_Text _resultText;
+	//
 
-	public void InitBtn()
+	void Start()
 	{
-		_firestore = FirebaseFirestore.DefaultInstance;
+		_resultText.text = "파이어스토어 초기화 전";
 		Instance = FirebaseFirestore.DefaultInstance;
-		_firestoreText.text = _firestore?.ToString();
+		if (Instance != null)
+		{
+			Instance.Collection("StageData").GetSnapshotAsync();
+			_resultText.text = "파이어스토어 초기화 완료";
+		}
+		else
+		{
+			_resultText.text = "파이어스토어 초기화 실패";
+		}
 
-		if (_isReset) _firestore.ClearPersistenceAsync(); // 캐시  초기화
+		_readBtn.onClick.AddListener(() =>
+		{
+			_resultText.text = "Read Button Click";
+			ReadStageData(_stageName);
+		});
+		_writeBtn.onClick.AddListener(() =>
+		{
+			_resultText.text = "Write Button Click";
+			WriteStageData(_stageName, _isClear);
+		});
+		_isClearText.text = $"{_isClear}";
+		_isClearBtn.onClick.AddListener(() =>
+		{
+			_resultText.text = "IsClear Button Click";
+			_isClear = !_isClear;
+			_isClearText.text = $"{_isClear}";
+		});
 	}
 
-	public void ReadBtn()
-	{
-		ReadData();
-	}
-
-	public void WriteBtn()
-	{
-		WriteData();
-	}
-
-	// test
-
-	void Awake()
-	{
-		//Instance = FirebaseFirestore.DefaultInstance;
-	}
-
-	void Update()
-	{
-		if (Input.GetKeyDown(KeyCode.Q)) WriteData();
-		if (Input.GetKeyDown(KeyCode.W)) ReadData();
-	}
-
-	void WriteData()
+	public void WriteStageData(string stageName, bool isClear)
 	{
 		Debug.Log("데이터 추가 시도");
+		_resultText.text = "데이터 추가 시도";
 
 		/* DB 계층구조
 		StageData
@@ -80,11 +68,11 @@ public class FirestoreManager : MonoBehaviour
 		 */
 
 		if (Instance == null) return;
-		if (string.IsNullOrEmpty(_stageName)) return;
+		if (string.IsNullOrEmpty(stageName)) return;
 		// 포인터
-		DocumentReference stageRef = Instance.Collection("StageData").Document(_stageName);
+		DocumentReference stageRef = Instance.Collection("StageData").Document("Stage1").Collection("Stages").Document(stageName);
 
-		string clearKey = _isClear ? "Success" : "Failed";
+		string clearKey = isClear ? "Success" : "Failed";
 
 		var data = new Dictionary<string, object>()
 		{
@@ -95,41 +83,58 @@ public class FirestoreManager : MonoBehaviour
 			if (task.IsCompletedSuccessfully)
 			{
 				Debug.Log("업데이트 성공");
+				_resultText.text = "업데이트 성공";
+				return;
 			}
 			else
 			{
 				Debug.Log("업데이트 실패");
+				_resultText.text = "업데이트 실패";
+				return;
 			}
 		});
 	}
 
-	void ReadData()
+	public void ReadStageData(string stageName)
 	{
 		Debug.Log("데이터 읽기 시도");
+		_resultText.text = "데이터 읽기 시도";
 		if (Instance == null) return;
+		if (string.IsNullOrEmpty(stageName)) return;
+
 		// 포인터
-		if (string.IsNullOrEmpty(_stageName)) return;
-		DocumentReference docRef = Instance.Collection("StageData").Document(_stageName); // Document(string path)
+		// 컬렉션 > 문서 > 컬렉션 > 문서 순으로 반복되야함
+		// 컬렉션 > 컬렉션 X
+		DocumentReference stageRef = Instance.Collection("StageData").Document("Stage1").Collection("Stages").Document(stageName);
 
 		// Default : 서버 데이터 읽기, 실패시 캐시된 데이터 반환
 		// Cache : 캐시된 데이터 반환
 		// Server : 서버 데이터 읽기, 실패시 에러 반환
-		docRef.GetSnapshotAsync(Source.Cache).ContinueWithOnMainThread(task =>
+		stageRef.GetSnapshotAsync(Source.Default).ContinueWithOnMainThread(task =>
 		{
-			DocumentSnapshot snapshot = task.Result;
-			
-			if (!snapshot.Exists)
+			if (task.IsFaulted || task.IsCanceled)
 			{
-				_readText.text = $"{snapshot.Id} 데이터 읽기 실패";
-				Debug.Log($"{snapshot.Id} 데이터 읽기 실패");
+				_resultText.text = "데이터 읽기 실패";
 				return;
 			}
-			Dictionary<string, object> documentDictionary = snapshot.ToDictionary();
-			_readText.text = string.Format("{0} 첫 시도 성공확률 : {1:P0}",
-					snapshot.Id,
-					((double)(long)documentDictionary["Success"] / ((double)(long)documentDictionary["Success"] + (long)documentDictionary["Failed"]))
-					);
-			Debug.Log("데이터 읽기 성공");
+
+			DocumentSnapshot snapshot = task.Result;
+
+			if (!snapshot.Exists)
+			{
+				_resultText.text = "데이터 읽기 실패";
+				return;
+			}
+
+			Dictionary<string, object> stageDic = snapshot.ToDictionary();
+			if (long.TryParse(stageDic["Success"].ToString(), out long successCount)
+			&& long.TryParse(stageDic["Failed"].ToString(), out long failedCount))
+			{
+				var per = successCount / ((double)(successCount + failedCount));
+				Debug.Log($"{snapshot.Id} 첫 시도 성공확률 : {per:P0}");
+				_resultText.text = $"{snapshot.Id} 첫 시도 성공확률 : {per:P0}";
+				return;
+			}
 		});
 	}
 }

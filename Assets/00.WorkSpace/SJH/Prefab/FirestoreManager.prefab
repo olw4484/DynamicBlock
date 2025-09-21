@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5196846449114168324}
   - component: {fileID: 2645048708707113900}
+  - component: {fileID: 6538991565991968893}
   m_Layer: 0
   m_Name: FirestoreManager
   m_TagString: Untagged
@@ -44,3 +45,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a94c78379d8ef694bbe8a691f66045a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _stageName: 1
+  _isClear: 0
+  _readBtn: {fileID: 0}
+  _writeBtn: {fileID: 0}
+  _isClearBtn: {fileID: 0}
+  _isClearText: {fileID: 0}
+  _resultText: {fileID: 0}
+--- !u!114 &6538991565991968893
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1864858159992619243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 298d9f408f6981a4a8358f93d31663bf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _resultText: {fileID: 0}
+  _sendEventBtn: {fileID: 0}
