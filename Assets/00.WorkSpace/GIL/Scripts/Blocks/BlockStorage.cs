@@ -179,7 +179,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
                 Sprite sprite = null;
 
-                if (MapManager.Instance.GameMode == GameMode.Tutorial)
+                if (MapManager.Instance.CurrentMode == GameMode.Tutorial)
                 {
                     sprite = shapeImageSprites[0];
                 }

@@ -158,7 +158,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 storage.OnBlockPlaced(this);
                 
                 // TODO : 적절한 튜토리얼 시작 위치 옮기기
-                if (MapManager.Instance.GameMode == GameMode.Tutorial)
+                if (MapManager.Instance.CurrentMode == GameMode.Tutorial)
                 {
                     MapManager.Instance.OnTutorialCompleted();
                 }

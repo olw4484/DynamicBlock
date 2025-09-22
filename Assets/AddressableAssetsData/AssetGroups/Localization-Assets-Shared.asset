@@ -22,6 +22,11 @@ MonoBehaviour:
     m_ReadOnly: 1
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cab776c5573fd504998a1c8b264c63d3
+    m_Address: Assets/00.WorkSpace/KMS/Achievement/Achievement Shared Data.asset
+    m_ReadOnly: 1
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
   m_Settings: {fileID: 11400000, guid: e4032e69d20915141886eb7276a16890, type: 2}
   m_SchemaSet:

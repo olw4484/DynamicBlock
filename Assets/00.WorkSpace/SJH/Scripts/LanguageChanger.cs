@@ -41,10 +41,13 @@ public class LanguageChanger : MonoBehaviour
 
     void OnDropdownValueChanged(int value)
     {
-        // UI는 SaveManager만 호출 (또는 이벤트 발행)
         MapManager.Instance?.saveManager?.SetLanguageIndex(value);
-        SetAllDropdowns(value); // 다른 드롭다운 동기화
-        // Game.Bus.Publish(new LanguageChangeRequested(value)); // 이벤트로만 하고 싶으면 이렇게
+        SetAllDropdowns(value);
+
+        // 실제 로케일 변경
+        var locales = LocalizationSettings.AvailableLocales.Locales;
+        if (value >= 0 && value < locales.Count)
+            LocalizationSettings.SelectedLocale = locales[value];
     }
 
     // 저장값이 외부에서 바뀌었을 때 드롭다운 맞추기

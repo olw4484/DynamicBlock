@@ -17,6 +17,12 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: effce7e3d0a6013458d7038842cb01b3
   m_SerializeEntries:
+  - m_GUID: 305726361c76a574380fa89590d7417c
+    m_Address: Achievement_ko-KR
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ko-KR
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 6c1e09e2cb60de940ba7693267324ed2
     m_Address: LanguageTable_ko-KR
     m_ReadOnly: 1

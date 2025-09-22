@@ -17,7 +17,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             var Map = MapManager.Instance;
             // 튜토리얼일 경우 고정 블록 소환
-            if (Map.GameMode == GameMode.Tutorial)
+            if (Map.CurrentMode == GameMode.Tutorial)
             {
                 Debug.Log("[BlockSpawnManager] : 튜토리얼 블록 생성 시작 ");
                 result.Add(null);
