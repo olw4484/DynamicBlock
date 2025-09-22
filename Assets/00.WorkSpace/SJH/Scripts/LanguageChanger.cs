@@ -35,7 +35,7 @@ public class LanguageChanger : MonoBehaviour
             dd.onValueChanged.AddListener(OnDropdownValueChanged);
         }
 
-        // (선택) 저장값 바뀔 때 드롭다운 동기화하고 싶으면 구독
+        // 저장값 바뀔 때 드롭다운 동기화하고 싶으면 구독
         // Game.Bus.Subscribe<GameDataChanged>(OnGameDataChanged, replaySticky:true);
     }
 
@@ -47,7 +47,7 @@ public class LanguageChanger : MonoBehaviour
         // Game.Bus.Publish(new LanguageChangeRequested(value)); // 이벤트로만 하고 싶으면 이렇게
     }
 
-    // (선택) 저장값이 외부에서 바뀌었을 때 드롭다운 맞추기
+    // 저장값이 외부에서 바뀌었을 때 드롭다운 맞추기
     // void OnGameDataChanged(GameDataChanged e) => SetAllDropdowns(e.data.LanguageIndex);
 
     void SetAllDropdowns(int value)

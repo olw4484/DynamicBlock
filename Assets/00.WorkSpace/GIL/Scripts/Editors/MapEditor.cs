@@ -419,7 +419,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     dnBtn.RegisterCallback<ClickEvent>(e => e.StopPropagation());
                     fruitCount.RegisterCallback<ClickEvent>(e => e.StopPropagation());
 
-                    // (선택) 직접 입력/휠 증감
+                    // 직접 입력/휠 증감
                     fruitCount.RegisterValueChangedCallback(e =>
                     {
                         MapEditorFunctions.SetFruitGoal(_data, idx, e.newValue);

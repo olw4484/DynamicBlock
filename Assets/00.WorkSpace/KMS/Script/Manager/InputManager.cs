@@ -1,7 +1,7 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 // ================================
 // Script  : InputManager.cs
@@ -38,29 +38,64 @@ public sealed class InputManager : MonoBehaviour, IManager, ITickable
 
     public void PostInit()
     {
-        // 씬 전환 동안 입력 잠금
-        _bus.Subscribe<SceneWillChange>(_ => _inputEnabled = false, replaySticky: false);
-        _bus.Subscribe<SceneChanged>(_ => { _inputEnabled = true; _cool = 0f; }, replaySticky: false);
+        _bus.Subscribe<SceneWillChange>(_ => { _inputEnabled = false; Debug.Log("[Input] lock: SceneWillChange"); }, false);
+        _bus.Subscribe<SceneChanged>(_ => { _inputEnabled = true; _cool = 0f; Debug.Log("[Input] unlock: SceneChanged"); }, false);
 
-        // 광고 중 입력 잠금
-        _bus.Subscribe<AdPlaying>(_ => _inputEnabled = false, false);
-        _bus.Subscribe<AdFinished>(_ => { _inputEnabled = true; _cool = 0f; }, false);
+        _bus.Subscribe<AdPlaying>(_ => { _inputEnabled = false; Debug.Log("[Input] lock: AdPlaying"); }, false);
+        _bus.Subscribe<AdFinished>(_ => {
+            _inputEnabled = true; _cool = 0f;
+            EventSystemRescue.EnsureAlive();
+        }, false);
 
-        // 게임 초기화 중 입력 잠금
-        _bus.Subscribe<GameResetting>(_ => _inputEnabled = false, false);
-        _bus.Subscribe<GameResetDone>(_ => { _inputEnabled = true; _cool = 0f; }, false);
+        _bus.Subscribe<GameResetting>(_ => { _inputEnabled = false; Debug.Log("[Input] lock: GameResetting"); }, false);
+        _bus.Subscribe<GameResetDone>(_ => { _inputEnabled = true; _cool = 0f; Debug.Log("[Input] unlock: GameResetDone"); }, false);
+
+        _bus.Subscribe<InputLock>(e => {
+            _inputEnabled = !e.on;
+            Debug.Log($"[Input] {(e.on ? "lock" : "unlock")} via InputLock: {e.reason}");
+        }, false);
     }
 
+    // New Input System
     public void Tick(float dt)
     {
         if (_cool > 0f) _cool -= dt;
 
-        if (Input.GetKeyDown(KeyCode.Escape) && Ready())
+        bool esc = false;
+
+        // New Input System (있을 때만)
+#if ENABLE_INPUT_SYSTEM
+        if (Keyboard.current?.escapeKey.wasPressedThisFrame ?? false)
+            esc = true;
+        if (Gamepad.current?.startButton.wasPressedThisFrame ?? false)
+            esc = true;
+#endif
+
+        // Old Input System
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (Game.UI.TryCloseTopByEscape())
-                Consume();
+            if (AdPauseGuard.ShouldIgnoreBackNow())
+            {
+                Debug.Log("[Back] ignored (ad showing or just returned)");
+                return;
+            }
+            // 기존 백키 로직
+            Game.UI.SetPanel("ExitConfirm", true);
         }
+
+        if (!esc || !Ready()) return;
+
+        if (Game.UI.TryCloseTopByEscape()) { Consume(); return; }
+
+        // 기본 동작(모달 없을 때)
+        if (Game.UI.TryGetPanelRoot("Game", out var gameRoot) && gameRoot.activeInHierarchy)
+            Game.UI.SetPanel("Game_Options", true);
+        else
+            Game.UI.SetPanel("ExitConfirm", true);
+
+        Consume();
     }
+
 
     // === 내부 유틸 ===
     private bool Ready()

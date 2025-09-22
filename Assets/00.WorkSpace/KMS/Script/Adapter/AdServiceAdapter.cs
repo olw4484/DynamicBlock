@@ -65,10 +65,17 @@ public sealed class AdServiceAdapter : IAdService
 
     public void ToggleBanner(bool show)
     {
-        if (_ad?.Banner == null) return;
-        bool visible = _ad.Banner.IsVisible;
-        if (show && !visible) _ad.Banner.AdToggle();
-        if (!show && visible) _ad.Banner.AdToggle();
+        if (_ad?.Banner == null)
+            return;
+
+        if (show)
+        {
+            _ad.Banner.ShowAd();
+        }
+        else
+        {
+            _ad.Banner.HideAd();
+        }
     }
 
     public void Refresh()

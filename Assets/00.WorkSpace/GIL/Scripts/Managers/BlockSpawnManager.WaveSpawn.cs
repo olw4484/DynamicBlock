@@ -170,7 +170,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     perShapeCount.TryGetValue(s.Id, out int cur);
                     if (cur >= maxDuplicatesPerWave) continue;
             
-                    // (선택) 소형 페널티는 이 단계에서 무시 — “반복 깨기”가 우선
+                    // 소형 페널티는 이 단계에서 무시 — “반복 깨기”가 우선
                     int tiles = s.activeBlockCount;
                     if (tiles <= bestTiles) continue;
                     bestTiles = tiles;
