@@ -229,6 +229,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 if (!map) { Debug.LogError($"[MapManager] MapData[{idx}] is null."); return; }
 
                 ApplyMapToCurrentGrid(map, publishGridReady);
+                Debug.Log("[MapManager] SetMapDataToGrid 완료: index=" + index);
                 StartCoroutine(RestoreScoreNextFrame());
             }
             finally { _isApplyingMap = false; }
@@ -901,7 +902,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 score.ResetAll(); // 완전 새 게임이면 0으로
         }
 
-
         public enum ClassicEnterPolicy
         {
             ResumeIfAliveElseLoadSaveElseNew,  // 기본: 라이브 보드 그대로, 없으면 저장 복원, 그것도 없으면 신규
@@ -947,7 +947,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
             // 어드벤처 모드 진입 로직 구현 필요
-            
+            SetMapDataToGrid(stageNumber);
+            //StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
         }
     }
 }

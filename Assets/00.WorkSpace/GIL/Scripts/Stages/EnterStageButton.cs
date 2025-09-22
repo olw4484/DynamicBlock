@@ -40,7 +40,6 @@ public class EnterStageButton : MonoBehaviour
         clearSprite = sprite;
     }
 
-
     /// <summary>
     /// 스테이지 진입 함수, 로그로 출력만 함
     /// </summary>
@@ -51,6 +50,7 @@ public class EnterStageButton : MonoBehaviour
         // 현재 스테이지 진입, 클리어 했다고 판정, 다음 스테이지 활성화
         var mM = MapManager.Instance;
         if (mM == null) Debug.LogError("[EnterStage] Error : MapManager Instance is null");
+        // MapManager의 EnterStage 함수 호출 -> 이후 작업은 MapManager에서 진행
         mM.EnterStage(stageNumber);
     }
     
