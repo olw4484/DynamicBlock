@@ -3117,9 +3117,9 @@ MonoBehaviour:
   m_OnEndEdit:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 480158906}
         m_TargetAssemblyTypeName: StageManager, Assembly-CSharp
-        m_MethodName: SetCurrentActiveStage_Debug
+        m_MethodName: Debug_SetCurrentActiveStage
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -20965,9 +20965,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 480158906}
         m_TargetAssemblyTypeName: StageManager, Assembly-CSharp
-        m_MethodName: SetAllStageActive_Debug
+        m_MethodName: Debug_SetAllStageActive
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -23730,9 +23730,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 480158906}
         m_TargetAssemblyTypeName: StageManager, Assembly-CSharp
-        m_MethodName: ShowStageNumber_Debug
+        m_MethodName: Debug_ShowStageNumber
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

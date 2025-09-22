@@ -149,7 +149,7 @@ public class StageManager : MonoBehaviour
     /// <summary>
     /// 디버그용 스테이지 번호 표시
     /// </summary>
-    public void ShowStageNumber_Debug()
+    public void Debug_ShowStageNumber()
     {
         foreach (var button in generator.stageButtons)
         {
@@ -165,7 +165,7 @@ public class StageManager : MonoBehaviour
     /// <summary>
     /// 디버그용 모든 스테이지 활성화
     /// </summary>
-    public void SetAllStageActive_Debug()
+    public void Debug_SetAllStageActive()
     {
         foreach (var button in generator.stageButtons)
         {
@@ -184,11 +184,17 @@ public class StageManager : MonoBehaviour
     /// <summary>
     /// 디버그용 현재 활성화 스테이지 설정
     /// </summary>
-    public void SetCurrentActiveStage_Debug()
+    public void Debug_SetCurrentActiveStage()
     {
         // 1) InputField에서 숫자 파싱
         if (!int.TryParse(setCurrentStageInputField.text, out int stageNumber))
         {
+            if (stageNumber >= generator.stageButtons.Count)
+            {
+                Debug.LogWarning("[StageManager] Input Stage Number exceeds total stage count");
+                setCurrentStageInputField.text = "";
+                return;
+            }
             Debug.LogWarning("[StageManager] Invalid Stage Number Input");
             return;
         }
