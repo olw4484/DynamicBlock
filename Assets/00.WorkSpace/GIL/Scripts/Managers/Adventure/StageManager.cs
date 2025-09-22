@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.UIElements.Experimental;
 public class StageManager : MonoBehaviour
 {
     [Header("References")]
@@ -17,7 +18,7 @@ public class StageManager : MonoBehaviour
     [SerializeField] private TMP_InputField setCurrentStageInputField; // 현재 활성화 스테이지 설정용 InputField
 
     [SerializeField] private int currentStage = 0; // 0-based index
-    [SerializeField] public bool isAllStagesCleared = false;
+    [SerializeField] public bool isAllStagesCleared = false; // 모든 스테이지 클리어 여부
     private void OnValidate()
     {
         if (generator == null)

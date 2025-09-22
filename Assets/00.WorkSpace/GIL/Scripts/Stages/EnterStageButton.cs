@@ -1,4 +1,5 @@
 using System;
+using _00.WorkSpace.GIL.Scripts.Managers;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -38,16 +39,19 @@ public class EnterStageButton : MonoBehaviour
     {
         clearSprite = sprite;
     }
-        
+
 
     /// <summary>
-    /// 디버그용 스테이지 진입 함수, 로그로 출력만 함
+    /// 스테이지 진입 함수, 로그로 출력만 함
     /// </summary>
     public void EnterStage()
     {
         // 현재는 디버그로만 진행함
-        Debug.Log($"[EnterStage] Debug : Enter Stage {stageNumber}");
+        Debug.Log($"[EnterStage] Debug : Calling MapManager Enter Stage {stageNumber}");
         // 현재 스테이지 진입, 클리어 했다고 판정, 다음 스테이지 활성화
+        var mM = MapManager.Instance;
+        if (mM == null) Debug.LogError("[EnterStage] Error : MapManager Instance is null");
+        mM.EnterStage(stageNumber);
     }
     
     /// <summary>
