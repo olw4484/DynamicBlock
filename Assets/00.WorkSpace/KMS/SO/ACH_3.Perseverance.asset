@@ -15,10 +15,14 @@ MonoBehaviour:
   id: 2
   mode: 0
   titleKey: 1103
-  descKey: 1103
-  tableName: LanguageTable
+  descKey: 1026
+  descTierKeys:
+  - 1026
+  - 1027
+  - 1028
   metric: 3
   thresholds: 000000000500000032000000
+  minComboByTier: 
   tierSprites:
   - {fileID: 21300000, guid: 5b8b12076543e4babb793d552888ce94, type: 3}
   - {fileID: 21300000, guid: 6bf9cfbb150c94700b2d686f34fcbb63, type: 3}

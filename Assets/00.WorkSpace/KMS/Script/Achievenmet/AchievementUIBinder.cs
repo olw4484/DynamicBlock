@@ -87,6 +87,12 @@ public sealed class AchievementUIBinder : MonoBehaviour
         var list = _svc.EvaluateAll(recordUnlocks, DateTime.UtcNow, out var newlyUnlocked);
         var byId = new Dictionary<AchievementId, AchievementProgress>(list.Count);
         foreach (var p in list) byId[p.id] = p;
+        foreach (var v in medalViews)
+        {
+            var def = v ? v.Definition : null;
+            var inDb = def && byId.ContainsKey(def.id);
+            Debug.Log($"[ACH-BIND] view={v?.name} def={(def ? def.id.ToString() : "NULL")} inDb={inDb}");
+        }
 
         // 3) 메달 UI 반영
         if (medalViews != null)

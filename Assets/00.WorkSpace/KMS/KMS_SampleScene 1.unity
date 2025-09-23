@@ -62141,7 +62141,7 @@ MonoBehaviour:
   icon: {fileID: 7657721541553393109}
   label: {fileID: 2354080464463594361}
   binder: {fileID: 0}
-  button: {fileID: 0}
+  button: {fileID: 1443277207}
 --- !u!1 &2019299736
 GameObject:
   m_ObjectHideFlags: 0
@@ -64017,8 +64017,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   def: {fileID: 11400000, guid: b053b46e4c558a54fa7e7f7d14c73e29, type: 2}
-  icon: {fileID: 9120817136310580175}
-  label: {fileID: 8094152290329168284}
+  icon: {fileID: 510086288924795201}
+  label: {fileID: 7291928702968567496}
   binder: {fileID: 0}
   button: {fileID: 1250673810}
 --- !u!1 &2106898027
@@ -72985,8 +72985,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: You've cleared over 10 stages in adventure mode!
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: b85b643605a2e4ccaba709195d463393, type: 2}
-  m_sharedMaterial: {fileID: 7801471545875461292, guid: b85b643605a2e4ccaba709195d463393, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -98943,7 +98943,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 15}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 10.240112, y: -138.24927}
+  m_AnchoredPosition: {x: 10.240112, y: -138.24951}
   m_SizeDelta: {x: 1238.1497, y: 936.3196}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!95 &5843397327902586039
@@ -113908,7 +113908,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 15}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 10.240112, y: -138.24927}
+  m_AnchoredPosition: {x: 10.240112, y: -138.24951}
   m_SizeDelta: {x: 1238.1497, y: 936.3196}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!95 &8406362467199442800

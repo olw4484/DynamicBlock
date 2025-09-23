@@ -43,6 +43,10 @@ public class GameData
     public int[] stageCleared;              // 0=미클,1=클
     public int[] stageScores;               // 각 스테이지 최고 점수
 
+    // ===== 콤보 기록 =====
+    public int combo5PlusRuns;
+    public int combo10PlusRuns;
+
     // ===== 런타임/모드 =====
     [Obsolete("Use gameMode instead")]
     public bool isTutorialPlayed;           // 과거 호환
@@ -153,6 +157,9 @@ public class GameData
 
             if (stageClearedThisRound) adventureStageClears++;
         }
+
+        if (bestComboThisRound >= 5) combo5PlusRuns++;
+        if (bestComboThisRound >= 10) combo10PlusRuns++;
     }
 
     // ---------- 업적 해금 기록 업데이트 ----------

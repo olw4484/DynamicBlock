@@ -15,8 +15,11 @@ MonoBehaviour:
   id: 0
   mode: 1
   titleKey: 1101
-  descKey: 1101
-  tableName: LanguageTable
+  descKey: 1020
+  descTierKeys:
+  - 1020
+  - 1021
+  - 1022
   metric: 0
   thresholds: 000000003075000060ea0000
   tierSprites:
