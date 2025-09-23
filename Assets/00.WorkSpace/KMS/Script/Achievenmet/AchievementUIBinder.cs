@@ -46,17 +46,29 @@ public sealed class AchievementUIBinder : MonoBehaviour
 
     void OnEnable()
     {
-        // 로케일 바뀌면 라벨/설명 다시 그리기
         LocalizationSettings.SelectedLocaleChanged += OnLocaleChanged;
-        // 세이브 리로드 시 재그리기(프로젝트에 AfterLoad 이벤트가 이미 있음)
-        if (saveManager) saveManager.AfterLoad += OnAfterSaveLoad;
+        if (saveManager)
+        {
+            saveManager.AfterLoad += OnAfterSaveLoad;
+            saveManager.AfterSave += OnAfterSave; // ← 추가
+        }
         RefreshAll(recordUnlocks: false);
     }
 
     void OnDisable()
     {
         LocalizationSettings.SelectedLocaleChanged -= OnLocaleChanged;
-        if (saveManager) saveManager.AfterLoad -= OnAfterSaveLoad;
+        if (saveManager)
+        {
+            saveManager.AfterLoad -= OnAfterSaveLoad;
+            saveManager.AfterSave -= OnAfterSave; // ← 추가
+        }
+    }
+
+    void OnAfterSave(GameData d)
+    {
+        _data = d ?? _data;
+        RefreshAll(recordUnlocks: false);
     }
 
     void OnLocaleChanged(UnityEngine.Localization.Locale _)
