@@ -53,6 +53,7 @@ public class StageData
 		if (!_data.TryGetValue(stageName, out var data)) return result;
 		if (!data.TryGetValue(stageIndex, out var rate)) return result;
 		return rate;
+		// -1을 반환하면 인터넷 연결이 되지 않고 캐싱된 데이터가 없으니 데이터가 없다고 출력
 	}
 	/// <summary>
 	/// 로컬에 저장되는 스테이지별 첫 클리어 여부
