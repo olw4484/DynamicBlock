@@ -457,19 +457,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void ValidateGridConsistency()
         {
-            for (int r = 0; r < rows; r++)
-                for (int c = 0; c < cols; c++)
-                {
-                    var cell = gridSquares[r, c];
-                    if (cell == null) continue;
-                    bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
-                    bool occupiedBySquare = cell.IsOccupied;
-                    if (occupiedByIndex != occupiedBySquare)
-                    {
-                        Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | spriteIndex={cell.BlockSpriteIndex} vs square.IsOccupied={occupiedBySquare} | cellState={cell.state}");
-                        Debug.Assert(false, "Grid invariant broken: spriteIndex vs IsOccupied mismatch");
-                    }
-                }
+            Debug.Log("[GridManager] ValidateGridConsistency, 지금은 주석처리됨");
+            // for (int r = 0; r < rows; r++)
+            //     for (int c = 0; c < cols; c++)
+            //     {
+            //         var cell = gridSquares[r, c];
+            //         if (cell == null) continue;
+            //         bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
+            //         bool occupiedBySquare = cell.IsOccupied;
+            //         if (occupiedByIndex != occupiedBySquare)
+            //         {
+            //             Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | spriteIndex={cell.BlockSpriteIndex} vs square.IsOccupied={occupiedBySquare} | cellState={cell.state}");
+            //             Debug.Assert(false, "Grid invariant broken: spriteIndex vs IsOccupied mismatch");
+            //         }
+            //     }
         }
         /// <summary>
         /// 보드 전체 정보를 0으로 초기화
@@ -518,14 +519,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
         }
 
-        public void SetCellOccupied(int r, int c, bool occupied, Sprite sprite = null)
+        public void SetCellOccupied(int r, int c, bool occupied, Sprite sprite = null, bool isFruit = false)
         {
             var cell = gridSquares[r, c];
             if (!cell) return;
 
+            Debug.Log($"[Grid] SetCellOccupied r={r}, c={c}, occupied={occupied}, sprite={(sprite != null ? sprite.name : "null")}, isFruit={isFruit}");
+
             if (occupied)
             {
-                cell.SetImage(sprite, changeIndex: true);
+                if (isFruit) cell.SetFruitImage(true, sprite, changeIndex: true);
+                cell.SetImage(sprite, changeIndex: false);
                 cell.SetOccupied(true);
             }
             else

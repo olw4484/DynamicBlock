@@ -292,6 +292,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int rows = Mathf.Min(map.rows, gm.rows);
             int cols = Mathf.Min(map.cols, gm.cols);
 
+            StringBuilder sb = new();
+
             for (int r = 0; r < rows; r++)
                 for (int c = 0; c < cols; c++)
                 {
@@ -303,12 +305,24 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     }
 
                     var sprite = GDS.I?.GetBlockSpriteByLayoutCode(code);
-
                     if (!sprite && _codeToSprite != null)
                         _codeToSprite.TryGetValue(code, out sprite);
 
-                    gm.SetCellOccupied(r, c, sprite != null, sprite);
+                    // 200이 넘을 경우 ( 과일 블록일 경우 ) 강제 매핑.
+                    if (!sprite && code >= 200 && _fruitSpriteList != null && _fruitSpriteList.Length > 0)
+                    {
+                        int i = Mathf.Clamp(code - 201, 0, _fruitSpriteList.Length - 1);
+                        sprite = _fruitSpriteList[i];
+                    }
+                    // 과일 블록일 경우의 5번째 파라미터 isFruit : true를 추가
+                    sb.Append($"[MapManager] Applying cell ({r},{c}): code={code}, sprite={(sprite != null ? sprite.name : "null")}");
+                    if (code >= 200)
+                        gm.SetCellOccupied(r, c, true, sprite, isFruit: true);
+                    else
+                        gm.SetCellOccupied(r, c, sprite != null, sprite);
                 }
+
+            Debug.Log(sb.ToString());
 
             gm.ValidateGridConsistency();
 

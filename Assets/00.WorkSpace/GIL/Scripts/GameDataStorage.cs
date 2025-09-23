@@ -46,12 +46,12 @@ namespace _00.WorkSpace.GIL.Scripts
         [SerializeField] private string fruitBackgroundPath      = "FruitBackgroundImage";
         [SerializeField] private string fruitIconsPath           = "FruitIcons";
         
-        [NonSerialized] public MapData[]   Maps;
-        [NonSerialized] public ShapeData[] Shapes;
-        [NonSerialized] public Sprite[]    BlockSprites;
-        [NonSerialized] public Sprite[]    BlockWithFruitSprites;
-        [NonSerialized] public Sprite[]    FruitBackgroundSprites;
-        [NonSerialized] public Sprite[]     FruitIconsSprites;
+        public MapData[]   Maps;
+        public ShapeData[] Shapes;
+        public Sprite[]    BlockSprites;
+        public Sprite[]    BlockWithFruitSprites;
+        public Sprite[]    FruitBackgroundSprites;
+        public Sprite[]     FruitIconsSprites;
         
         private Dictionary<string, ShapeData> _shapeByName;
         private Dictionary<string, int> _blockNameToIndex;
@@ -104,10 +104,14 @@ namespace _00.WorkSpace.GIL.Scripts
 
         public Sprite GetBlockSpriteByName(string name)
         {
+            var result = default(Sprite);
             if (name == null) return null;
             if (_blockNameToIndex.TryGetValue(name, out var i))
-                return (i >= 0 && i < BlockSprites.Length) ? BlockSprites[i] : null;
-            return null;
+            {
+                result = (i >= 0 && i < BlockSprites.Length) ? BlockSprites[i] : null;
+            }
+            
+            return result;
         }
         public Sprite GetBlockSpriteByIndex(int idx)
         {
