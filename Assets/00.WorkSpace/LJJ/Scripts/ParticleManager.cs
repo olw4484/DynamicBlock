@@ -17,6 +17,7 @@ public class ParticleManager : MonoBehaviour
         public readonly Vector2 screen;            // ScreenPoint 모드
         public readonly Vector3 world;             // WorldPos 모드
         public readonly Vector2 pixelOffset;       // AnchorRect용 추가 오프셋
+        public readonly float rotationX;          // 최종 로컬 X 회전 (comboParticle 용)
         public readonly float rotationY;           // 최종 로컬 Y 회전 (comboParticle 용)
         public readonly float rotationZ;           // 최종 로컬 Z 회전
         public readonly bool unscaled;             // TimeScale 무시 여부
@@ -25,12 +26,14 @@ public class ParticleManager : MonoBehaviour
         public SpawnTarget(
             SpawnMode m, int idx = -1, RectTransform a = null,
             Vector2? scr = null, Vector3? w = null, Vector2? px = null,
-            float rotY = 0f, float rotZ = 0f, bool unscaledTime = false, float? dur = null)
+            float rotX = 0f, float rotY = 0f, float rotZ = 0f, 
+            bool unscaledTime = false, float? dur = null)
         {
             mode = m; index = idx; anchor = a;
             screen = scr ?? default;
             world = w ?? default;
             pixelOffset = px ?? default;
+            rotationX = rotX;
             rotationY = rotY;
             rotationZ = rotZ; unscaled = unscaledTime; durationOverride = dur;
         }
@@ -413,7 +416,7 @@ public class ParticleManager : MonoBehaviour
         var t = ps.transform;
         t.SetParent(fxRoot, false);
         t.localPosition = ToFxLocal(target);
-        t.localRotation = Quaternion.Euler(0f, target.rotationY, target.rotationZ);
+        t.localRotation = Quaternion.Euler(target.rotationX, target.rotationY, target.rotationZ);
         t.localScale = Vector3.one;
 
         if (fxLayer >= 0) LayerUtil.SetLayerRecursive(ps.gameObject, fxLayer);
@@ -541,7 +544,7 @@ public class ParticleManager : MonoBehaviour
         var ps = comboPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridRow, idx: rowIndex, rotZ: 0f, unscaledTime: false);
+            SpawnMode.GridRow, idx: rowIndex, rotX: -90f, rotZ: 0f, unscaledTime: false);
 
         var param = new FxParams(Color.white, lineFx: true, applyScalingMode: true);
 
