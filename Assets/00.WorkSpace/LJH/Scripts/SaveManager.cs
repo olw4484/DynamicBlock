@@ -58,6 +58,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     private bool _justRestarted;
     private bool _skipNextEnterSnapshotApply;
 
+    private int _runMaxCombo = 0;
 
     public enum SnapshotSource { Auto, Manual, EnterRequest, EnterIntent, Reset }
 
@@ -120,7 +121,12 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
         // ---- 스냅샷 저장 트리거 ----
         _bus.Subscribe<ScoreChanged>(_ => MarkSnapshotDirty(), replaySticky: false);
-        _bus.Subscribe<ComboChanged>(_ => MarkSnapshotDirty(), replaySticky: false);
+        _bus.Subscribe<ComboChanged>(e =>
+        {
+            if (e.value > _runMaxCombo) _runMaxCombo = e.value;
+
+            MarkSnapshotDirty();
+        }, replaySticky: false);
         _bus.Subscribe<LinesCleared>(_ => MarkSnapshotDirty(), replaySticky: false);
         _bus.Subscribe<GridCleared>(_ => MarkSnapshotDirty(), replaySticky: false);
         // (권장) 블록 커밋 시점 이벤트가 있다면 여기도 연결
@@ -213,9 +219,19 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
             UpdateClassicScore(e.score);
+
+            if (gameData != null)
+            {
+                gameData.bestCombo = Mathf.Max(gameData.bestCombo, _runMaxCombo);
+                SaveGame();
+            }
+
             if (e.isNewBest) { Game.Fx.PlayNewScoreAt(); Sfx.NewRecord(); }
             else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
+
             ClearRunState(save: true);
+
+            _runMaxCombo = 0;
 
             Debug.Log($"[Save] FINAL total={e.score}, persistedHigh={gameData?.highScore}");
         }, replaySticky: false);

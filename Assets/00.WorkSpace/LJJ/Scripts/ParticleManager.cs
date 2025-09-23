@@ -421,6 +421,8 @@ public class ParticleManager : MonoBehaviour
 
         if (fxLayer >= 0) LayerUtil.SetLayerRecursive(ps.gameObject, fxLayer);
 
+        SetUseUnscaledRecursive(ps, target.unscaled);
+
         ps.gameObject.SetActive(true);
         ps.Clear();
         ps.Play();
@@ -511,7 +513,7 @@ public class ParticleManager : MonoBehaviour
         var ps = destroyPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridRow, idx: rowIndex, rotZ: 90f, unscaledTime: false);
+            SpawnMode.GridRow, idx: rowIndex, rotZ: 90f, unscaledTime: true);
 
         var param = new FxParams(color, lineFx: true, applyScalingMode: true);
 
@@ -524,7 +526,7 @@ public class ParticleManager : MonoBehaviour
         var ps = destroyPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridCol, idx: colIndex, rotZ: 0f, unscaledTime: false);
+            SpawnMode.GridCol, idx: colIndex, rotZ: 0f, unscaledTime: true);
 
         var param = new FxParams(color, lineFx: true, applyScalingMode: true);
 
@@ -544,7 +546,7 @@ public class ParticleManager : MonoBehaviour
         var ps = comboPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridRow, idx: rowIndex, rotX: -90f, rotZ: 0f, unscaledTime: false);
+            SpawnMode.GridRow, idx: rowIndex, rotX: -90f, rotZ: 0f, unscaledTime: true);
 
         var param = new FxParams(Color.white, lineFx: true, applyScalingMode: true);
 
@@ -564,7 +566,7 @@ public class ParticleManager : MonoBehaviour
         var ps = comboPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridCol, idx: colIndex, rotY: 90f, rotZ: 90f, unscaledTime: false);
+            SpawnMode.GridCol, idx: colIndex, rotY: 90f, rotZ: 90f, unscaledTime: true);
 
         var param = new FxParams(Color.white, lineFx: true, applyScalingMode: true);
 
@@ -892,5 +894,15 @@ public class ParticleManager : MonoBehaviour
         // 수명 끝나면 완전히 정지/비활성 (자식까지 고려)
         var life = LifetimeMax(ps.main);
         StartCoroutine(WaitAndStop(ps, life, unscaled));
+    }
+    static void SetUseUnscaledRecursive(ParticleSystem root, bool unscaled)
+    {
+        if (!root) return;
+        var all = root.GetComponentsInChildren<ParticleSystem>(true);
+        foreach (var ps in all)
+        {
+            var m = ps.main;
+            m.useUnscaledTime = unscaled;
+        }
     }
 }
