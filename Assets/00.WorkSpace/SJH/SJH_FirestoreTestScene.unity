@@ -1217,6 +1217,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1824323291}
     - target: {fileID: 2645048708707113900, guid: b8471a7da7d7fea4784157be29b01a24, type: 3}
+      propertyPath: _stageName
+      value: Stage1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2645048708707113900, guid: b8471a7da7d7fea4784157be29b01a24, type: 3}
       propertyPath: _isClearBtn
       value: 
       objectReference: {fileID: 1547615674}
@@ -1224,6 +1228,10 @@ PrefabInstance:
       propertyPath: _resultText
       value: 
       objectReference: {fileID: 710258239}
+    - target: {fileID: 2645048708707113900, guid: b8471a7da7d7fea4784157be29b01a24, type: 3}
+      propertyPath: _stageIndex
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2645048708707113900, guid: b8471a7da7d7fea4784157be29b01a24, type: 3}
       propertyPath: _isClearText
       value: 
