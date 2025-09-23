@@ -8,6 +8,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
     {
         public bool CanPlaceShapeData(ShapeData shape)
         {
+            TCount("CanPlaceShapeAt");
+            TDo2($"전역 배치 가능성 검사: shape={shape?.Id}, tiles={shape?.activeBlockCount}");
+
             var gm = GridManager.Instance;
             var states = gm.SnapshotOccupied();
 
@@ -15,15 +18,25 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int shapeRows = maxY - minY + 1;
             int shapeCols = maxX - minX + 1;
 
+            int checkedCells = 0;
+            int firstOkR = -1, firstOkC = -1;
+
             for (int yOff = 0; yOff <= gm.rows - shapeRows; yOff++)
             {
                 for (int xOff = 0; xOff <= gm.cols - shapeCols; xOff++)
                 {
+                    checkedCells++;
+                    TSampled("CanPlaceShapeAt.sample", 256, $"검사셀샘플=({yOff},{xOff})");
                     if (CanPlace(shape, minX, minY, shapeRows, shapeCols, states, yOff, xOff))
+                    {
+                        firstOkR = yOff; firstOkC = xOff;
+                        TDo2($"전역 배치 가능: first=({firstOkR},{firstOkC})");
                         return true;
-                }
+                    }
+               }
             }
 
+            TDo2($"전역 배치 불가: 스캔셀={checkedCells}");
             return false;
         }
 
@@ -72,8 +85,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             int startOy = Random.Range(0, oyMax + 1);
             int startOx = Random.Range(0, oxMax + 1);
-            
-            
+
+            // [TRACK]
+            TSampled("PickPlaceable.start", 1, $"랜덤 시작 오프셋=({startOy},{startOx})");
+
             for (int dy = 0; dy <= oyMax; dy++)
             {
                 int oy = startOy + dy;
@@ -84,6 +99,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     int ox = startOx + dx;
                     if (ox > oxMax) ox -= oxMax + 1;
 
+                    // [TRACK]
+                    TSampled("PickPlaceable.iter", 128, $"iter 오프셋=({oy},{ox})");
                     body(oy, ox);
                 }
             }
@@ -91,6 +108,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         private void ReserveAndResolveLines(bool[,] board, ShapeData shape, FitInfo fit)
         {
+            TDo2($"예약 반영: origin=({fit.Offset.y},{fit.Offset.x}), shape={shape?.Id}");
+
             var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
             int rows = maxY - minY + 1, cols = maxX - minX + 1;
             int oy = fit.Offset.y, ox = fit.Offset.x;
@@ -139,6 +158,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     for (int r = 0; r < rows; r++)
                         board[r, c] = false;
             }
+
+            TDo2($"라인 정리: rows={(fullRows?.Count ?? 0)}, cols={(fullCols?.Count ?? 0)}");
         }
     }
 }

@@ -149,12 +149,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             if (spawner == null) { Debug.LogError("[Storage] Spawner null"); return; }
 
-            var wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
+            var wave = spawner.GenerateWaveV170(blockSpawnPosList.Count);
 
             if (wave == null || wave.Count == 0)
             {
                 Debug.LogError("[Storage] Wave is null/empty. Rebuilding weights and retry.");
-                wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
+                wave = spawner.GenerateWaveV170(blockSpawnPosList.Count);
                 if (wave == null || wave.Count == 0) return;
             }
 
