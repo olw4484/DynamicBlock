@@ -21,4 +21,4 @@ MonoBehaviour:
   - columns: 0000000000
   chanceForSpawn: 4
   activeBlockCount: 4
-  difficulty: 4
+  difficulty: 3
