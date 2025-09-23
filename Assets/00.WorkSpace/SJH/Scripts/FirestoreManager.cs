@@ -24,8 +24,10 @@ public class FirestoreManager : MonoBehaviour
 	[SerializeField] private TMP_Text _isClearText;
 	[SerializeField] private TMP_Text _resultText;
 
-	// StageData["StageName"][StageIndex]["Success" or "Failed"] = 스테이지별 첫시도시 성공 확률
-	public Dictionary<string, Dictionary<long, Dictionary<string, long>>> StageData = new Dictionary<string, Dictionary<long, Dictionary<string, long>>>();
+	/// <summary>
+	/// StageData["StageName"][StageIndex] = 스테이지별 첫시도시 성공 확률
+	/// </summary>
+	public Dictionary<string, Dictionary<int, int>> StageData = new Dictionary<string, Dictionary<int, int>>();
 
 	void Awake()
 	{
@@ -157,7 +159,7 @@ public class FirestoreManager : MonoBehaviour
 	public void StageDataToJson()
 	{
 		StageData.Clear();
-
+		int count = 0;
 		// 포인터
 		Query stageData = Firestore.CollectionGroup("Stages"); // Stages 라는 컬렉션 그룹 전부 캐싱
 
@@ -190,10 +192,19 @@ public class FirestoreManager : MonoBehaviour
 					//Debug.Log($"성공 횟수 : {s}");
 					//Debug.Log($"실패 횟수 : {f}");
 					int t = s + f;
-					float rate = (float)s / t;
-					Debug.Log($"[{stageName}-{stageIndex}] 첫 시도시 성공 확률 : {rate:P0}");
+					float r = (float)s / t;
+					// 1. int로 변경 후 저장
+					int rate = Mathf.RoundToInt(r * 100);
+					Debug.Log($"[{stageName}-{stageIndex}] 첫 시도시 성공 확률 : {rate}%");
+					StageData[stageName][stageIndex] = rate;
+					count++;
+					// 2. 문자열 보간 후 저장
+					//Debug.Log($"[{stageName}-{stageIndex}] 첫 시도시 성공 확률 : {r:P0}");
 				}
 			}
+		Debug.Log($"총 {count}개의 스테이지 데이터 캐싱 완료 : {StageData.Count}");
+
+		// TODO : 데이터 저장
 		});
 	}
 }
