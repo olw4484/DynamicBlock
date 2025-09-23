@@ -1,14 +1,55 @@
-﻿using Firebase;
-using Firebase.Extensions;
+﻿using Firebase.Extensions;
 using Firebase.Firestore;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-
-using System.Threading.Tasks;
+using Newtonsoft.Json;
 using System;
+
+/// <summary>
+/// 스테이지 데이터 저장 클래스
+/// </summary>
+public class StageData
+{
+	/// <summary>
+	/// StageData["StageName"][StageIndex] = 스테이지별 첫시도시 성공 확률
+	/// </summary>
+	public Dictionary<string, Dictionary<int, int>> Data;
+	/// <summary>
+	/// 데이터 저장 시간
+	/// </summary>
+	public DateTime Time;
+	/// <summary>
+	/// null 확인용
+	/// </summary>
+	public bool IsNull { get => Data.Count == 0; }
+	public StageData()
+	{
+		Data = new Dictionary<string, Dictionary<int, int>>();
+		Time = DateTime.UtcNow;
+	}
+	public void Add(string stageName, int stageIndex, int rate)
+	{
+		if (Data == null) Data = new Dictionary<string, Dictionary<int, int>>();
+
+		if (!Data.TryGetValue(stageName, out var data))
+		{
+			data = new Dictionary<int, int>();
+			Data[stageName] = data;
+		}
+		data[stageIndex] = rate;
+	}
+	public int Get(string stageName = "Stage1", int stageIndex = 1)
+	{
+		int result = -1;
+		if (this.IsNull) return result;
+		if (!Data.TryGetValue(stageName, out var data)) return result;
+		if (!data.TryGetValue(stageIndex, out var rate)) return result;
+		return rate;
+	}
+}
 
 public class FirestoreManager : MonoBehaviour
 {
@@ -21,13 +62,22 @@ public class FirestoreManager : MonoBehaviour
 	[SerializeField] private Button _readBtn;
 	[SerializeField] private Button _writeBtn;
 	[SerializeField] private Button _isClearBtn;
+	[SerializeField] private Button _jsonLoadBtn;
 	[SerializeField] private TMP_Text _isClearText;
 	[SerializeField] private TMP_Text _resultText;
+	//Test
 
 	/// <summary>
 	/// StageData["StageName"][StageIndex] = 스테이지별 첫시도시 성공 확률
 	/// </summary>
-	public Dictionary<string, Dictionary<int, int>> StageData = new Dictionary<string, Dictionary<int, int>>();
+	public StageData StageData = null;
+
+	private const string _saveFileName = "StageData.json";
+#if UNITY_EDITOR
+	public string DataPath => Path.Combine(Application.dataPath, $"00.WorkSpace/SJH/SaveFile/{_saveFileName}");
+#else
+	public string DataPath => Path.Combine(Application.persistentDataPath, $"SaveFile/{_saveFileName}");
+#endif
 
 	void Awake()
 	{
@@ -47,6 +97,7 @@ public class FirestoreManager : MonoBehaviour
 			return;
 		}
 
+		#region 테스트 버튼 연결 나중에 삭제
 		Debug.Log("Firestore Init S");
 		_resultText.text = "Firestore Init S";
 
@@ -67,6 +118,11 @@ public class FirestoreManager : MonoBehaviour
 			_isClear = !_isClear;
 			_isClearText.text = $"{_isClear}";
 		});
+		_jsonLoadBtn.onClick.AddListener(() =>
+		{
+			LoadStageData();
+		});
+		#endregion
 	}
 
 	public void WriteStageData(string stageName, bool isClear)
@@ -120,6 +176,7 @@ public class FirestoreManager : MonoBehaviour
 		if (string.IsNullOrEmpty(stageName)) return;
 		StageDataToJson();
 		return;
+		#region 특정 스테이지 캐싱
 		// 포인터
 		// 컬렉션 > 문서 > 컬렉션 > 문서 순으로 반복되야함
 		// 컬렉션 > 컬렉션 X
@@ -154,26 +211,35 @@ public class FirestoreManager : MonoBehaviour
 				return;
 			}
 		});
+		#endregion
 	}
 
 	public void StageDataToJson()
 	{
-		StageData.Clear();
+		StageData = new StageData();
 		int count = 0;
 		// 포인터
 		Query stageData = Firestore.CollectionGroup("Stages"); // Stages 라는 컬렉션 그룹 전부 캐싱
 
 		stageData.GetSnapshotAsync(Source.Server).ContinueWithOnMainThread(task =>
 		{
-			if (task.IsFaulted || task.IsCanceled) return;
-
+			if (task.IsFaulted || task.IsCanceled)
+			{
+				Debug.LogWarning("task 실패 or 취소");
+				return;
+			}
 			QuerySnapshot rootQs = task.Result;
 			Debug.Log($"Stages를 포함한 문서 수 : {rootQs.Count}");
-			if (rootQs.Count < 1) return;
+			if (rootQs.Count < 1)
+			{
+				Debug.LogWarning("문서가 없음");
+				return;
+			}
 
 			// StageData/StageName/Stages/StageIndex
 			foreach (DocumentSnapshot doc in rootQs.Documents) // Stages 컬렉션 안의 문서들 순회 ex) 1, 2, 3
 			{
+				Debug.Log($"{doc.Id} 문서 실행");
 				if (!doc.Exists) continue;
 
 				DocumentReference docRef = doc.Reference;
@@ -195,16 +261,54 @@ public class FirestoreManager : MonoBehaviour
 					float r = (float)s / t;
 					// 1. int로 변경 후 저장
 					int rate = Mathf.RoundToInt(r * 100);
-					Debug.Log($"[{stageName}-{stageIndex}] 첫 시도시 성공 확률 : {rate}%");
-					StageData[stageName][stageIndex] = rate;
+					StageData.Add(stageName, stageIndex, rate);
 					count++;
+					Debug.Log($"[{stageName}-{stageIndex}] 첫 시도시 성공 확률 : {rate}%");
 					// 2. 문자열 보간 후 저장
 					//Debug.Log($"[{stageName}-{stageIndex}] 첫 시도시 성공 확률 : {r:P0}");
 				}
 			}
-		Debug.Log($"총 {count}개의 스테이지 데이터 캐싱 완료 : {StageData.Count}");
+		Debug.Log($"총 {count}개의 스테이지 데이터 캐싱 완료 : {StageData.Data.Count}");
 
-		// TODO : 데이터 저장
+		// 데이터 저장
+		SaveStageData();
 		});
+	}
+
+	public void SaveStageData()
+	{
+		Debug.Log("스테이지 데이터 세이브");
+
+		// 폴더 없으면 생성
+		string dir = Path.GetDirectoryName($"{DataPath}");
+		if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+		if (StageData == null) return;
+
+		StageData.Time = DateTime.UtcNow;
+		string json = JsonConvert.SerializeObject(StageData, Formatting.Indented);
+		File.WriteAllText($"{DataPath}", json);
+	}
+	public bool LoadStageData()
+	{
+		Debug.Log("스테이지 데이터 로드");
+		if (!ExistData()) return false;
+
+		string json = File.ReadAllText($"{DataPath}");
+		StageData = JsonConvert.DeserializeObject<StageData>(json);
+		Debug.Log(StageData);
+		return true;
+	}
+	public bool ExistData()
+	{
+		// 저장 경로 유무 체크
+		string dir = Path.GetDirectoryName($"{DataPath}");
+		if (!Directory.Exists(dir)) return false;
+		return File.Exists($"{DataPath}");
+	}
+
+	void OnApplicationQuit()
+	{
+		SaveStageData();
 	}
 }
