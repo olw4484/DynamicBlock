@@ -50,19 +50,6 @@ public class FirestoreManager : MonoBehaviour
 {
 	public static FirestoreManager Instance { get; private set; }
 	public FirebaseFirestore Firestore { get; private set; }
-
-	//Test
-	[SerializeField] private string _stageName;
-	[SerializeField] private int _stageIndex;
-	[SerializeField] private bool _isClear;
-	[SerializeField] private Button _readBtn;
-	[SerializeField] private Button _writeBtn;
-	[SerializeField] private Button _isClearBtn;
-	[SerializeField] private Button _jsonLoadBtn;
-	[SerializeField] private TMP_Text _isClearText;
-	[SerializeField] private TMP_Text _resultText;
-	//Test
-
 	/// <summary>
 	/// StageData["StageName"][StageIndex] = 스테이지별 첫시도시 성공 확률
 	/// </summary>
@@ -83,48 +70,13 @@ public class FirestoreManager : MonoBehaviour
 	// 애널리틱스에서 초기화
 	public void Init()
 	{
-		_resultText.text = "Firestore Init";
 		Firestore = FirebaseFirestore.GetInstance(AnalyticsManager.Instance.FirebaseApp);
-
-		if (Firestore == null)
-		{
-			Debug.Log("Firestore Init F");
-			_resultText.text = "Firestore Init F";
-			return;
-		}
-
-		#region 테스트 버튼 연결 나중에 삭제
-		Debug.Log("Firestore Init S");
-		_resultText.text = "Firestore Init S";
-
-		_readBtn.onClick.AddListener(() =>
-		{
-			_resultText.text = "Read Button Click";
-			ReadStageData(_stageName);
-		});
-		_writeBtn.onClick.AddListener(() =>
-		{
-			_resultText.text = "Write Button Click";
-			WriteStageData(_stageName, _stageIndex, _isClear);
-		});
-		_isClearText.text = $"{_isClear}";
-		_isClearBtn.onClick.AddListener(() =>
-		{
-			_resultText.text = "IsClear Button Click";
-			_isClear = !_isClear;
-			_isClearText.text = $"{_isClear}";
-		});
-		_jsonLoadBtn.onClick.AddListener(() =>
-		{
-			LoadStageData();
-		});
-		#endregion
+		LoadStageData();
 	}
 
 	public void WriteStageData(string stageName, int stageIndex, bool isClear)
 	{
 		Debug.Log("데이터 추가 시도");
-		_resultText.text = "데이터 추가 시도";
 
 		/* DB 계층구조
 		StageData
@@ -152,26 +104,15 @@ public class FirestoreManager : MonoBehaviour
 		stageRef.UpdateAsync(data).ContinueWithOnMainThread(task =>
 		{
 			// 업데이트 성공
-			if (task.IsCompletedSuccessfully)
-			{
-				Debug.Log("업데이트 성공");
-				_resultText.text = "업데이트 성공";
-				return;
-			}
+			if (task.IsCompletedSuccessfully) return;
 			// 업데이트 실패
-			else
-			{
-				Debug.Log("업데이트 실패");
-				_resultText.text = "업데이트 실패";
-				return;
-			}
+			else return;
 		});
 	}
 
 	public void ReadStageData(string stageName)
 	{
 		Debug.Log("데이터 읽기 시도");
-		_resultText.text = "데이터 읽기 시도";
 		if (Instance == null) return;
 		if (string.IsNullOrEmpty(stageName)) return;
 		StageDataToJson();
@@ -187,19 +128,11 @@ public class FirestoreManager : MonoBehaviour
 		// Server : 서버 데이터 읽기, 실패시 에러 반환
 		stageRef.GetSnapshotAsync(Source.Default).ContinueWithOnMainThread(task =>
 		{
-			if (task.IsFaulted || task.IsCanceled)
-			{
-				_resultText.text = "데이터 읽기 실패";
-				return;
-			}
+			if (task.IsFaulted || task.IsCanceled) return;
 
 			DocumentSnapshot snapshot = task.Result;
 
-			if (!snapshot.Exists)
-			{
-				_resultText.text = "데이터 읽기 실패";
-				return;
-			}
+			if (!snapshot.Exists) return;
 
 			Dictionary<string, object> stageDic = snapshot.ToDictionary();
 			if (long.TryParse(stageDic["Success"].ToString(), out long successCount)
@@ -207,7 +140,6 @@ public class FirestoreManager : MonoBehaviour
 			{
 				var per = successCount / ((double)(successCount + failedCount));
 				Debug.Log($"{snapshot.Id} 첫 시도 성공확률 : {per:P0}");
-				_resultText.text = $"{snapshot.Id} 첫 시도 성공확률 : {per:P0}";
 				return;
 			}
 		});
