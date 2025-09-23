@@ -546,6 +546,7 @@ public class ParticleManager : MonoBehaviour
         var ps = comboPool.Dequeue();
 
         var target = new SpawnTarget(
+
             SpawnMode.GridRow, idx: rowIndex, rotX: -90f, rotZ: 0f, unscaledTime: true);
 
         var param = new FxParams(Color.white, lineFx: true, applyScalingMode: true);
