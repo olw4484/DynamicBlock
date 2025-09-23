@@ -1,12 +1,9 @@
 ﻿using Firebase.Extensions;
 using Firebase.Firestore;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
-using Newtonsoft.Json;
-using System;
 
 /// <summary>
 /// 스테이지 데이터 저장 클래스
@@ -14,42 +11,77 @@ using System;
 public class StageData
 {
 	/// <summary>
-	/// StageData["StageName"][StageIndex] = 스테이지별 첫시도시 성공 확률
+	/// _data["StageName"][StageIndex] = 스테이지별 첫시도시 성공 확률
 	/// </summary>
-	public Dictionary<string, Dictionary<int, int>> Data;
+	private Dictionary<string, Dictionary<int, int>> _data;
+	/// <summary>
+	/// _firstData["StageName"][StageIndex] = 첫 클리어 여부
+	/// </summary>
+	private Dictionary<string, Dictionary<int, bool>> _firstData;
 	/// <summary>
 	/// null 확인용
 	/// </summary>
-	public bool IsNull { get => Data.Count == 0; }
+	public bool IsNull => _data == null || _data.Count == 0;
+	public int Count => IsNull ? 0 : _data.Count;
+
 	public StageData()
 	{
-		Data = new Dictionary<string, Dictionary<int, int>>();
+		_data = new Dictionary<string, Dictionary<int, int>>();
+		_firstData = new Dictionary<string, Dictionary<int, bool>>();
 	}
-	public void Add(string stageName, int stageIndex, int rate)
+	public void AddRateData(string stageName, int stageIndex, int rate)
 	{
-		if (Data == null) Data = new Dictionary<string, Dictionary<int, int>>();
+		if (_data == null) _data = new Dictionary<string, Dictionary<int, int>>();
 
-		if (!Data.TryGetValue(stageName, out var data))
+		if (!_data.TryGetValue(stageName, out var data))
 		{
 			data = new Dictionary<int, int>();
-			Data[stageName] = data;
+			_data[stageName] = data;
 		}
 		data[stageIndex] = rate;
 	}
-	public int Get(string stageName = "Stage1", int stageIndex = 1)
+	/// <summary>
+	/// 데이터가 없으면 -1 을 반환, 그 외의 값이 나오면 $"{value}%" 로 사용
+	/// </summary>
+	/// <param name="stageName"></param>
+	/// <param name="stageIndex"></param>
+	/// <returns></returns>
+	public int GetRateData(int stageIndex, string stageName = "Stage1")
 	{
 		int result = -1;
 		if (this.IsNull) return result;
-		if (!Data.TryGetValue(stageName, out var data)) return result;
+		if (!_data.TryGetValue(stageName, out var data)) return result;
 		if (!data.TryGetValue(stageIndex, out var rate)) return result;
 		return rate;
+	}
+	/// <summary>
+	/// 로컬에 저장되는 스테이지별 첫 클리어 여부
+	/// </summary>
+	/// <param name="stageIndex"></param>
+	/// <param name="stageName"></param>
+	/// <returns></returns>
+	public bool IsClear(int stageIndex, string stageName = "Stage1")
+	{
+		// 데이터 없으면 생성
+		if (_firstData == null) _firstData = new Dictionary<string, Dictionary<int, bool>>();
+		if (!_firstData.TryGetValue(stageName, out var data))
+		{
+			data = new Dictionary<int, bool>();
+			_firstData[stageName] = data;
+		}
+		// 데이터가 있고 클리어 했으면 true 반환
+		if (data.TryGetValue(stageIndex, out bool result) && result == true) return true;
+
+		// 데이터가 없거나 false면 true로 바꾸고 false로 반환
+		data[stageIndex] = true;
+		return false;
 	}
 }
 
 public class FirestoreManager : MonoBehaviour
 {
 	public static FirestoreManager Instance { get; private set; }
-	public FirebaseFirestore Firestore { get; private set; }
+	public FirebaseFirestore Firestore { get; private set; } = null;
 	/// <summary>
 	/// StageData["StageName"][StageIndex] = 스테이지별 첫시도시 성공 확률
 	/// </summary>
@@ -71,10 +103,20 @@ public class FirestoreManager : MonoBehaviour
 	public void Init()
 	{
 		Firestore = FirebaseFirestore.GetInstance(AnalyticsManager.Instance.FirebaseApp);
-		LoadStageData();
+
+		// 1. 로컬 데이터 로드
+		if (!LoadStageData()) StageData = new StageData();
+		// 2. 서버 데이터 캐싱
+		ServerDataCaching();
 	}
 
-	public void WriteStageData(string stageName, int stageIndex, bool isClear)
+	/// <summary>
+	/// 어드벤처 모드 스테이지 클리어 시 실행
+	/// </summary>
+	/// <param name="stageIndex">클리어한 스테이지 번호</param>
+	/// <param name="isClear">클리어 여부</param>
+	/// <param name="stageName">클리어한 스테이지 이름</param>
+	public void WriteStageData(int stageIndex, bool isClear, string stageName = "Stage1")
 	{
 		Debug.Log("데이터 추가 시도");
 
@@ -88,12 +130,19 @@ public class FirestoreManager : MonoBehaviour
 		ㄴ  ...
 		 */
 
-		if (Instance == null) return;
+		if (Firestore == null) return;
 		if (string.IsNullOrEmpty(stageName)) return;
 		if (stageIndex < 1) return;
+		if (StageData == null) StageData = new StageData(); // Init에서 생성해주지만 필요없으면 지우기
+		if (StageData.IsClear(stageIndex, stageName)) return; // 첫 시도인지 체크
 
-		// 포인터
-		DocumentReference stageRef = Firestore.Collection("StageData").Document(stageName).Collection("Stages").Document(stageIndex.ToString());
+		SaveStageData();
+
+		// 포인터 컬 > 문 > 컬 > 문 순서
+		DocumentReference stageRef = Firestore.Collection("StageData")
+									.Document(stageName)
+									.Collection("Stages")
+									.Document(stageIndex.ToString());
 
 		string clearKey = isClear ? "Success" : "Failed";
 
@@ -104,51 +153,31 @@ public class FirestoreManager : MonoBehaviour
 		stageRef.UpdateAsync(data).ContinueWithOnMainThread(task =>
 		{
 			// 업데이트 성공
-			if (task.IsCompletedSuccessfully) return;
-			// 업데이트 실패
-			else return;
-		});
-	}
-
-	public void ReadStageData(string stageName)
-	{
-		Debug.Log("데이터 읽기 시도");
-		if (Instance == null) return;
-		if (string.IsNullOrEmpty(stageName)) return;
-		StageDataToJson();
-		return;
-		#region 특정 스테이지 캐싱
-		// 포인터
-		// 컬렉션 > 문서 > 컬렉션 > 문서 순으로 반복되야함
-		// 컬렉션 > 컬렉션 X
-		DocumentReference stageRef = Firestore.Collection("StageData").Document("Stage1").Collection("Stages").Document(stageName);
-
-		// Default : 서버 데이터 읽기, 실패시 캐시된 데이터 반환
-		// Cache : 캐시된 데이터 반환
-		// Server : 서버 데이터 읽기, 실패시 에러 반환
-		stageRef.GetSnapshotAsync(Source.Default).ContinueWithOnMainThread(task =>
-		{
-			if (task.IsFaulted || task.IsCanceled) return;
-
-			DocumentSnapshot snapshot = task.Result;
-
-			if (!snapshot.Exists) return;
-
-			Dictionary<string, object> stageDic = snapshot.ToDictionary();
-			if (long.TryParse(stageDic["Success"].ToString(), out long successCount)
-			&& long.TryParse(stageDic["Failed"].ToString(), out long failedCount))
+			if (task.IsCompletedSuccessfully)
 			{
-				var per = successCount / ((double)(successCount + failedCount));
-				Debug.Log($"{snapshot.Id} 첫 시도 성공확률 : {per:P0}");
+				ServerDataCaching();
 				return;
 			}
+			// 업데이트 실패
+			// 실패 시 문서 생성 후 다시 업데이트
+			var newDoc = new Dictionary<string, object>()
+			{
+				{ "Success", isClear ? 1 : 0 },
+				{ "Failed", isClear ? 0 : 1 },
+			};
+			stageRef.SetAsync(newDoc, SetOptions.MergeAll).ContinueWithOnMainThread(task2 =>
+			{
+				if (task2.IsCompletedSuccessfully) ServerDataCaching();
+				else SaveStageData();
+			});
 		});
-		#endregion
 	}
 
-	public void StageDataToJson()
+	public void ServerDataCaching()
 	{
-		StageData = new StageData();
+		if (Firestore == null) return;
+
+		var temp = new StageData();
 		int count = 0;
 		// 포인터
 		Query stageData = Firestore.CollectionGroup("Stages"); // Stages 컬렉션 그룹 전부 캐싱
@@ -162,33 +191,42 @@ public class FirestoreManager : MonoBehaviour
 
 			//Debug.Log($"Stages를 포함한 문서 수 : {rootQs.Count}");
 
-			if (rootQs.Count < 1) return;
+			if (rootQs == null || rootQs.Count < 1) return;
 
 			// StageData/StageName/Stages/StageIndex
-			foreach (DocumentSnapshot doc in rootQs.Documents) // Stages 컬렉션 안의 문서들 순회 ex) 1, 2, 3
+			foreach (DocumentSnapshot ds in rootQs.Documents) // Stages 컬렉션 안의 문서들 순회 ex) 1, 2, 3
 			{
-				if (!doc.Exists) continue;
+				if (!ds.Exists) continue;
 
-				DocumentReference docRef = doc.Reference;
-				// StageData 예외처리
-				if (docRef.Parent.Parent.Parent.Id != "StageData") continue;
+				DocumentReference docRef = ds.Reference;
+
 				// Stages 예외처리
-				if (docRef.Parent.Id != "Stages") continue;
+				CollectionReference stagesCol = docRef.Parent;
+				if (stagesCol == null || stagesCol.Id != "Stages") continue;
+
+				// StageName 예외처리
+				DocumentReference stageNameDoc = stagesCol.Parent;
+				if (stageNameDoc == null || string.IsNullOrEmpty(stageNameDoc.Id)) continue;
+				string stageName = stageNameDoc.Id;
+
+				// StageData 예외처리
+				CollectionReference stageDataCol = stageNameDoc.Parent;
+				if (stageDataCol == null || stageDataCol.Id != "StageData") continue;
+
 				// StageIndex 예외처리
 				if (!int.TryParse(docRef.Id, out int stageIndex)) continue;
-				string stageName = docRef.Parent.Parent.Id;
-				
+
 				Debug.Log($"{docRef.Parent.Parent.Parent.Id}/{stageName}/{docRef.Parent.Id}/{stageIndex}"); // 경로
 
-				if (doc.TryGetValue<int>("Success", out int s) && doc.TryGetValue<int>("Failed", out int f))
+				if (ds.TryGetValue<long>("Success", out long s) && ds.TryGetValue<long>("Failed", out long f))
 				{
 					//Debug.Log($"성공 횟수 : {s}");
 					//Debug.Log($"실패 횟수 : {f}");
-					int t = s + f;
-					float r = (float)s / t;
+					long t = s + f;
+
 					// 1. int로 형변환
-					int rate = Mathf.RoundToInt(r * 100);
-					StageData.Add(stageName, stageIndex, rate);
+					int rate = (t > 0) ? Mathf.RoundToInt((float)s / (float)t * 100f) : 0; // 0/0 예외처리
+					temp.AddRateData(stageName, stageIndex, rate);
 					count++;
 					Debug.Log($"[{stageName}-{stageIndex}] 첫 시도시 성공 확률 : {rate}%");
 
@@ -196,41 +234,51 @@ public class FirestoreManager : MonoBehaviour
 					//Debug.Log($"[{stageName}-{stageIndex}] 첫 시도시 성공 확률 : {r:P0}");
 				}
 			}
-		Debug.Log($"총 {count}개의 스테이지 데이터 캐싱 완료 : {StageData.Data.Count}");
 
-		// 데이터 저장
-		SaveStageData();
+			if (!temp.IsNull)
+			{
+				// 데이터 저장
+				StageData = temp;
+				SaveStageData();
+				Debug.Log($"총 {count}개의 스테이지 데이터 캐싱 완료 : {temp.Count}");
+			}
 		});
 	}
 
 	public void SaveStageData()
 	{
-		Debug.Log("스테이지 데이터 세이브");
+		Debug.Log("스테이지 데이터 세이브 시도");
+		if (StageData == null || StageData.IsNull) return;
 
 		// 폴더 없으면 생성
 		string dir = Path.GetDirectoryName($"{DataPath}");
 		if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-		if (StageData == null) return;
-
 		string json = JsonConvert.SerializeObject(StageData, Formatting.Indented);
 		File.WriteAllText($"{DataPath}", json);
+		Debug.Log("스테이지 데이터 세이브 성공");
 	}
 	public bool LoadStageData()
 	{
-		Debug.Log("스테이지 데이터 로드");
-		if (!ExistData()) return false;
+		Debug.Log("스테이지 데이터 로드 시도");
+		string dir = Path.GetDirectoryName($"{DataPath}");
+		if (!Directory.Exists(dir) || !File.Exists(DataPath))
+		{
+			Debug.LogWarning("스테이지 데이터 로드 실패");
+			return false;
+		}
 
 		string json = File.ReadAllText($"{DataPath}");
-		StageData = JsonConvert.DeserializeObject<StageData>(json);
+		StageData loadedData = JsonConvert.DeserializeObject<StageData>(json);
+		if (loadedData == null || loadedData.IsNull)
+		{
+			Debug.LogWarning("스테이지 데이터 로드 실패");
+			return false;
+		}
+
+		StageData = loadedData;
+		Debug.Log("스테이지 데이터 로드 성공");
 		return true;
-	}
-	public bool ExistData()
-	{
-		// 저장 경로 유무 체크
-		string dir = Path.GetDirectoryName($"{DataPath}");
-		if (!Directory.Exists(dir)) return false;
-		return File.Exists($"{DataPath}");
 	}
 
 	void OnApplicationQuit()
