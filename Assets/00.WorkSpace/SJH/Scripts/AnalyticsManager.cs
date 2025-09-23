@@ -2,9 +2,7 @@
 using Firebase.Analytics;
 using Firebase.Extensions;
 using TMPro;
-using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
-using UnityEngine.SocialPlatforms.Impl;
 using UnityEngine.UI;
 
 public class AnalyticsManager : MonoBehaviour
@@ -25,10 +23,12 @@ public class AnalyticsManager : MonoBehaviour
 
 		_sendEventBtn.onClick.AddListener(() =>
 		{
-			LogEvent("OfflineValueTest2", "TestValue2", 50);
+			FirebaseAnalytics.LogEvent("ValueTest_Event", new Parameter("TestValue", 30));
+			LogEvent("OfflineValueTest2", "TestValue2", 51);
 			LogEvent("OfflineTest2");
 			_resultText.text = "LogEvent";
 		});
+
 	}
 
 	public void Init()
@@ -41,6 +41,9 @@ public class AnalyticsManager : MonoBehaviour
 				Debug.Log("Analytics 초기화 성공");
 				_resultText.text = "Analytics 초기화 성공";
 				FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventLogin);
+
+				// 파이어베이스 초기화
+				FirestoreManager.Instance.Init();
 			}
 			else
 			{
@@ -68,6 +71,7 @@ public class AnalyticsManager : MonoBehaviour
 
 	public void LogEvent(string eventName, string paramName, string paramValue)
 	{
+		//new Firebase.Analytics.Parameter();
 		FirebaseAnalytics.LogEvent(eventName, paramName, paramValue);
 	}
 
