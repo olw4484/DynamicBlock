@@ -10,25 +10,10 @@ public class AnalyticsManager : MonoBehaviour
     public static AnalyticsManager Instance { get; private set; }
 	public FirebaseApp FirebaseApp { get; private set; }
 
-	// Test
-	[SerializeField] private TMP_Text _resultText;
-	[SerializeField] private Button _sendEventBtn;
-	//
-
 	void Start()
 	{
 		Instance = this;
-		_resultText.text = "Analytics 초기화 전";
 		Init();
-
-		_sendEventBtn.onClick.AddListener(() =>
-		{
-			FirebaseAnalytics.LogEvent("ValueTest_Event", new Parameter("TestValue", 30));
-			LogEvent("OfflineValueTest2", "TestValue2", 51);
-			LogEvent("OfflineTest2");
-			_resultText.text = "LogEvent";
-		});
-
 	}
 
 	public void Init()
@@ -39,7 +24,6 @@ public class AnalyticsManager : MonoBehaviour
 			{
 				FirebaseApp = FirebaseApp.DefaultInstance;
 				Debug.Log("Analytics 초기화 성공");
-				_resultText.text = "Analytics 초기화 성공";
 				FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventLogin);
 
 				// 파이어베이스 초기화
@@ -48,7 +32,6 @@ public class AnalyticsManager : MonoBehaviour
 			else
 			{
 				Debug.LogError($"Analytics 초기화 실패 : [{dependencyStatus}]");
-				_resultText.text = $"Analytics 초기화 실패 : [{dependencyStatus}]";
 			}
 		});
 	}
