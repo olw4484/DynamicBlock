@@ -1,7 +1,9 @@
 ﻿using Firebase;
 using Firebase.Analytics;
 using Firebase.Extensions;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class AnalyticsManager : MonoBehaviour
 {
