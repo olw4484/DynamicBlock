@@ -5,12 +5,7 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
 {
     public class ShapeSquare : MonoBehaviour
     {
-        public Image occupiedImage;
-
-        void Start()
-        {
-            occupiedImage.gameObject.SetActive(false);
-        }
+        public Image fruitImage;
 
         public void DeactivateSquare()
         {
@@ -20,6 +15,25 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         public void ActivateSquare()
         {
             gameObject.SetActive(true);
+        }
+
+        public void SetFruitImage(Sprite sprite)
+        {
+            if (fruitImage == null) return;
+
+            if (sprite == null)
+            {
+                // 스프라이트 제거 + 렌더만 끄기
+                fruitImage.sprite = null;
+                fruitImage.gameObject.SetActive(false);
+                fruitImage.enabled = false;
+                return;
+            }
+
+            // 스프라이트 지정, 활성화 
+            fruitImage.sprite = sprite;
+            fruitImage.gameObject.SetActive(true);
+            fruitImage.enabled = true;
         }
     }
 }

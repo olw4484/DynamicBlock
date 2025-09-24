@@ -1,4 +1,5 @@
 ﻿using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Utils;
 using System;
@@ -195,6 +196,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _currentBlocksShapeData.Add(shape);
                 _currentBlocksSpriteData.Add(sprite);
                 block.SetSpriteData(sprite);
+
+                if (MapManager.Instance != null && MapManager.Instance.CurrentMapData != null && MapManager.Instance.CurrentMapData.goalKind == MapGoalKind.Fruit)
+                {
+                    TryApplyFruitOverlayToBlock(block);
+                }
             }
 
             var fitsInfo = spawner.LastGeneratedFits;
@@ -206,6 +212,68 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             //if (previewMode) blockManager.PreviewWaveNonOverlapping(wave, fitsInfo, previewSprites);
         }
 
+        private void TryApplyFruitOverlayToBlock(Block block)
+        {
+            if (block == null) return;
+
+            var mm = MapManager.Instance;
+            if (mm == null || mm.CurrentMapData == null) return;
+            // 과일 목표 모드만
+            if (mm.CurrentMapData.goalKind != MapGoalKind.Fruit) return;
+
+            // 50% 확률 ( 임시 )
+            if (UnityEngine.Random.value >= 0.5f)
+            {
+                // 과일 적용 안 하는 케이스: 안전하게 오버레이 초기화 시도
+                ClearFruitOverlay(block);
+                return;
+            }
+
+            // 활성 과일 후보 수집(0..4)
+            var candidates = new List<int>(5);
+            for (int i = 0; i < 5; i++)
+                if (mm.IsFruitEnabled(i))
+                    candidates.Add(i);
+
+            if (candidates.Count == 0)
+            {
+                ClearFruitOverlay(block);
+                return;
+            }
+
+            // 후보 중 랜덤 선택
+            int pickIdx = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            var overlaySprite = mm.GetFruitSpriteByIndex(pickIdx); // MapManager._fruitSpriteList 기반 getter
+            if (overlaySprite == null)
+            {
+                ClearFruitOverlay(block);
+                return;
+            }
+
+            // shapePrefab 아래의 활성 ShapeSquare에만 과일 이미지 덮기
+            var root = block.shapePrefab != null ? block.shapePrefab.transform : block.transform;
+            var squares = root.GetComponentsInChildren<ShapeSquare>(true);
+            foreach (var sq in squares)
+            {
+                if (sq == null) continue;
+                // 블록 활성 칸(자기꺼 활성)만 과일 오버레이
+                bool active = sq.gameObject.activeSelf;
+                sq.SetFruitImage(active ? overlaySprite : null);
+            }
+        }
+
+        private void ClearFruitOverlay(Block block)
+        {
+            if (block == null) return;
+            var root = block.shapePrefab != null ? block.shapePrefab.transform : block.transform;
+            var squares = root.GetComponentsInChildren<ShapeSquare>(true);
+            foreach (var sq in squares)
+            {
+                if (sq == null) continue;
+                sq.SetFruitImage(null);
+            }
+        }
+        
         private int GetRandomImageIndex()
         {
             return Random.Range(0, shapeImageSprites.Count);

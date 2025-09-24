@@ -48,9 +48,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private readonly Dictionary<int, Sprite> _codeToSprite = new();
         private static readonly Regex s_CodeRegex = new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        private Sprite[] _blockSpriteList;
-        private Sprite[] _fruitSpriteList;
-        private Sprite[] _fruitBackgroundSprite;
+        private Sprite[] _blockSpriteList; // 단순 블록 스프라이트 리스트
+        private Sprite[] _fruitSpriteList; // 블록 + 과일 스프라이트 리스트
+        private Sprite[] _fruitBackgroundSprite; // 블록 + 과일 스프라이트의 블록 배경화면 이미지 리스트, 현재는 단 하나
 
         private bool _codeMapsBuilt = false;
         bool _isApplyingMap;
@@ -220,6 +220,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
 
         public static bool IsFruitCode(int code) => (code >= 200 && code < 300);
+
+        // index = 0..4  (code로 받으려면 아래 GetFruitSpriteByCode 사용)
+        public Sprite GetFruitSpriteByIndex(int idx)
+        {
+            if (_fruitSpriteList == null || idx < 0 || idx >= _fruitSpriteList.Length) return null;
+            return _fruitSpriteList[idx];
+        }
+
+        public Sprite GetFruitSpriteByCode(int code)
+        {
+            // 201번부터 시작이라 제거하고 시작함
+            int idx = code - 201;
+            return GetFruitSpriteByIndex(idx);
+        }
 
         /// <summary>
         /// 맵 데이터를 토대로 그리드를 칠하기, 게임 시작 -> 블럭 생성 이전에 써야 할듯
