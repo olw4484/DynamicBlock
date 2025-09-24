@@ -25,6 +25,15 @@ public sealed class AchievementUIBinder : MonoBehaviour
     [SerializeField] private AchievementPopupController popup;
     [SerializeField] private bool showPopupOnUnlock = true;
 
+    [Header("Unlock FX / Badge")]
+    [SerializeField] private RectTransform unlockFxAnchor; // 업적 버튼 등 이펙트 기준점
+    [SerializeField] private GameObject achievementBadgeDot; // 빨간 점 GO
+    [SerializeField] private string achievementPanelKey = "Achievement";
+    [SerializeField] private AchievementsButtonNotifier notifier;
+
+    private readonly Dictionary<AchievementId, int> _seenMaxTier = new();
+    private bool _seededSeen;
+
     private GameData _data;
     private AchievementService _svc;
 
@@ -50,8 +59,11 @@ public sealed class AchievementUIBinder : MonoBehaviour
         if (saveManager)
         {
             saveManager.AfterLoad += OnAfterSaveLoad;
-            saveManager.AfterSave += OnAfterSave; // ← 추가
+            saveManager.AfterSave += OnAfterSave;
         }
+
+        if (Game.IsBound) Game.Bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: false);
+
         RefreshAll(recordUnlocks: false);
     }
 
@@ -61,7 +73,23 @@ public sealed class AchievementUIBinder : MonoBehaviour
         if (saveManager)
         {
             saveManager.AfterLoad -= OnAfterSaveLoad;
-            saveManager.AfterSave -= OnAfterSave; // ← 추가
+            saveManager.AfterSave -= OnAfterSave;
+        }
+        if (Game.IsBound) Game.Bus.Unsubscribe<PanelToggle>(OnPanelToggle);
+    }
+
+    void OnPanelToggle(PanelToggle e)
+    {
+        if (e.key == achievementPanelKey && e.on)
+        {
+            notifier?.ClearNotification();
+
+            foreach (var u in _data.unlocked)
+            {
+                var id = (AchievementId)u.id;
+                if (!_seenMaxTier.TryGetValue(id, out var prev) || u.tier > prev)
+                    _seenMaxTier[id] = u.tier;
+            }
         }
     }
 
@@ -89,24 +117,18 @@ public sealed class AchievementUIBinder : MonoBehaviour
     {
         if (_data == null || _svc == null) return;
 
-        // 1) 통계 텍스트
+        // (1) 통계
         if (txtHighestCombo) txtHighestCombo.text = Mathf.Max(_data.bestCombo, _data.currentCombo).ToString();
         if (txtBestScore) txtBestScore.text = _data.highScore.ToString("N0");
         if (txtRounds) txtRounds.text = _data.playCount.ToString();
         if (txtLoginDays) txtLoginDays.text = _data.loginDays.ToString();
 
-        // 2) 업적 평가(+해금 기록)
+        // (2) 평가
         var list = _svc.EvaluateAll(recordUnlocks, DateTime.UtcNow, out var newlyUnlocked);
         var byId = new Dictionary<AchievementId, AchievementProgress>(list.Count);
         foreach (var p in list) byId[p.id] = p;
-        foreach (var v in medalViews)
-        {
-            var def = v ? v.Definition : null;
-            var inDb = def && byId.ContainsKey(def.id);
-            Debug.Log($"[ACH-BIND] view={v?.name} def={(def ? def.id.ToString() : "NULL")} inDb={inDb}");
-        }
 
-        // 3) 메달 UI 반영
+        // (3) 메달 반영
         if (medalViews != null)
         {
             foreach (var v in medalViews)
@@ -119,10 +141,34 @@ public sealed class AchievementUIBinder : MonoBehaviour
             }
         }
 
-        // 4) 팝업(옵션)
-        if (showPopupOnUnlock && popup && newlyUnlocked != null && newlyUnlocked.Count > 0)
+        var currentTiers = new Dictionary<AchievementId, int>();
+        foreach (var p in list)
+            currentTiers[p.id] = Mathf.Max(currentTiers.TryGetValue(p.id, out var prev) ? prev : 0, p.tier);
+
+        bool anyTierUp = false;
+        if (!_seededSeen)
         {
-            // 가장 최근 해금만 샘플로 표시(원하면 큐로 돌려도 됨)
+            foreach (var kv in currentTiers) _seenMaxTier[kv.Key] = kv.Value;
+            _seededSeen = true;   // 첫 진입 배지 방지
+        }
+        else
+        {
+            foreach (var kv in currentTiers)
+            {
+                int seen = _seenMaxTier.TryGetValue(kv.Key, out var s) ? s : 0;
+                if (kv.Value > 0 && kv.Value > seen)
+                {
+                    _seenMaxTier[kv.Key] = kv.Value;
+                    anyTierUp = true;
+                }
+            }
+        }
+
+        if (anyTierUp) TriggerUnlockVisuals();
+
+        // 5) 팝업
+        if (showPopupOnUnlock && popup && (newlyUnlocked?.Count ?? 0) > 0)
+        {
             var def = newlyUnlocked[0];
             var rec = _data.unlocked.FindLast(u => u.id == (int)def.id);
             int tier = rec.tier;
@@ -131,6 +177,11 @@ public sealed class AchievementUIBinder : MonoBehaviour
                 : Array.Empty<object>();
             popup.Show(def, tier, DateTime.UtcNow, args);
         }
+    }
+
+    private void TriggerUnlockVisuals()
+    {
+        notifier?.NotifyUnlocked();
     }
 
     public void ShowPopupFor(AchievementDefinition def)
