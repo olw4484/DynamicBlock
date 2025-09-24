@@ -124,7 +124,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             SetCombo(comboAtStart + 1);
 
             // GIL_ADD - 어드벤쳐 모드일 경우 점수 체크까지 하기
-            if (MapManager.Instance.GameMode == GameMode.Adventure)
+            if (MapManager.Instance.CurrentMode == GameMode.Adventure)
             {
                 var mM = MapManager.Instance;
                 if (mM.CurrentMapData != null && mM.CurrentMapData.goalKind == MapGoalKind.Score)
@@ -181,7 +181,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             // Adventure 모드 && 점수 목표일 경우 별도의 모드 적용
             var mM = MapManager.Instance;
-            if (mM.GameMode == GameMode.Adventure && mM.CurrentMapData.goalKind == MapGoalKind.Score)
+            if (mM.CurrentMode == GameMode.Adventure && mM.CurrentMapData.goalKind == MapGoalKind.Score)
             {
                 if (mM.CurrentMapData != null && mM.CurrentMapData.goalKind == MapGoalKind.Score)
                 {

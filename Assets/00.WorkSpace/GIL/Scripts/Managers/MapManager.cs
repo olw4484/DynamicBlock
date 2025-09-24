@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.SocialPlatforms.Impl;
@@ -954,7 +955,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // currentMapData 안전 초기화 이후 진행
             _currentMapData = null;
             Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
-            GameMode = GameMode.Adventure;
+            CurrentMode = GameMode.Adventure;
             _currentMapData = _mapList[stageNumber]; // 현재 맵 데이터 설정
             // 맵 데이터가 과일 모드일 경우 활성화된 과일 종류 및 갯수 저장 
             if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
