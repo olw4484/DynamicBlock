@@ -74,7 +74,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private List<LineRun> FindLineCandidates(bool[,] board, LineFirstCorrectionConfig cfg)
         {
-            TDo2("라인 후보 스캔: 연속 런 탐색");
+            //TDo2("라인 후보 스캔: 연속 런 탐색");
             var gm = GridManager.Instance;
             int row = gm.rows, col = gm.cols;
             var runs = new List<LineRun>(16);
@@ -84,7 +84,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (!cfg.scanCols) return runs;
             for (int c = 0; c < col; c++) ScanLine(LineAxis.Col, c);
 
-            TDo2($"후보 라인 수={runs.Count}");
+            //TDo2($"후보 라인 수={runs.Count}");
             return runs;
 
             void ScanLine(LineAxis axis, int index)
@@ -135,21 +135,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private IEnumerable<ShapeData> EnumerateShapesForRun(LineRun run, IReadOnlyList<ShapeData> allShapes)
         {
-            TDo2($"런 길이={run.Length} → 후보 도형 열거");
+            //TDo2($"런 길이={run.Length} → 후보 도형 열거");
             int runLength = run.Length;
 
             foreach (var allShape in allShapes)
             {
                 if (allShape == null) continue;
                 if (allShape.activeBlockCount < runLength) continue;
-                TSampled("LineCorr.shapeEnum", 50, $"열거: shape={allShape.Id}, tiles={allShape.activeBlockCount}");
+                //TSampled("LineCorr.shapeEnum", 50, $"열거: shape={allShape.Id}, tiles={allShape.activeBlockCount}");
                 yield return allShape;
             }
         }
 
         private bool TryFitInRun(LineRun run, ShapeData shape, bool[,] virtualBoard, out FitInfo fit)
         {
-            TDo("b.iv.3. 해당 열과 인접한 0을 탐색 / 기획서");
             var gm = GridManager.Instance;
             var squares = gm.gridSquares;
 
@@ -168,8 +167,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             ForEachOffsetFromRandomStart(gm.rows, gm.cols, shRows, shCols, (oy, ox) =>
             {
                 if (okFound) return;
-
-                TSampled("LineCorr.offset", 64, $"offset=({oy},{ox})");
 
                 tmp.Clear();
                 bool ok = true;
@@ -234,11 +231,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     CoveredSquares = new List<GridSquare>(tmp)
                 };
                 okFound = true;
-                TDo($"런 적합성 성공: origin=({oy},{ox}), cover={tmp.Count}");
             });
 
             fit = found;
-            if (!okFound) TDo2("런 적합성 실패");
             return okFound;
         }
 
@@ -255,8 +250,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (runs == null || runs.Count == 0) return false;
 
-            TDo("라인 보정 후보 페어링 시작");
-            TDo2($"runs={runs.Count}, budget={cfg.pairBudget}");
+            //TDo("라인 보정 후보 페어링 시작");
 
             var pairs = new List<CorrectionCandidate>(32);
 
@@ -272,9 +266,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                     if (!TryFitInRun(run, shape, virtualBoard, out var fit)) continue;
                     int removableOnes = run.Length; // (간단 대치치; 더 정확한 산식 있으면 교체)
-                    TDo($"{shape.Id} 발견, 제거 가능한 활성화된 타일 수 {removableOnes} 개");
+                    //TDo($"{shape.Id} 발견, 제거 가능한 활성화된 타일 수 {removableOnes} 개");
                     pairs.Add(new CorrectionCandidate(run, shape, fit));
-                    TSampled("LineCorr.pair", 20, $"pair: run=({run.Axis},{run.Index},{run.Start},{run.Length}) shape={shape.Id} fit=({fit.Offset.y},{fit.Offset.x})");
+                    //TSampled("LineCorr.pair", 20, $"pair: run=({run.Axis},{run.Index},{run.Start},{run.Length}) shape={shape.Id} fit=({fit.Offset.y},{fit.Offset.x})");
                     if (pairs.Count >= cfg.pairBudget) break;
                 }
                 if (pairs.Count >= cfg.pairBudget) break;

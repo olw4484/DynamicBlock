@@ -54,22 +54,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                 T("a. 보드 탐색 및 탐색 시작점 랜덤 선정 / 기획서");
 
-                // 성공/실패 롤 → 실패 시 라인보정 우선 시도 (b) 분기)
-                if (Random.value > v170_spawnSuccessProb)
-                {
-                    if (TryApplyLineCorrectionOnce(board, excludedByPenalty, excludedByDupes, out var sLC, out var fLC))
-                    {
-                        TDo($"라인 보정 성공 → {sLC?.Id} 선택");
-                        wave.Add(sLC); fits.Add(fLC);
-                        IncreaseDupes(sLC.Id, excludedByDupes);
-                        ApplyFitOnBoard(fLC, board);
-                        RemoveFullLines(board);
-                        TSlotEndEx(i, snap, $"Pick : {sLC?.Id} [LineCorrection]");
-                        continue;
-                    }
-                    TDo("라인 보정 실패 -> 일반 경로로 이동");
-                }
-
                 // === 그룹화/가중치/선택 ===
                 var groups = new Dictionary<int, List<(ShapeData s, FitInfo fit)>>();
                 T("b. 해당 칸에 들어갈 수 있는 블록들 탐색 / 기획서");
@@ -144,13 +128,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 T("b.iii. 그룹 내 난이도 가중치 계산을 통해 블록 선정 / 기획서");
                 TDo($"{inGroup.Count} 그룹 내부에서 {chosen.s.Id} 선정");
 
-                int chosenTiles = Mathf.Max(1, chosen.s.activeBlockCount);
-                float gateProb  = Mathf.Pow(1f / chosenTiles, Mathf.Max(0.0001f, alpha));
-                float gateRoll = Random.value;
-                bool gatePassed = gateRoll <= gateProb;
-                T($"b.iv. 블록의 타일수가 {chosenTiles} 개이기 때문에 추가 확률 진행 / 기획서");
-                T(gatePassed ? "b.iv.1. 확률 통과 성공, c로 이동" : "b.iv.1. 확률 통과 실패, b.iv.2 이동");
-
                 if (perShapeCount.TryGetValue(chosen.s.Id, out int dupCnt) && dupCnt >= maxDuplicatesPerWave)
                 {
                     TDo("동일 블록 한도 → 대안 탐색");
@@ -163,6 +140,48 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         { chosenIdx = altIdx; chosen = alt; swapped = true; break; }
                     }
                     if (!swapped) TDo("대안 없음 → 그대로 진행");
+                }
+
+                // === b.iv: '타일 수 ≤ 3'일 때만 추가 확률/라인보정 경로 실행 ===
+                int chosenTiles = Mathf.Max(1, chosen.s.activeBlockCount);
+                if (chosenTiles <= 3)
+                {
+                    // b.iv. 게이트
+                    T($"b.iv. 블록의 타일수가 {chosenTiles} 개이기 때문에 추가 확률 진행 / 기획서");
+                    float gateProb  = Mathf.Pow(1f / chosenTiles, Mathf.Max(0.0001f, alpha));
+                    float gateRoll  = Random.value;
+                    bool  gatePassed = gateRoll <= gateProb;
+                    T(gatePassed ? "b.iv.1. 확률 통과 성공, c로 이동"
+                                 : "b.iv.1. 확률 통과 실패, b.iv.2 이동");
+
+                    // 슬롯 성공/실패 롤: 게이트 직후에 수행
+                    bool slotSuccess = Random.value <= v170_spawnSuccessProb;
+                    if (!gatePassed || !slotSuccess)
+                    {
+                        if (!slotSuccess) TDo("슬롯 성공/실패 롤: 실패 → b.iv.2 이동");
+                        if (!gatePassed)  TDo("게이트 실패 → b.iv.2 이동");
+
+                        // b.iv.2: 라인 보정 진입
+                        if (TryApplyLineCorrectionOnce(board, excludedByPenalty, excludedByDupes, out var sLC, out var fLC))
+                        {
+                            TDo($"라인 보정 성공 → {sLC?.Id} 선택");
+                            wave.Add(sLC); fits.Add(fLC);
+                            IncreaseDupes(sLC.Id, excludedByDupes);
+                            ApplyFitOnBoard(fLC, board);
+                            RemoveFullLines(board);
+                            TSlotEndEx(i, snap, $"Pick : {sLC?.Id} [LineCorrection]");
+                            continue; // 슬롯 완료
+                        }
+                        else
+                        {
+                            TDo("라인 보정 실패 -> 일반 경로로 이동");
+                        }
+                    }
+                }
+                else
+                {
+                    // 타일 수가 4 이상이면 b.iv 스킵(문서 정의)
+                    TDo($"b.iv. (스킵) 타일 {chosenTiles}개 → 게이트/라인보정 미진행");
                 }
 
                 wave.Add(chosen.s); fits.Add(chosen.fit);

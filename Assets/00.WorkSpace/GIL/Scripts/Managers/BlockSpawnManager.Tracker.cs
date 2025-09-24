@@ -251,7 +251,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 foreach (var slot in _slotBufMap.Keys.OrderBy(k => k))
                 {
                     var text = _slotBufMap[slot].ToString();
-                    DumpChunked($"슬롯 {slot} 진행 로그", text);
+                    DumpChunked($"슬롯 {slot + 1} 진행 로그", text);
                 }
             }
             else if (_slotBuffer.Length > 0)
