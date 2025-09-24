@@ -1,18 +1,33 @@
 using System;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
+using _00.WorkSpace.GIL.Scripts.Messages;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
-    public class ScoreManager : MonoBehaviour
+    public class ScoreManager : MonoBehaviour, IRuntimeReset
     {
         public static ScoreManager Instance;
-        
+
         [Header("Score Text")]
         [SerializeField] private TMP_Text scoreText;
+        [SerializeField] private TMP_Text comboText;
+
+        [SerializeField] public int baseScroe = 30;
+
+        private EventQueue _bus;
         private int _score = 0;
-        public int comboCount = 0;
+        public int Score => _score;
+        public int Combo { get; private set; }
+
+        private bool _handHadClear = false; // �̹� ��Ʈ(3��) ���� �� ���̶� �� ���Ű� �־��°�
+
+        public int comboCount
+        {
+            get => Combo;
+            set => SetCombo(value);
+        }
+
         private void Awake()
         {
             if (Instance == null)
@@ -22,42 +37,176 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Debug.Log("ScoreManager: Awake");
             UpdateScoreUI();
         }
-        
-        public void CalculateLineClearScore(int lineCount)
+
+        void OnEnable()
         {
-            int combo = comboCount;
-            
-            if (lineCount <= 0) return;
-            int clearScore = 0;
-
-            if (combo >= 0 && combo <= 4)
-            {
-                clearScore += (combo + 1) * 10 * (2 * (Mathf.Clamp(lineCount - 2, 1, Int32.MaxValue)) * 3);
-            }
-            else if (combo >= 5 && combo <= 9)
-            {
-                clearScore += (combo + 1) * 10 * (3 * (Mathf.Clamp(lineCount - 2, 1, Int32.MaxValue)) * 3);
-            }
-            else if (combo >= 10)
-            {
-                clearScore += (combo + 1) * 10 * (4 * (Mathf.Clamp(lineCount - 2, 1, Int32.MaxValue)) * 3);
-            }
-
-            AddScore(clearScore);
+            StartCoroutine(GameBindingUtil.WaitAndRun(() => SetDependencies(Game.Bus)));
         }
-        
-        
+        private void OnDisable()
+        {
+            _bus?.Unsubscribe<AllClear>(OnAllClear);
+            _bus?.Unsubscribe<GameResetRequest>(OnGameResetReq);
+        }
+
+        private void OnAllClear(AllClear e)
+        {
+            AddScore(e.bonus);
+        }
+
+        public void SetDependencies(EventQueue bus)
+        {
+            _bus = bus;
+            _bus.Unsubscribe<AllClear>(OnAllClear);
+            _bus.Subscribe<AllClear>(OnAllClear, replaySticky: false);
+
+            _bus.Unsubscribe<GameResetRequest>(OnGameResetReq);
+            _bus.Subscribe<GameResetRequest>(OnGameResetReq, replaySticky: false);
+
+            // �� ���� ���� 0 ���¸� HUD�� ����
+            PublishScore();
+            PublishCombo();
+        }
+
+        // =============== ����/�޺� API ===============
+        private void OnGameResetReq(GameResetRequest _)
+        {
+            ResetRuntime();
+        }
+
+        public void ResetRuntime()
+        {
+            _score = 0;
+            Combo = 0;
+            _handHadClear = false; // �޺� �ʱ�ȭ
+            PublishScore();
+            PublishCombo();
+        }
+
         public void AddScore(int amount)
         {
+            int before = _score;
             _score += amount;
-            UpdateScoreUI();
+            PublishScore();
+        }
+
+        public void SetCombo(int value)
+        {
+            Combo = Mathf.Max(0, value);
+
+            if (Combo > 0)
+                Sfx.Combo(Combo); // ���۰� 1~8�� Ŭ����
+
+            PublishCombo();
+        }
+
+        public void ApplyMoveScore(int blockUnits, int clearedLines)
+        {
+            if (blockUnits < 0) blockUnits = 0;
+            if (clearedLines < 0) clearedLines = 0;
+
+            int comboAtStart = Combo;
+            int baseScore = (comboAtStart + 1) * baseScroe; // ���̽� ����
+
+            if (clearedLines == 0)
+            {
+                AddScore(blockUnits);
+                // SetCombo(0); // �޺� ������ �ʿ� ���� ��� �ּ� ����
+                return;
+            }
+
+            int tier = (comboAtStart <= 4) ? 0 : (comboAtStart <= 9 ? 1 : 2); // 0,1,2
+            int w = 2 + tier; // 2,3,4
+
+            int bonus = CalcBonus(baseScore, comboAtStart, clearedLines);
+
+            AddScore(blockUnits + bonus);
+            SetCombo(comboAtStart + 1);
+
+            _handHadClear = true;
+        }
+
+        // ���� API�� ����
+        [Obsolete("Use ApplyMoveScore(blockUnits, clearedLines).")]
+        public void CalculateLineClearScore(int lineCount)
+        {
+            ApplyMoveScore(0, lineCount);
+        }
+
+        public void OnHandRefilled()
+        {
+            if (!_handHadClear)
+                SetCombo(0);   // �̹� ��Ʈ(3��) ���� �� ���� �� ���Ű� �������� �޺� ����
+
+            _handHadClear = false; // ���� ��Ʈ�� ���� �÷��� �ʱ�ȭ
+        }
+
+        // =============== ���� API ===============
+        void PublishScore()
+        {
+            if (scoreText) scoreText.text = _score.ToString();
+            if (_bus == null) return;
+            var e = new ScoreChanged(_score);
+            _bus.PublishSticky(e, alsoEnqueue: false);
+            _bus.PublishImmediate(e);
+        }
+
+        void PublishCombo()
+        {
+            if (comboText) comboText.text = $"Combo : {Combo}";
+            if (_bus == null) return;
+            var e = new ComboChanged(Combo);
+            _bus.PublishSticky(e, alsoEnqueue: false);
+            _bus.PublishImmediate(e);
+        }
+
+        private int CalcBonus(int baseScore, int comboAtStart, int clearedLines)
+        {
+            int tier = (comboAtStart <= 4) ? 0 : (comboAtStart <= 9 ? 1 : 2); // 0,1,2
+            int w = 2 + tier; // 2,3,4
+
+            if (clearedLines == 1)
+            {
+                int[] num = { 1, 3, 2 }; // 1, 1.5, 2
+                int[] den = { 1, 2, 1 };
+                return baseScore * num[tier] / den[tier];
+            }
+            else if (clearedLines == 2)
+            {
+                int[] mul = { 2, 3, 4 };
+                return baseScore * mul[tier];
+            }
+            else
+            {
+                return baseScore * w * 3 * (clearedLines - 2);
+            }
         }
 
         private void UpdateScoreUI()
         {
-            if (scoreText != null )
+            if (scoreText) scoreText.text = _score.ToString();
+        }
+        
+        public void SetFromSave(int score, int combo, bool publish = true)
+        {
+            _score = Mathf.Max(0, score);
+            comboCount = Mathf.Max(0, combo);
+
+            if (!publish) return;
+
+            // 1) 즉시 한 번 (이미 구독 중인 리스너용)
+            PublishScore();
+            PublishCombo();
+        }
+
+        public void ResetAll(bool publish = true) => SetFromSave(0, 0, publish);
+        public void RestoreScoreState(int score, int combo, bool silent = false)
+        {
+            _score = Mathf.Max(0, score);
+            Combo = Mathf.Max(0, combo);
+            if (!silent)
             {
-                scoreText.text = _score.ToString();
+                Game.Bus.PublishImmediate(new ScoreChanged(_score));
+                Game.Bus.PublishImmediate(new ComboChanged(Combo));
             }
         }
     }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using _00.WorkSpace.GIL.Scripts.GameEvents;
 using _00.WorkSpace.GIL.Scripts.Managers;
@@ -19,7 +20,8 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         [SerializeField] private Vector2 spacing = new Vector2(5f, 5f);
 
         public List<GridSquare> gridSquares = new();
-
+        
+        
         private void Start()
         {
             if (gridSquare == null)
@@ -27,8 +29,14 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
             
             if (GridManager.Instance != null)
                 GridManager.Instance.InitializeGridSquares(gridSquares, rows, columns);
+            
+            // TODO : 이 구문을 튜토리얼 시작 위치로 옮기기
+            // 기획서상 게임 실행 -> 튜토리얼로 갈 예정이라 여기로 유도하면 됨.
+            // TODO : 이 구문을 클래식 모드 시작할 위치에 옮기기
+            // 리셋, 메인화면 갔다오기 이런걸 할 경우에도 상관 없이
+            // 이동 완료, PanelSwitchOnClick.cs 42줄, RestartOnClick.cs 31줄에 추가
         }
-
+        
         public void CreateGrid()
         {
             ClearGrid();

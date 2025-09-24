@@ -1,74 +1,155 @@
-using System.Collections;
-using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Blocks;
+using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using System.Collections;
 
-public sealed class PanelSwitchOnClick : MonoBehaviour
+public enum InvokeSfxMode
 {
-    [SerializeField] string offKey = "GameOver";
-    [SerializeField] string onKey = "Game";
+    None,
+    Button,
+    ClassicStart,
+    CustomId
+}
+
+public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
+{
+    [Header("Target")]
+    [SerializeField] string targetPanel = "Game";   // "Game" or "Main"
+
+    [Header("Modal close")]
+    [SerializeField] bool closeModalFirst = true;
+    [SerializeField] string[] modalsToClose = { "GameOver", "Option" };
+    [SerializeField] bool clearRunStateOnClick = false; // ë©”ì¸ ê°ˆ ë•Œ ì§„í–‰ìƒíƒœ ë¹„ìš°ê¸°
+
+    [Header("SFX")]
+    [SerializeField] InvokeSfxMode sfxMode = InvokeSfxMode.Button;
+    [SerializeField] SfxId customId = SfxId.ButtonClick;
+
+    [Header("Others")]
     [SerializeField] float cooldown = 0.12f;
-    [SerializeField] bool viaEvent = true;
-    [SerializeField] bool softResetWhenTurnOn = true; // Classic ÁøÀÔ ½Ã ¸®¼Â
+
+    [Header("Game Enter Mode")]
+    [SerializeField] GameMode enterMode = GameMode.Classic;
 
     float _cool;
+    bool _invoking; // ì¬ì§„ì… ë°©ì§€
 
     void Update()
     {
         if (_cool > 0f) _cool -= Time.unscaledDeltaTime;
     }
 
-    public void Invoke() // Button OnClick¿¡ ¿¬°á
+    void OnDisable()
     {
-        if (_cool > 0f || !Game.IsBound) return;
-        if (string.IsNullOrEmpty(offKey) && string.IsNullOrEmpty(onKey)) return;
+        _invoking = false;
+        _cool = 0f;
+    }
 
+    public void OnPointerClick(PointerEventData _) => Invoke();
+
+    public void Invoke()
+    {
+        Debug.Log($"[Home] Invoke clicked. clear={clearRunStateOnClick} target={targetPanel} cool={_cool} bound={Game.IsBound}");
+        if (_invoking) return;
+        if (_cool > 0f || !Game.IsBound) return;
+
+        _invoking = true;
         _cool = cooldown;
 
-        if (viaEvent)
+        try
         {
+            PlayInvokeSfx();
             var bus = Game.Bus;
 
-            // 1) ¸ÕÀú ²ô±â (»óÅÂ ÀÌº¥Æ®´Â Sticky+Immediate)
-            if (!string.IsNullOrEmpty(offKey))
+            if (targetPanel == "Game")
             {
-                var off = new PanelToggle(offKey, false);
-                bus.PublishSticky(off, alsoEnqueue: false);
-                bus.PublishImmediate(off);
+                // 1) UI ë¦¬ì…‹/ì „í™˜ì„ ë¨¼ì € ìš”ì²­
+                var reason = ResetReason.ToGame;
+                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
 
-                if (offKey == "GameOver")
-                    bus.ClearSticky<GameOver>(); // ÀçµîÀå ¹æÁö
+                // 2) ë‹¤ìŒ í”„ë ˆì„ì— ì…ì¥ ë¡œì§ ì ìš© (ë¦¬ì…‹ ì™„ë£Œ í›„)
+                StartCoroutine(EnterGameNextFrame());
+            }
+            else if (targetPanel == "Main")
+            {
+                // ì´ì–´í•˜ê¸°ë¥¼ ì›í•˜ë©´ Inspectorì—ì„œ clearRunStateOnClick = false ìœ ì§€!
+                if (!clearRunStateOnClick)
+                {
+                    MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true, src: SaveManager.SnapshotSource.Manual);
+                }
+                else
+                {
+                    MapManager.Instance?.saveManager?.ClearRunState(true);
+                    GridManager.Instance?.ResetBoardToEmpty();
+                    ScoreManager.Instance?.ResetRuntime();
+                    var storage = UnityEngine.Object.FindFirstObjectByType<BlockStorage>();
+                    storage?.ClearHand();
+                }
+
+                GridManager.Instance?.HealBoardFromStates();
+
+                var reason = ResetReason.ToMain;
+                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
+            }
+            else
+            {
+                var reason = ResetReason.None;
+                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
             }
 
-            // 2) ÄÑ±â
-            if (!string.IsNullOrEmpty(onKey))
+            // 2) ëª¨ë‹¬ ì •ë¦¬ (ê¸°ì¡´ ìœ ì§€)
+            if (closeModalFirst && modalsToClose != null)
             {
-                var on = new PanelToggle(onKey, true);
-                bus.PublishSticky(on, alsoEnqueue: false);
-                bus.PublishImmediate(on);
+                var bus2 = Game.Bus;
+                for (int i = 0; i < modalsToClose.Length; i++)
+                {
+                    var k = modalsToClose[i];
+                    if (string.IsNullOrEmpty(k)) continue;
+                    var off = new PanelToggle(k, false);
+                    bus2.PublishSticky(off, alsoEnqueue: false);
+                    bus2.PublishImmediate(off);
+                    if (k == "GameOver") bus2.ClearSticky<GameOver>();
+                }
             }
+        }
+        finally
+        {
+            _invoking = false;
+        }
+    }
 
-            // 3) GameÀ» Ä×´Ù¸é ¼ÒÇÁÆ® ¸®¼Â ÆÄÀÌÇÁ¶óÀÎ ½ÇÇà
-            if (softResetWhenTurnOn && onKey == "Game")
-            {
-                Time.timeScale = 1f;                  // ¾ÈÀüº¸Á¤
-                bus.PublishImmediate(new GameResetting());
-                bus.PublishImmediate(new GameResetRequest());
-                bus.PublishImmediate(new GameResetDone());
-            }
+    private IEnumerator EnterGameNextFrame()
+    {
+        yield return null;
+
+        var map = MapManager.Instance;
+        if (!map) { Debug.LogError("[Home] MapManager missing on EnterGameNextFrame"); yield break; }
+
+        var bus = Game.Bus;
+
+        if (enterMode == GameMode.Tutorial)
+        {
+            map.SetGameMode(GameMode.Tutorial);
+            map.RequestTutorialApply();
+            Debug.Log("[Home] Tutorial apply (after reset)");
         }
         else
         {
-            // »óÅÂ¸¦ ³²±âÁö ¾ÊÀ¸¹Ç·Î °¡±ŞÀû viaEvent »ç¿ë ±ÇÀå
-            if (!string.IsNullOrEmpty(offKey)) Game.UI.SetPanel(offKey, false);
-            if (!string.IsNullOrEmpty(onKey)) Game.UI.SetPanel(onKey, true);
+            map.SetGameMode(GameMode.Classic);
+            map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
+            Debug.Log("[BTN] EnterGameNextFrame: mode=Classic policy=ForceLoadSave");
+        }
+    }
 
-            if (softResetWhenTurnOn && onKey == "Game")
-            {
-                Time.timeScale = 1f;
-                Game.Bus.PublishImmediate(new GameResetting());
-                Game.Bus.PublishImmediate(new GameResetRequest());
-                Game.Bus.PublishImmediate(new GameResetDone());
-            }
+    void PlayInvokeSfx()
+    {
+        switch (sfxMode)
+        {
+            case InvokeSfxMode.None: return;
+            case InvokeSfxMode.Button: Sfx.Button(); return;
+            case InvokeSfxMode.ClassicStart: Sfx.StageEnter(); return;
+            case InvokeSfxMode.CustomId: Sfx.PlayId((int)customId); return;
         }
     }
 }

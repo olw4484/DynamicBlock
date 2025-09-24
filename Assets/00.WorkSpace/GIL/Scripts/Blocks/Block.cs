@@ -8,24 +8,26 @@ using UnityEngine.EventSystems;
 
 namespace _00.WorkSpace.GIL.Scripts.Blocks
 {
-    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragHandler, IPointerUpHandler
+    public class Block : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
     {
         [Header("Prefab & Data")]
         public GameObject shapePrefab;
-
+        
+        [HideInInspector] public int SpawnSlotIndex = -1; // 블록 위치 ( 0 ~ 2 )
+        
         [Header("Pointer")] 
         public Vector3 shapeSelectedScale = Vector3.one * 1.2f;
-        public Vector2 selectedOffset = new Vector2(0f, 700f);
-        
+        public Vector2 selectedOffset = new Vector2(0f, 500f);
+        public float editorOffset = -200f;
         private Vector3 _shapeStartScale;
         private RectTransform _shapeTransform;
         private Canvas _canvas;
         private Vector3 _startPosition;
         
         private ShapeData _currentShapeData;
+        private Sprite _currentSprite;
+        private bool _startReady;
 
-        private bool _isDragging;
-        
         private void Awake()
         {
             _shapeStartScale = GetComponent<RectTransform>().localScale;
@@ -33,10 +35,43 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _canvas = GetComponentInParent<Canvas>();
             _startPosition = _shapeTransform.localPosition;
             _shapeStartScale = _shapeTransform.localScale;
+#if UNITY_EDITOR
+            selectedOffset.y += editorOffset;
+#endif
         }
         
+        public ShapeData GetShapeData() => _currentShapeData;
+        public Sprite GetSpriteData() => _currentSprite;
+        public Sprite SetSpriteData(Sprite sprite) => _currentSprite = sprite;
         public void GenerateBlock(ShapeData shapeData)
         {
+            if (shapeData == null)
+            {
+                Debug.LogError("[Block] shapeData is null");
+                return;
+            }
+
+            if (_shapeTransform == null)
+            {
+                if (shapePrefab != null)
+                    _shapeTransform = shapePrefab.GetComponent<RectTransform>();
+                if (_shapeTransform == null)
+                    _shapeTransform = GetComponentInChildren<RectTransform>(includeInactive: true);
+
+                if (_shapeTransform == null)
+                {
+                    Debug.LogError($"[Block] _shapeTransform not found on '{name}'. " +
+                                   $"Assign shapePrefab or _shapeTransform in prefab.");
+                    return;
+                }
+            }
+
+            if (!_startReady)
+            {
+                _startPosition = _shapeTransform.localPosition;
+                _startReady = true;
+            }
+
             _shapeTransform.localPosition = _startPosition;
             _currentShapeData = shapeData;
             CreateBlock(shapeData);
@@ -69,24 +104,38 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         
         public void OnPointerDown(PointerEventData eventData)
         {
-            _isDragging = false;
+            if(TouchGate.GetTouchID() == int.MinValue) TouchGate.SetTouchID(eventData.pointerId);
             
-            _shapeTransform.localPosition = _startPosition + (Vector3)selectedOffset;
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
+            BlockSpawnManager.Instance?.ClearPreview();
+            
             _shapeTransform.localScale = shapeSelectedScale;
-            
+
+            Sfx.BlockSelect();
+
             MoveBlock(eventData);
         }
         
         public void OnDrag(PointerEventData eventData)
         {
-            _isDragging = true;
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
             MoveBlock(eventData);
+
+            var shapeBlocks = new List<Transform>();
+            foreach (Transform child in transform)
+                if (child.gameObject.activeSelf) shapeBlocks.Add(child);
+
+            GridManager.Instance.UpdateHoverPreview(shapeBlocks);
         }
         
         
         
-        public void OnEndDrag(PointerEventData eventData)
+        public void OnPointerUp(PointerEventData eventData)
         {
+            if(TouchGate.GetTouchID() != eventData.pointerId) return;
+            
             List<Transform> shapeBlocks = new();
             foreach (Transform child in transform)
             {
@@ -103,39 +152,32 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
             else
             {
+                Sfx.BlockPlace();
+
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
-
-                int placedCount = 0;
-                foreach (Transform child in shapeBlocks)
+                
+                // TODO : 적절한 튜토리얼 시작 위치 옮기기
+                if (MapManager.Instance.CurrentMode == GameMode.Tutorial)
                 {
-                    if (child.gameObject.activeSelf)
-                        placedCount++;
+                    MapManager.Instance.OnTutorialCompleted();
                 }
-                ScoreManager.Instance.AddScore(placedCount);
+                
                 Destroy(gameObject);
             }
-        }
-        public void OnPointerUp(PointerEventData eventData)
-        {
-            if (!_isDragging)
-            {
-                _shapeTransform.localPosition = _startPosition; 
-                _shapeTransform.localScale = _shapeStartScale; 
-            }
+            
+            GridManager.Instance.ClearHoverPreview();
         }
         
         private void MoveBlock(PointerEventData eventData)
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                _canvas.transform as RectTransform,
+                _shapeTransform.parent as RectTransform, 
                 eventData.position,
-                eventData.pressEventCamera,
+                 _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera,
                 out Vector2 localPos);
             
-            _shapeTransform.localPosition = localPos + selectedOffset;
+            _shapeTransform.anchoredPosition = localPos + (selectedOffset / _canvas.scaleFactor);
         }
-        
-        public ShapeData GetShapeData() => _currentShapeData;
     }
 }

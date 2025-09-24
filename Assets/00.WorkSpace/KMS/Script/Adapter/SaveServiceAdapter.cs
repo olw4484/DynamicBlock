@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using _00.WorkSpace.GIL.Scripts.Messages;
 
 // ================================
 // Script  : SaveServiceAdapter.cs
@@ -17,6 +18,8 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
     public GameData Data => _legacy.gameData;
 
+    private bool _newBestThisRun = false;
+
     public void SetDependencies(EventQueue bus, SaveManager legacy)
     {
         _bus = bus;
@@ -25,32 +28,69 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
     public void PreInit()
     {
-        // 원본 콜백과 연결 → 상태 바뀔 때마다 Sticky 통지
-        _legacy.AfterLoad += d => _bus.PublishSticky(new GameDataChanged(d), alsoEnqueue: false);
-        _legacy.AfterSave += d => _bus.PublishSticky(new GameDataChanged(d), alsoEnqueue: false);
+        _legacy.AfterLoad += PublishState;
+        _legacy.AfterSave += PublishState;
 
         if (_legacy.gameData == null)
             _legacy.LoadGame();
 
         TryMigrateLegacyLanguage();
 
-        // 원본 Awake에서 LoadGame 호출됨 → 초기 Sticky 보강
-        _bus.PublishSticky(new GameDataChanged(Data), alsoEnqueue: false);
+        PublishState(_legacy.gameData);
     }
 
     public void Init() { }
 
     public void PostInit()
     {
-        // 명령 이벤트 → 원본 API로 라우팅
-        _bus.Subscribe<SaveRequested>(_ => _legacy.SaveGame(), replaySticky: false);
-        _bus.Subscribe<LoadRequested>(_ => _legacy.LoadGame(), replaySticky: false);
-        _bus.Subscribe<ResetRequested>(_ =>
-        {
+        _bus.Subscribe<GameResetRequest>(_ => { _newBestThisRun = false; }, replaySticky: false);
+        _bus.Subscribe<GameResetting>(_ => { _newBestThisRun = false; }, replaySticky: false);
+        _bus.Subscribe<ResetRequested>(_ => {
             _legacy.gameData = GameData.NewDefault(DefaultStages);
             _legacy.SaveGame();
         }, replaySticky: false);
+
+        _bus.Subscribe<GameOverConfirmed>(e =>
+        {
+            _legacy.UpdateClassicScore(e.score);
+
+            if (e.isNewBest) { Game.Fx.PlayNewScoreAt(); Sfx.NewRecord(); }
+            else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
+
+            Debug.Log($"[SaveAdapter] FINAL total={e.score}, persistedHigh={_legacy.gameData?.highScore}");
+        }, replaySticky: false);
+
+        _bus.Subscribe<LanguageChangeRequested>(e =>
+        {
+            SetLanguageIndex(e.index);
+        }, replaySticky: false);
+
+        _bus.Subscribe<AllClear>(e =>
+        {
+            Debug.Log("[SaveAdapter] ALL CLEAR!");
+            //AllClearCount++;
+        }, replaySticky: false);
     }
+
+    public int CurrentHighScore => _legacy?.gameData?.highScore ?? 0;
+
+    public void EnsureLoaded()
+    {
+        if (_legacy.gameData == null)
+            _legacy.LoadGame();
+    }
+
+    public int GetPersistedHighScoreFresh()
+    {
+        _legacy.LoadGame(); // AfterLoad로 UI 갱신 이벤트 나갈 수 있음 (정상)
+        return _legacy.gameData?.highScore ?? 0;
+    }
+
+
+    public bool TryUpdateHighScore(int score, bool save = true)
+    => _legacy.TryUpdateHighScore(score, save);
+    public void UpdateClassicScore(int score)
+        => _legacy.UpdateClassicScore(score);
 
     private void TryMigrateLegacyLanguage()
     {
@@ -93,11 +133,18 @@ public sealed class SaveServiceAdapter : IManager, ISaveService
 
         _legacy.gameData.LanguageIndex = index;
 
-        // UI/로컬라이즈 즉시 반영
-        _bus.PublishSticky(new GameDataChanged(_legacy.gameData), alsoEnqueue: false);
+        // 즉시 UI 반영
+        PublishState(_legacy.gameData);
 
-        // 디스크 반영
-        _legacy.SaveGame();
+        _legacy.SaveGame(); // 디스크 반영(AfterSave에서 다시 PublishState 호출됨)
+    }
+
+    private void PublishState(GameData d)
+    {
+        var evt = new GameDataChanged(d);
+        _bus.PublishSticky(evt, alsoEnqueue: false); // 상태 캐시
+        _bus.PublishImmediate(evt);                  // 즉시 반영
+        Debug.Log($"[SaveAdapter] PublishState high={d?.highScore}");
     }
 
     // ISaveService 직접 호출 경로(옵션)

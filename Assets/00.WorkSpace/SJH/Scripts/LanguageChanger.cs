@@ -1,76 +1,61 @@
-﻿using System.Collections;
+﻿using _00.WorkSpace.GIL.Scripts.Managers;
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Localization;
-using UnityEngine.Localization.Components;
 using UnityEngine.Localization.Settings;
-
-public enum GameLanguage
-{
-	Korean,
-	English,
-}
 
 public class LanguageChanger : MonoBehaviour
 {
-	[SerializeField] private TMP_Text _text;
-	[SerializeField] private LocalizeStringEvent _testText;
-	[SerializeField] private TMP_Dropdown _languageDropDown;
+    [SerializeField] private List<TMP_Dropdown> _languageDropDown = new();
 
-	void Awake()
-	{
-		StartCoroutine(InitRoutine());
-	}
+    void OnEnable() { StartCoroutine(InitRoutine()); }
+    void OnDisable()
+    {
+        foreach (var dd in _languageDropDown)
+            if (dd) dd.onValueChanged.RemoveListener(OnDropdownValueChanged);
+        // 버스 구독했으면 여기서 Unsubscribe
+        // Game.Bus.Unsubscribe<GameDataChanged>(OnGameDataChanged); (구독 시)
+    }
 
-	IEnumerator InitRoutine()
-	{
-		bool hasSaveData = SaveLoadManager.Instance.LoadData();
+    IEnumerator InitRoutine()
+    {
+        // 로컬라이제이션 준비
+        yield return LocalizationSettings.InitializationOperation;
 
-		yield return LocalizationSettings.InitializationOperation;
+        // 현재 저장된 인덱스 반영
+        int idx = MapManager.Instance?.saveManager?.Data?.LanguageIndex ?? 0;
+        SetAllDropdowns(idx);
 
-		var locales = LocalizationSettings.AvailableLocales;
-		int targetIndex = 0;
+        // 변경 리스너 등록
+        foreach (var dd in _languageDropDown)
+        {
+            if (!dd) continue;
+            dd.onValueChanged.RemoveListener(OnDropdownValueChanged);
+            dd.onValueChanged.AddListener(OnDropdownValueChanged);
+        }
 
-		if (hasSaveData)
-		{
-			// 세이브 있으면 세이브 인덱스 사용
-			int saveIndex = SaveLoadManager.Instance.GameData.LanguageIndex;
-			targetIndex = (saveIndex >= 0 && saveIndex < locales.Locales.Count) ? saveIndex : 0;
-		}
-		else
-		{
-			// 세이브 없으면 OS 언어 사용
-			Locale sys = locales.GetLocale(Application.systemLanguage);
-			if (sys == null) sys = LocalizationSettings.ProjectLocale;
-			targetIndex = Mathf.Max(0, locales.Locales.IndexOf(sys)); // 세이브데이터 없으면 -1
-		}
+        // 저장값 바뀔 때 드롭다운 동기화하고 싶으면 구독
+        // Game.Bus.Subscribe<GameDataChanged>(OnGameDataChanged, replaySticky:true);
+    }
 
-		SaveLoadManager.Instance.GameData.LanguageIndex = targetIndex;
-		SaveLoadManager.Instance.SaveData();
+    void OnDropdownValueChanged(int value)
+    {
+        MapManager.Instance?.saveManager?.SetLanguageIndex(value);
+        SetAllDropdowns(value);
 
-		LocalizationSettings.SelectedLocale = locales.Locales[targetIndex];
-		_languageDropDown.SetValueWithoutNotify(targetIndex);
+        // 실제 로케일 변경
+        var locales = LocalizationSettings.AvailableLocales.Locales;
+        if (value >= 0 && value < locales.Count)
+            LocalizationSettings.SelectedLocale = locales[value];
+    }
 
-		_languageDropDown.onValueChanged.AddListener(OnValueChanged);
-		_testText.OnUpdateString.AddListener(OnUpdateString);
+    // 저장값이 외부에서 바뀌었을 때 드롭다운 맞추기
+    // void OnGameDataChanged(GameDataChanged e) => SetAllDropdowns(e.data.LanguageIndex);
 
-		_testText.RefreshString();
-	}
-
-	public void OnValueChanged(int value)
-	{
-		Debug.Log(value);
-		// 0	ko-KR
-		// 1	en
-		var locale = LocalizationSettings.AvailableLocales.Locales[value];
-		LocalizationSettings.SelectedLocale = locale;
-		SaveLoadManager.Instance.GameData.LanguageIndex = value;
-		SaveLoadManager.Instance.SaveData();
-	}
-
-	public void OnUpdateString(string text)
-	{
-		Debug.Log(text);
-		_text.text = text;
-	}
+    void SetAllDropdowns(int value)
+    {
+        foreach (var dd in _languageDropDown)
+            if (dd && dd.value != value) dd.SetValueWithoutNotify(value);
+    }
 }

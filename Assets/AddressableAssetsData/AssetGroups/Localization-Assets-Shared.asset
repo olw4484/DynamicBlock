@@ -15,10 +15,15 @@ MonoBehaviour:
   m_GroupName: Localization-Assets-Shared
   m_Data:
     m_SerializedData: []
-  m_GUID: 4485cc2512764214c946f34a1bb89216
+  m_GUID: 35f351b154f23f44b80ea7e83e354207
   m_SerializeEntries:
-  - m_GUID: 84e2a0ed060bf04449dc1210851b96b5
-    m_Address: Assets/00.WorkSpace/SJH/TextTable Shared Data.asset
+  - m_GUID: a4ec44d663daab746bf83eaacbfb995a
+    m_Address: Assets/00.WorkSpace/SJH/LanguageTable Shared Data.asset
+    m_ReadOnly: 1
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cab776c5573fd504998a1c8b264c63d3
+    m_Address: Assets/00.WorkSpace/KMS/Achievement/Achievement Shared Data.asset
     m_ReadOnly: 1
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -26,5 +31,5 @@ MonoBehaviour:
   m_Settings: {fileID: 11400000, guid: e4032e69d20915141886eb7276a16890, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: 47fad0a57cff88a4c97ac18abd6c86a6, type: 2}
-    - {fileID: 11400000, guid: 51b2b30c232c0a94a846dfbd06566f6e, type: 2}
+    - {fileID: 11400000, guid: d536dfa8c32e14644bef2f72a0e455a8, type: 2}
+    - {fileID: 11400000, guid: 28d13760229b9254aa8e4622593318ac, type: 2}

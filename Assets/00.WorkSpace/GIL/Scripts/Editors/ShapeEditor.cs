@@ -27,10 +27,10 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             var nameField = new TextField("Name") { value = _target.name };
             nameField.RegisterValueChangedCallback(evt => { ChangeName(evt); });
             root.Add(nameField);
-
-            var idField = new TextField("ID") { value = _target.Id };
-            idField.RegisterValueChangedCallback(evt => { ChangeName(evt); });
-            root.Add(nameField);
+            
+            var idField = new IntegerField("Difficulty") { value = _target.difficulty };
+            idField.RegisterValueChangedCallback(evt => { _target.difficulty = evt.newValue; });
+            root.Add(idField);
             
             // Navigation buttons
             var navContainer = new VisualElement { style = { flexDirection = FlexDirection.Row, justifyContent = Justify.SpaceBetween, marginBottom = 5 } };
@@ -45,44 +45,12 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
             actionContainer.Add(CreateButton("Clear All", ClearAll));
             actionContainer.Add(CreateButton("Save", Save));
             root.Add(actionContainer);
-
+            
             root.Add(new Label("Click on a square to add/remove a block") { style = { marginBottom = 5 } });
 
             // Grid container
             gridContainer = new VisualElement { style = { flexDirection = FlexDirection.Column, alignItems = Align.Center, marginBottom = 5 } };
             root.Add(gridContainer);
-            
-            var classicContainer = new VisualElement { style = { flexDirection = FlexDirection.Column, marginBottom = 5 } };
-            classicContainer.Add(new Label("\nClassic Mode Parameters"));
-
-            var scoreField = new IntegerField("Score For Spawn") { value = _target.scoreForSpawn };
-            scoreField.style.width = 200;
-            scoreField.RegisterValueChangedCallback(evt => { _target.scoreForSpawn = evt.newValue; });
-            classicContainer.Add(scoreField);
-            
-            var sliderContainer = new VisualElement { name = "slider-container" };
-            sliderContainer.style.flexDirection = FlexDirection.Row;
-            var chanceField = new SliderInt("Spawn Weight", 0, 4) { value = _target.chanceForSpawn };
-            var chanceValue = new IntegerField { value = _target.chanceForSpawn };
-            chanceValue.style.marginLeft = 10;
-            chanceValue.RegisterValueChangedCallback(evt => { chanceField.value = evt.newValue; });
-            chanceField.RegisterValueChangedCallback(evt =>
-            {
-                chanceValue.value = evt.newValue;
-                _target.chanceForSpawn = evt.newValue;
-            });
-            
-            chanceField.style.width = 250;
-            chanceField.RegisterValueChangedCallback(evt =>
-            {
-                _target.chanceForSpawn = evt.newValue;
-                EditorUtility.SetDirty(_target);
-            });
-            sliderContainer.Add(chanceField);
-            sliderContainer.Add(chanceValue);
-            root.Add(sliderContainer);
-            
-            root.Add(classicContainer);
 
             LoadShapes();
             CreateGrid();

@@ -1,0 +1,255 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: LanguageTable_en
+  m_EditorClassIdentifier: 
+  m_LocaleId:
+    m_Code: en
+  m_SharedData: {fileID: 11400000, guid: a4ec44d663daab746bf83eaacbfb995a, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 79493314371584
+    m_Localized: Have a Ball
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79499526135808
+    m_Localized: First Glacier Sculptor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79503774965760
+    m_Localized: A Breeze
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79507994435584
+    m_Localized: Fruit Collector
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79512331345920
+    m_Localized: A Piece of Cake
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79516932497408
+    m_Localized: Adventurer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79527594418176
+    m_Localized: Make a Ice Cream Cake!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79532619194368
+    m_Localized: Second Glacier Sculptor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79537551695872
+    m_Localized: Let's go play classical mode together!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79541360123904
+    m_Localized: You've already scored over 30,000 in classic mode! Amazing!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79545076277248
+    m_Localized: Over 60,000 in classic mode? That's the best!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79552269508608
+    m_Localized: Adventure mode has a new dessert!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79557281701888
+    m_Localized: You've found 5 desserts in a row in adventure mode?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79561689915392
+    m_Localized: Found 10 desserts in a row in adventure mode!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79566240735232
+    m_Localized: Today is the first day of ball!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79571009658880
+    m_Localized: It's been five days since we've been together!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79576344813568
+    m_Localized: It's been 10 days since we've been together!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79582325891072
+    m_Localized: Let's go clear adventure mode together!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79588009172992
+    m_Localized: You've cleared over 20 stages of adventure mode now!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79592610324480
+    m_Localized: You've cleared over 50 stages of adventure mode now!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79607076478976
+    m_Localized: Let's go play the game and do a lot of combos!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79645613744128
+    m_Localized: You've done over 5 combos over 5 combos!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79652857307136
+    m_Localized: You've done over 10 combos over 5 combos!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79659459141632
+    m_Localized: Let's collect fruit blocks from adventure mode!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79667226992640
+    m_Localized: You collected over 100 fruit blocks in adventure mode!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79673036103680
+    m_Localized: You collected over 500 fruit blocks in adventure mode!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79678287372288
+    m_Localized: Let's try many combos while playing the game!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79683089850368
+    m_Localized: You achieved over 20 combo in the game!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79698755575808
+    m_Localized: You achieved over 30 combo in the game!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79703449001984
+    m_Localized: Aren't you curious about the adventure mode? Let's go together!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79707873992704
+    m_Localized: You cleared more than 5 stages in adventure mode!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79712089268224
+    m_Localized: You've cleared over 10 stages in adventure mode!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79717684469760
+    m_Localized: Let's remove blocks in the game!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79721861996544
+    m_Localized: You've already removed 10,000 blocks!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79725834002432
+    m_Localized: You've already removed 30,000 blocks!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79734243581952
+    m_Localized: A new chapter has begun! Show your skills again this time!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 79738928619520
+    m_Localized: You've cleared over 50 stages of adventure mode now!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1000
+    m_Localized: English
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1001
+    m_Localized: Adventure
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1002
+    m_Localized: Classic
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1003
+    m_Localized: Achievement
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1004
+    m_Localized: History
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1005
+    m_Localized: Highest Combo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1006
+    m_Localized: Best Score
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1007
+    m_Localized: Rounds
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1008
+    m_Localized: Login Days
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1009
+    m_Localized: Awards
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1010
+    m_Localized: Best Ice Cream Maker!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1011
+    m_Localized: A Master of Dessert
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334432025939968
+    m_Localized: Score Champion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334593221431296
+    m_Localized: Invincible Legend
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334644421300224
+    m_Localized: Perseverance
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334709986660352
+    m_Localized: Block Monster
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334779041681408
+    m_Localized: Opportunist
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334817964822528
+    m_Localized: Fruit Tycoon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334872557883392
+    m_Localized: Unwavering
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334932351881216
+    m_Localized: Adventurer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6334980162752512
+    m_Localized: Master Cleaner
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []

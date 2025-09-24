@@ -6,11 +6,12 @@ TagManager:
   tags:
   - Block
   - GridSquare
+  - Grid
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - FX
   - Water
   - UI
   - Grid
@@ -42,4 +43,7 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: UI
+    uniqueID: 1616343541
     locked: 0
