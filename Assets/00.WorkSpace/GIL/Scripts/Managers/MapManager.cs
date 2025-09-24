@@ -29,6 +29,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private GameObject grid;
         private MapData[] _mapList;
 
+        [SerializeField] private MapData _currentMapData; // 현재 로딩된 맵 (디버그 확인용)
+        public MapData CurrentMapData => _currentMapData; // 읽기 전용 접근자
+
         private readonly Dictionary<int, Sprite> _codeToSprite = new();
         private static readonly Regex s_CodeRegex = new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
@@ -960,8 +963,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void EnterStage(int stageNumber)
         {
             Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
+            GameMode = GameMode.Adventure;
+            _currentMapData = _mapList[stageNumber]; // 현재 맵 데이터 설정
+            Debug.Log($"Current Map Data의 클리어 종류 : {_currentMapData.goalKind}");
             // 어드벤처 모드 진입 로직 구현 필요
             SetMapDataToGrid(stageNumber);
+            
             //StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
         }
     }
