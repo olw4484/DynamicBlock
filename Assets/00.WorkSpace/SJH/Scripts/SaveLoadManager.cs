@@ -70,4 +70,7 @@ public class SaveLoadManager : MonoBehaviour
 		if (!Directory.Exists(dir)) return false;
 		return File.Exists($"{DataPath}");
 	}
+
+	// 스테이지 데이터
+
 }
