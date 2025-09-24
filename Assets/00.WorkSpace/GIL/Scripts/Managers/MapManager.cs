@@ -31,6 +31,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [SerializeField] private MapData _currentMapData; // 현재 로딩된 맵 (디버그 확인용)
         public MapData CurrentMapData => _currentMapData; // 읽기 전용 접근자
+        [SerializeField] private bool[] _fruitEnabledRuntime = new bool[5];
+        [SerializeField] private int[] _fruitGoalsRuntime = new int[5];
+        [SerializeField] private List<int> _activeFruitCodes = new();           // 201..205
+        [SerializeField] private Dictionary<int, int> _fruitGoalsByCode = new(); // key:201..205
+
+        public IReadOnlyList<int> ActiveFruitCodes => _activeFruitCodes;
+        public bool IsFruitEnabled(int idx) => (uint)idx < _fruitEnabledRuntime.Length && _fruitEnabledRuntime[idx];
+        public int GetFruitGoal(int idx) => (uint)idx < _fruitGoalsRuntime.Length ? _fruitGoalsRuntime[idx] : 0;
+        public bool IsFruitCodeActive(int code) => _activeFruitCodes.Contains(code);
+        public int GetFruitGoalByCode(int code) => _fruitGoalsByCode.TryGetValue(code, out var v) ? v : 0;
+
+        private const int FruitBaseCode = 201;
+        private const int FruitCount = 5;
 
         private readonly Dictionary<int, Sprite> _codeToSprite = new();
         private static readonly Regex s_CodeRegex = new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -962,14 +975,56 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void EnterStage(int stageNumber)
         {
+            // currentMapData 안전 초기화 이후 진행
+            _currentMapData = null;
             Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
             GameMode = GameMode.Adventure;
             _currentMapData = _mapList[stageNumber]; // 현재 맵 데이터 설정
+            // 맵 데이터가 과일 모드일 경우 활성화된 과일 종류 및 갯수 저장 
+            if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
+                SyncFruitRuntimeFromMap(_currentMapData);
+            else
+                ClearFruitRuntime();
             Debug.Log($"Current Map Data의 클리어 종류 : {_currentMapData.goalKind}");
-            // 어드벤처 모드 진입 로직 구현 필요
+            // 어드벤처 모드 진입 로직 구현
             SetMapDataToGrid(stageNumber);
-            
+
             //StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
+        }
+        
+        private void ClearFruitRuntime()
+        {
+            Array.Clear(_fruitEnabledRuntime, 0, _fruitEnabledRuntime.Length);
+            Array.Clear(_fruitGoalsRuntime,   0, _fruitGoalsRuntime.Length);
+            _activeFruitCodes.Clear();
+            _fruitGoalsByCode.Clear();
+        }
+
+        private void SyncFruitRuntimeFromMap(MapData map)
+        {
+            ClearFruitRuntime();
+            if (map == null) return;
+
+            // 1) enabled / goals 복사 (길이 보호)
+            if (map.fruitEnabled != null && map.fruitEnabled.Length >= FruitCount)
+                Array.Copy(map.fruitEnabled, _fruitEnabledRuntime, FruitCount);
+            if (map.fruitGoals != null && map.fruitGoals.Length >= FruitCount)
+                Array.Copy(map.fruitGoals, _fruitGoalsRuntime, FruitCount);
+
+            // 2) enabled 기준으로 활성 코드/목표 구성 (201..205)
+            for (int i = 0; i < FruitCount; i++)
+            {
+                if (!_fruitEnabledRuntime[i]) continue;
+                int code = FruitBaseCode + i;
+                _activeFruitCodes.Add(code);
+                _fruitGoalsByCode[code] = _fruitGoalsRuntime[i];
+            }
+
+        #if UNITY_EDITOR
+            UnityEngine.Debug.Log(
+                $"[MapManager] Fruit synced | enabled={string.Join(",", _fruitEnabledRuntime.Select(b=>b?1:0))} " +
+                $"goals={string.Join(",", _fruitGoalsRuntime)} codes={string.Join(",", _activeFruitCodes)}");
+        #endif
         }
     }
 }
