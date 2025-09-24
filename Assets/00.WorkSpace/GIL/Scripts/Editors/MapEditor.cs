@@ -419,7 +419,7 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
                     dnBtn.RegisterCallback<ClickEvent>(e => e.StopPropagation());
                     fruitCount.RegisterCallback<ClickEvent>(e => e.StopPropagation());
 
-                    // (선택) 직접 입력/휠 증감
+                    // 직접 입력/휠 증감
                     fruitCount.RegisterValueChangedCallback(e =>
                     {
                         MapEditorFunctions.SetFruitGoal(_data, idx, e.newValue);
@@ -1016,7 +1016,11 @@ namespace _00.WorkSpace.GIL.Scripts.Editors
 
                     grid.Add(line);
                 }
-                GridManager.Instance.PublishGridReady();
+                // 250919_GIL : GridManager를 사용하는 씬에서만 호출하기.
+                if (Application.isPlaying && GridManager.Instance != null)
+                {
+                    GridManager.Instance.PublishGridReady();
+                }
             }
         }
         private void PaintGridWithValue(int idx1D, Image img, int value)

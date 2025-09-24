@@ -17,7 +17,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             
             var Map = MapManager.Instance;
             // 튜토리얼일 경우 고정 블록 소환
-            if (Map.GameMode == GameMode.Tutorial)
+            if (Map.CurrentMode == GameMode.Tutorial)
             {
                 Debug.Log("[BlockSpawnManager] : 튜토리얼 블록 생성 시작 ");
                 result.Add(null);
@@ -170,7 +170,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     perShapeCount.TryGetValue(s.Id, out int cur);
                     if (cur >= maxDuplicatesPerWave) continue;
             
-                    // (선택) 소형 페널티는 이 단계에서 무시 — “반복 깨기”가 우선
+                    // 소형 페널티는 이 단계에서 무시 — “반복 깨기”가 우선
                     int tiles = s.activeBlockCount;
                     if (tiles <= bestTiles) continue;
                     bestTiles = tiles;

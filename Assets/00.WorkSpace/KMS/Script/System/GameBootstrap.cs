@@ -101,7 +101,9 @@ public class GameBootstrap : MonoBehaviour
             maxC = Mathf.Max(maxC, s.ColIndex);
         }
         gridManager.InitializeGridSquares(squares, maxR + 1, maxC + 1);
-}
+
+        Loc.DefaultTable = "LanguageTable";
+    }
 
     static T EnsureInScene<T>(string name = null) where T : Component
     {
