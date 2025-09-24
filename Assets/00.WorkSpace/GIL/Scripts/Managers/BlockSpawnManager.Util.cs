@@ -86,9 +86,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int startOy = Random.Range(0, oyMax + 1);
             int startOx = Random.Range(0, oxMax + 1);
 
-            // [TRACK]
-            TSampled("PickPlaceable.start", 1, $"랜덤 시작 오프셋=({startOy},{startOx})");
-
+            TDo("a. 보드 탐색 및 탐색 시작점 랜덤 선정 / 기획서");
+            TDo($"ㄴ 탐색 시작점 : {startOy} , {startOx} 선정");
+            
             for (int dy = 0; dy <= oyMax; dy++)
             {
                 int oy = startOy + dy;

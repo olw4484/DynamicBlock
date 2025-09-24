@@ -523,9 +523,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             var cell = gridSquares[r, c];
             if (!cell) return;
-
-            Debug.Log($"[Grid] SetCellOccupied r={r}, c={c}, occupied={occupied}, sprite={(sprite != null ? sprite.name : "null")}, isFruit={isFruit}");
-
             if (occupied)
             {
                 if (isFruit) cell.SetFruitImage(true, sprite, changeIndex: true);

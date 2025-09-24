@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using System.Linq;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -19,7 +20,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 #if UNITY_EDITOR
         // === State ===
         private StringBuilder _spawnTracker;
-        private StringBuilder _slotBuffer;
+        private StringBuilder _slotBuffer; // 전체 슬롯 합본
+        private Dictionary<int, StringBuilder> _slotBufMap; // 슬롯별 개별 버퍼
         private string _tPrev;
         private int _tPrevCount;
         private readonly Dictionary<string,int> _tally = new();
@@ -66,10 +68,41 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _slotBuffer   ??= new StringBuilder(2048);
             _spawnTracker.Clear();
             _slotBuffer.Clear();
+            _slotBufMap   = new Dictionary<int, StringBuilder>(4);
             _tally.Clear();
             _tPrev = null; _tPrevCount = 0;
-            if (!string.IsNullOrEmpty(header)) _spawnTracker.AppendLine(header);
+            if (!string.IsNullOrEmpty(header))
+                _spawnTracker.AppendLine(header);
         }
+
+        // 슬롯별 버퍼에도 같은 내용을 넣는 확장 버전
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        private void TSlotEndEx(int slotIdx, int snapshotIndex, string endLine)
+        {
+            FlushPrevLine();
+            if (_spawnTracker == null) return;
+            int start = Mathf.Clamp(snapshotIndex, 0, _spawnTracker.Length);
+            int len   = _spawnTracker.Length - start;
+            string inner = len > 0 ? _spawnTracker.ToString(start, len).TrimEnd() : string.Empty;
+            _spawnTracker.Length = start; // 잘라내기
+
+            // (레거시 합본에도 유지)
+            _slotBuffer.AppendLine($"Slot{slotIdx} : 선택 시작");
+            if (!string.IsNullOrEmpty(inner)) _slotBuffer.AppendLine(inner);
+            if (!string.IsNullOrEmpty(endLine)) _slotBuffer.AppendLine(endLine);
+            _slotBuffer.AppendLine();
+
+            // 개별 슬롯 버퍼
+            if (!_slotBufMap.TryGetValue(slotIdx, out var sb))
+            {
+                sb = new StringBuilder(1024);
+                _slotBufMap[slotIdx] = sb;
+            }
+            sb.AppendLine($"Slot{slotIdx} : 선택 시작");
+            if (!string.IsNullOrEmpty(inner)) sb.AppendLine(inner);
+            if (!string.IsNullOrEmpty(endLine)) sb.AppendLine(endLine);
+        }
+        
 
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void T(string msg)
@@ -198,6 +231,63 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _tPrev = null; _tPrevCount = 0;
         }
 
+        // 도입부 / 슬롯별 / 반복요약 을 각각 '개별 로그'로 출력
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        private void TDumpSplit(string title = null)
+        {
+            if (!string.IsNullOrEmpty(title)) _spawnTracker.AppendLine(title);
+            FlushPrevLine();
+
+            // 1) 웨이브 도입부(= 전역 로그 누적분)
+            var intro = _spawnTracker?.ToString() ?? string.Empty;
+            DumpChunked("웨이브 도입부", intro);
+
+            // 2) 슬롯별
+            if (_slotBufMap != null && _slotBufMap.Count > 0)
+            {
+                foreach (var slot in _slotBufMap.Keys.OrderBy(k => k))
+                {
+                    var text = _slotBufMap[slot].ToString();
+                    DumpChunked($"슬롯 {slot} 진행 로그", text);
+                }
+            }
+            else if (_slotBuffer.Length > 0)
+            {
+                // 개별 버퍼가 없다면(이전 버전 호환) 합본이라도 일괄 출력
+                DumpChunked("슬롯 진행 로그(합본)", _slotBuffer.ToString());
+            }
+
+            // 3) 반복 요약
+            if (_tally.Count > 0)
+            {
+                var sb = new StringBuilder(256);
+                sb.AppendLine("--- 반복 요약 ---");
+                foreach (var kv in _tally) sb.AppendLine($"{kv.Key} : {kv.Value}회");
+                DumpChunked("반복 요약", sb.ToString());
+            }
+
+            // 정리
+            _spawnTracker.Clear();
+            _slotBuffer.Clear();
+            _slotBufMap.Clear();
+            _tally.Clear();
+            _tPrev = null; _tPrevCount = 0;
+        }
+
+        // ★ 청크 안전 로그 출력 유틸
+        private void DumpChunked(string title, string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            if (text.Length <= T_CHUNK) { UnityEngine.Debug.Log($"[{title}] {text}"); return; }
+            int idx = 0, chunk = 1;
+            while (idx < text.Length)
+            {
+                int len = Mathf.Min(T_CHUNK, text.Length - idx);
+                UnityEngine.Debug.Log($"[{title} #{chunk}] " + text.Substring(idx, len));
+                idx += len; chunk++;
+            }
+        }
+
         private void FlushPrevLine()
         {
             if (_tPrevCount <= 0) return;
@@ -219,6 +309,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private int  TSnapshot() => 0;
         private void TSlotEnd(int slotIdx, int snapshotIndex, string endLine) {}
         private void TDump(bool chunked = true, string title = null) {}
+        private void TSlotEndEx(int slotIdx, int snapshotIndex, string endLine) {}
+        private void TDumpSplit(string title = null) {}        
 #endif
     }
 }

@@ -67,32 +67,40 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         IncreaseDupes(sLC.Id, excludedByDupes);
                         ApplyFitOnBoard(fLC, board);
                         RemoveFullLines(board);
-                        TSlotEnd(i, snap, $"Pick : {sLC?.Id} [LineCorrection]");
+                        TSlotEndEx(i, snap, $"Pick : {sLC?.Id} [LineCorrection]");
                         continue;
                     }
                     TDo("라인 보정 실패 → 일반 경로로 이동");
                 }
 
                 // === 그룹화/가중치/선택 ===
-                TDo("타일 수 그룹화/필터 진행");
+                //TDo("타일 수 그룹화/필터 진행");
                 var groups = new Dictionary<int, List<(ShapeData s, FitInfo fit)>>();
+                TDo("b. 해당 칸에 들어갈 수 있는 블록들 탐색 / 기획서");
                 foreach (var s in shapeData)
                 {
                     if (s == null) continue;
                     if (excludedByPenalty.Contains(s.Id)) continue;
-                    if (excludedByDupes.Contains(s.Id))   continue;
+                    if (excludedByDupes.Contains(s.Id)) continue;
 
                     if (TryFindFitFromRandomStart(board, s, out var fit))
                     {
-                        int tiles = Mathf.Max(1, s.activeBlockCount);
-                        if (!groups.TryGetValue(tiles, out var list))
+                        int chosenTiles = Mathf.Max(1, s.activeBlockCount);
+                        if (!groups.TryGetValue(chosenTiles, out var list))
                         {
                             list = new List<(ShapeData, FitInfo)>();
-                            groups[tiles] = list;
+                            groups[chosenTiles] = list;
                         }
                         list.Add((s, fit));
                     }
                 }
+                
+                int totalPlaceables = 0;
+                foreach (var kv in groups) totalPlaceables += kv.Value.Count;
+                TDo($"ㄴ 배치 가능한 블록 {totalPlaceables} 개 발견");            // b 요약
+                TDo("b.i. 배치 가능한 블록들을 동일 타일 수 그룹으로 분리");       // b.i 제목
+                foreach (var kv in groups)
+                    TDo($"ㄴ 타일 수 {kv.Key} 개 블록 {kv.Value.Count} 개 발견");   // b.i 나열
 
                 if (groups.Count == 0)
                 {
@@ -114,14 +122,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 var groupWeights = new List<(int tile, float w)>(groups.Count);
                 foreach (var kv in groups)
                 {
-                    int tiles = Mathf.Max(1, kv.Key);
+                    int tileCount = Mathf.Max(1, kv.Key);
                     int cnt   = Mathf.Max(1, kv.Value.Count);
-                    float w   = Mathf.Pow(1f / tiles, Mathf.Max(0.0001f, v170_exponentA)) * Mathf.Pow(cnt, v170_exponentBeta);
-                    groupWeights.Add((tiles, w));
+                    float w   = Mathf.Pow(1f / tileCount, Mathf.Max(0.0001f, v170_exponentA)) * Mathf.Pow(cnt, v170_exponentBeta);
+                    groupWeights.Add((tileCount, w));
                 }
 
                 int chosenTile = WeightedPickKey(groupWeights, out _);
-                TDo($"그룹 선택: tiles={chosenTile} (groups={groups.Count})");
+                //TDo($"그룹 선택: tiles={chosenTile} (groups={groups.Count})");
+
+                TDo("b.ii. 타일 수 가중치 계산을 통해 블록 그룹 선택 / 기획서");
+                TDo($"ㄴ {groups.Count} 개 그룹중 {chosenTile} 그룹 선정");
+
 
                 TDo($"그룹 내 가중치 계산 (c={v170_exponentC})");
                 var inGroup   = groups[chosenTile];
@@ -136,7 +148,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                 int chosenIdx = WeightedPickIndex(inWeights, out _);
                 var chosen    = inGroup[chosenIdx];
-                TDo($"그룹 내 선택: idx={chosenIdx}");
+                //TDo($"그룹 내 선택: idx={chosenIdx}");
+
+                TDo("b.iii. 그룹 내 난이도 가중치 계산을 통해 블록 선정 / 기획서");
+                TDo($"ㄴ {inGroup.Count} 그룹 내부에서 {chosen.s.Id} 선정");
+
+                int tiles = Mathf.Max(1, chosen.s.activeBlockCount);
+                float gateProb = Mathf.Pow(1f / tiles, Mathf.Max(0.0001f, alpha));
+                float gateRoll = Random.value;
+                bool gatePassed = gateRoll <= gateProb;
+                TDo($"b.iv. 블록의 타일수가 {tiles} 개이기 때문에 추가 확률 진행 / 기획서");
+                TDo(gatePassed ? "ㄴ b.iv.1. 확률 통과 성공, c로 이동" : "ㄴ b.iv.1. 확률 통과 실패, b.iv.2 이동");
 
                 if (perShapeCount.TryGetValue(chosen.s.Id, out int dupCnt) && dupCnt >= maxDuplicatesPerWave)
                 {
@@ -159,7 +181,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 ApplyFitOnBoard(chosen.fit, board);
                 RemoveFullLines(board);
 
-                TSlotEnd(i, snap, $"Pick : {chosen.s?.Id}");
+                TDo("c. 소환된 블록의 위치 정보 저장, 탐색 위치 제외");
+                TDo($"SUM : {chosen.s.Id} 선택 완료");
+
+                TSlotEndEx(i, snap, $"Pick : {chosen.s?.Id}"); // 슬롯별 버퍼에도 기록
             }
 
             string key = MakeWaveHistory(wave);
@@ -167,7 +192,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             RecomputeFitsForWave(wave);
 
             T("GenerateWaveV170 : 종료");
-            TDump();
+            TDumpSplit(); // 도입부/슬롯별/반복요약 '개별 로그' 출력
             return wave;
         }
 

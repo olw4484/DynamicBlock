@@ -58,6 +58,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         
         private bool[,] SnapshotBoard()
         {
+            TDo2("보드 스냅샷 생성");
             var gm = GridManager.Instance;
             var rows = gm.rows;
             var cols = gm.cols;
@@ -73,6 +74,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private List<LineRun> FindLineCandidates(bool[,] board, LineFirstCorrectionConfig cfg)
         {
+            TDo2("라인 후보 스캔: 연속 런 탐색");
             var gm = GridManager.Instance;
             int row = gm.rows, col = gm.cols;
             var runs = new List<LineRun>(16);
@@ -82,6 +84,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (!cfg.scanCols) return runs;
             for (int c = 0; c < col; c++) ScanLine(LineAxis.Col, c);
 
+            TDo2($"후보 라인 수={runs.Count}");
             return runs;
 
             void ScanLine(LineAxis axis, int index)
@@ -117,7 +120,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                                     othersAllOne = false; break;
                                 }
                                 if (othersAllOne)
+                                {
                                     runs.Add(new LineRun(axis, index, zeroStart, zeroLen));
+                                    TSampled("LineCorr.run", 20, $"run: axis={axis}, index={index}, start={zeroStart}, len={zeroLen}");
+                                }
                             }
                             // 다음 런 탐색 초기화
                             zeroStart = -1; zeroLen = 0;
@@ -129,18 +135,22 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private IEnumerable<ShapeData> EnumerateShapesForRun(LineRun run, IReadOnlyList<ShapeData> allShapes)
         {
+            TDo2($"런 길이={run.Length} → 후보 도형 열거");
             int runLength = run.Length;
 
             foreach (var allShape in allShapes)
             {
                 if (allShape == null) continue;
                 if (allShape.activeBlockCount < runLength) continue;
+                TSampled("LineCorr.shapeEnum", 50, $"열거: shape={allShape.Id}, tiles={allShape.activeBlockCount}");
                 yield return allShape;
             }
         }
 
         private bool TryFitInRun(LineRun run, ShapeData shape, bool[,] virtualBoard, out FitInfo fit)
         {
+            //TDo($"런 적합성 검사 시작: axis={run.Axis}, index={run.Index}, start={run.Start}, len={run.Length}, shape={shape?.Id}");
+            TDo("b.iv.3. 해당 열과 인접한 0을 탐색 / 기획서");
             var gm = GridManager.Instance;
             var squares = gm.gridSquares;
 
@@ -160,6 +170,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {
                 if (okFound) return;
 
+                TSampled("LineCorr.offset", 64, $"offset=({oy},{ox})");
+
                 tmp.Clear();
                 bool ok = true;
 
@@ -172,8 +184,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     {
                         if (!shape.rows[sy + minY].columns[sx + minX]) continue;
 
-                        int br = oy + sy; 
-                        int bc = ox + sx; 
+                        int br = oy + sy;
+                        int bc = ox + sx;
 
                         if (br < 0 || bc < 0 || br >= gm.rows || bc >= gm.cols) { ok = false; break; }
 
@@ -223,9 +235,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     CoveredSquares = new List<GridSquare>(tmp)
                 };
                 okFound = true;
+                TDo($"런 적합성 성공: origin=({oy},{ox}), cover={tmp.Count}");
             });
 
             fit = found;
+            if (!okFound) TDo2("런 적합성 실패");
             return okFound;
         }
 
@@ -242,8 +256,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (runs == null || runs.Count == 0) return false;
 
-            
+            TDo("라인 보정 후보 페어링 시작");
+            TDo2($"runs={runs.Count}, budget={cfg.pairBudget}");
+
             var pairs = new List<CorrectionCandidate>(32);
+
+            TDo("b.iv.4. 열 제거가 가능한 배치 가능한 블록의 목록과 배치 시 제거 되는 1의 개수를 계산 / 기획서");
 
             foreach (var run in runs)
             {
@@ -251,10 +269,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 {
                     if (shape == null) continue;
                     if (excludedByPenalty != null && excludedByPenalty.Contains(shape.Id)) continue;
-                    if (excludedByDupes   != null && excludedByDupes.Contains(shape.Id)) continue;
+                    if (excludedByDupes != null && excludedByDupes.Contains(shape.Id)) continue;
 
                     if (!TryFitInRun(run, shape, virtualBoard, out var fit)) continue;
+                    int removableOnes = run.Length; // (간단 대치치; 더 정확한 산식 있으면 교체)
+                    TDo($"ㄴ {shape.Id} 발견, 제거 가능한 활성화된 타일 수 {removableOnes} 개");
                     pairs.Add(new CorrectionCandidate(run, shape, fit));
+                    TSampled("LineCorr.pair", 20, $"pair: run=({run.Axis},{run.Index},{run.Start},{run.Length}) shape={shape.Id} fit=({fit.Offset.y},{fit.Offset.x})");
                     if (pairs.Count >= cfg.pairBudget) break;
                 }
                 if (pairs.Count >= cfg.pairBudget) break;
@@ -264,6 +285,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             int pick = Random.Range(0, pairs.Count);
             chosen = pairs[pick];
+            //TDo($"라인 보정 랜덤 선택: pick={pick}/{pairs.Count}, shape={chosen.Shape.Id}, origin=({chosen.Fit.Offset.y},{chosen.Fit.Offset.x})");
+            TDo($"b.iv.5. 제거 가능 블록 계산…"); // 제목 1회
+            TDo($"ㄴ 전환되는 수가 가장 높은 {chosen.Shape.Id} 선택");
             return true;
         }
 
@@ -274,13 +298,22 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             out ShapeData correctedShape,
             out FitInfo correctedFit)
         {
+            TDo("b.iv.2. x열 or y열을 기준으로 한 열에 5개 이하의 연속된 0이 있고 나머지는 모두 1인 열을 탐색 / 기획서");
+
             correctedShape = null;
             correctedFit = default;
 
             if (!correctionCfg.useLineFirstCorrection) return false;
 
             var runs = FindLineCandidates(virtualBoard, correctionCfg);
-            if (runs == null || runs.Count == 0) return false;
+            if (runs == null || runs.Count == 0)
+            {
+                TDo("라인 보정 불가: 후보 라인 없음");
+                return false;
+            }
+
+            int candLines = runs?.Count ?? 0;
+            TDo($"ㄴ {candLines} 개 라인 탐색");
 
             bool ok = TrySelectLineCorrection(
                 runs,
@@ -291,10 +324,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 correctionCfg,
                 out var chosen);
 
-            if (!ok) return false;
+            if (!ok)
+            {
+                TDo("b.iv.5. 제거 가능 블록 계산… 실패(페어 없음)");
+                return false;
+            }
 
             correctedShape = chosen.Shape;
             correctedFit = chosen.Fit;
+            TDo($"라인 보정 채택 완료: shape={correctedShape.Id}, origin=({correctedFit.Offset.y},{correctedFit.Offset.x})");
+            TDo($"b.iv.6. 계산된 소환 블록 위치 정보 저장 후 해당 열을 0으로 취급 / 기획서");
+            TDo($"   · row={correctedFit.Offset.y}, col={correctedFit.Offset.x} 저장");
             return true;
         }
 
@@ -312,18 +352,27 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 if (t == null || !CanPlaceShapeData(t)) continue;
                 anyPlaceable = true; break;
             }
-            if (anyPlaceable) return false;
+            if (anyPlaceable)
+            {
+                TDo2("보장 스킵: 웨이브 내 이미 배치 가능한 블록 존재");
+                return false;
+            }
 
             var board = SnapshotBoard();
 
             var excludedPenalty = new HashSet<string>();
             var excludedDupes   = new HashSet<string>();
-            if (!TryApplyLineCorrectionOnce(board, excludedPenalty, excludedDupes, out var shape, out var fit)) 
+            if (!TryApplyLineCorrectionOnce(board, excludedPenalty, excludedDupes, out var shape, out var fit))
+            {
+                TDo("보장 실패: 라인 보정으로 대체 불가");
                 return false;
+            }
+                
 
             replacedIndex = 0;
             newShape = shape;
             newFit = fit;
+            TDo($"보장 성공: index={replacedIndex} 교체 → shape={newShape.Id}, origin=({newFit.Offset.y},{newFit.Offset.x})");
             return true;
         }
     }

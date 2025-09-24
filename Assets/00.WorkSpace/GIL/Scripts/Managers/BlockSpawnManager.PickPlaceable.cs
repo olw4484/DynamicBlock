@@ -13,7 +13,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private bool TryFindFitFromRandomStart(bool[,] board, ShapeData shape, out FitInfo fit)
         {
             TCount("TryFindFitFromRandomStart");
-            TDo($"[PickPlaceable] 대상={shape?.Id}, tiles={shape?.activeBlockCount}");
             int _probe = 0;
             int _hitAt = -1;
 
