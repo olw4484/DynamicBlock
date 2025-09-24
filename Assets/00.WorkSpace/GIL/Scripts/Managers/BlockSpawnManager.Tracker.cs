@@ -27,9 +27,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private readonly Dictionary<string,int> _tally = new();
         private const int T_CHUNK = 8000; // 콘솔 잘림 방지용 분할 크기
 
+        private bool _slotStartLogged;   // 슬롯 내 '탐색 시작점'을 이미 찍었는지
+        private int  _currentSlot = -1;  // 현재 슬롯 인덱스(슬롯 외부는 -1)
+
         // === Doc Numbering (기획서 넘버링 매핑표) ===
         // key: 논리 키, value: 넘버링 접두어(예: "a", "b-i", "b-iv-2")
-        private static readonly Dictionary<string,string> _docNum = new()
+        private static readonly Dictionary<string, string> _docNum = new()
         {
             {"Start",                              "a"},
             {"ComputeBByVacancy",                 "b-i"},
@@ -75,6 +78,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 _spawnTracker.AppendLine(header);
         }
 
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        private void TSlotBegin(int slotIdx)
+        {
+            _currentSlot = slotIdx;
+            _slotStartLogged = false;
+        }
+
         // 슬롯별 버퍼에도 같은 내용을 넣는 확장 버전
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void TSlotEndEx(int slotIdx, int snapshotIndex, string endLine)
@@ -82,7 +92,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             FlushPrevLine();
             if (_spawnTracker == null) return;
             int start = Mathf.Clamp(snapshotIndex, 0, _spawnTracker.Length);
-            int len   = _spawnTracker.Length - start;
+            int len = _spawnTracker.Length - start;
             string inner = len > 0 ? _spawnTracker.ToString(start, len).TrimEnd() : string.Empty;
             _spawnTracker.Length = start; // 잘라내기
 
@@ -101,6 +111,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             sb.AppendLine($"Slot{slotIdx} : 선택 시작");
             if (!string.IsNullOrEmpty(inner)) sb.AppendLine(inner);
             if (!string.IsNullOrEmpty(endLine)) sb.AppendLine(endLine);
+            _currentSlot = -1; // 슬롯 종료시 리셋
         }
         
 
@@ -123,12 +134,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 T(line);
         }
 
-        /// <summary> 계획(기획서 상위 항목) 라인: 예) a) 블럭을 고르기 </summary>
-        [System.Diagnostics.Conditional("UNITY_EDITOR")]
-        private void TPlan(string key, string title)
-        {
-            Tn(key, title);
-        }
+    
 
         /// <summary> 하위 단계(코드 실제 발동): "ㄴ ..." </summary>
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
@@ -156,9 +162,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             TCount(key);
             if (_tally[key] % Mathf.Max(1, period) == 0) T(verboseLine);
         }
-
-        // === 슬롯 로깅 유틸 ===
-        [System.Diagnostics.Conditional("UNITY_EDITOR")] private void TSlotBegin(int slotIdx) { /* 헤더는 TSlotEnd에서 출력 */ }
 
         private int TSnapshot()
         {

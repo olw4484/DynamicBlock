@@ -149,7 +149,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private bool TryFitInRun(LineRun run, ShapeData shape, bool[,] virtualBoard, out FitInfo fit)
         {
-            //TDo($"런 적합성 검사 시작: axis={run.Axis}, index={run.Index}, start={run.Start}, len={run.Length}, shape={shape?.Id}");
             TDo("b.iv.3. 해당 열과 인접한 0을 탐색 / 기획서");
             var gm = GridManager.Instance;
             var squares = gm.gridSquares;
@@ -273,7 +272,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                     if (!TryFitInRun(run, shape, virtualBoard, out var fit)) continue;
                     int removableOnes = run.Length; // (간단 대치치; 더 정확한 산식 있으면 교체)
-                    TDo($"ㄴ {shape.Id} 발견, 제거 가능한 활성화된 타일 수 {removableOnes} 개");
+                    TDo($"{shape.Id} 발견, 제거 가능한 활성화된 타일 수 {removableOnes} 개");
                     pairs.Add(new CorrectionCandidate(run, shape, fit));
                     TSampled("LineCorr.pair", 20, $"pair: run=({run.Axis},{run.Index},{run.Start},{run.Length}) shape={shape.Id} fit=({fit.Offset.y},{fit.Offset.x})");
                     if (pairs.Count >= cfg.pairBudget) break;
@@ -287,7 +286,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             chosen = pairs[pick];
             //TDo($"라인 보정 랜덤 선택: pick={pick}/{pairs.Count}, shape={chosen.Shape.Id}, origin=({chosen.Fit.Offset.y},{chosen.Fit.Offset.x})");
             TDo($"b.iv.5. 제거 가능 블록 계산…"); // 제목 1회
-            TDo($"ㄴ 전환되는 수가 가장 높은 {chosen.Shape.Id} 선택");
+            TDo($"전환되는 수가 가장 높은 {chosen.Shape.Id} 선택");
             return true;
         }
 
@@ -313,7 +312,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
 
             int candLines = runs?.Count ?? 0;
-            TDo($"ㄴ {candLines} 개 라인 탐색");
+            TDo($"{candLines} 개 라인 탐색");
 
             bool ok = TrySelectLineCorrection(
                 runs,

@@ -13,8 +13,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private bool TryFindFitFromRandomStart(bool[,] board, ShapeData shape, out FitInfo fit)
         {
             TCount("TryFindFitFromRandomStart");
-            int _probe = 0;
-            int _hitAt = -1;
 
             var gm = GridManager.Instance;
             var (minX, maxX, minY, maxY) = GetShapeBounds(shape);
@@ -28,13 +26,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {
                 if (found) return;
 
-                _probe++;
-                TSampled("PickPlaceable.scan", 50, $"좌표 샘플=({oy},{ox})");
 
                 // 배치 판정
                 if (!CanPlaceAt(board, shape, minX, minY, shapeRows, shapeCols, oy, ox))
                 {
-                    TSampled("PickPlaceable.fail", 100, $"실패: origin=({oy},{ox})");
                     // 실패 이유 추적, 현재는 미 실행
                     //TryExplainPlacementFailure(board, shape, oy, ox);
                     return;
@@ -55,14 +50,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     Offset = new Vector2Int(ox, oy),
                     CoveredSquares = covered
                 };
-                _hitAt = _probe;
-                TDo($"성공: origin=({oy},{ox}), 커버셀={covered.Count}, 첫성공시도={_hitAt}");
                 found = true;
             });
 
             fit = resultFit;
-
-            if (!found) TDo($"실패: 총 시도={_probe}, 첫 성공 인덱스={_hitAt}");
             return found;
         }
 

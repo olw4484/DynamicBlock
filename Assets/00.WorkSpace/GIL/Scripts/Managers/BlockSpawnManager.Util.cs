@@ -26,7 +26,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 for (int xOff = 0; xOff <= gm.cols - shapeCols; xOff++)
                 {
                     checkedCells++;
-                    TSampled("CanPlaceShapeAt.sample", 256, $"검사셀샘플=({yOff},{xOff})");
                     if (CanPlace(shape, minX, minY, shapeRows, shapeCols, states, yOff, xOff))
                     {
                         firstOkR = yOff; firstOkC = xOff;
@@ -86,9 +85,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int startOy = Random.Range(0, oyMax + 1);
             int startOx = Random.Range(0, oxMax + 1);
 
-            TDo("a. 보드 탐색 및 탐색 시작점 랜덤 선정 / 기획서");
-            TDo($"ㄴ 탐색 시작점 : {startOy} , {startOx} 선정");
-            
+            if (_currentSlot >= 0 && !_slotStartLogged)
+            {
+                TDo($"탐색 시작점 : {startOy} , {startOx} 선정");
+                _slotStartLogged = true;
+            }
+
             for (int dy = 0; dy <= oyMax; dy++)
             {
                 int oy = startOy + dy;
@@ -98,9 +100,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 {
                     int ox = startOx + dx;
                     if (ox > oxMax) ox -= oxMax + 1;
-
-                    // [TRACK]
-                    TSampled("PickPlaceable.iter", 128, $"iter 오프셋=({oy},{ox})");
                     body(oy, ox);
                 }
             }
