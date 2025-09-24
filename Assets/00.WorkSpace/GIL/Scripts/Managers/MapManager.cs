@@ -31,6 +31,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public MapData CurrentMapData => _currentMapData; // 읽기 전용 접근자
         [SerializeField] private bool[] _fruitEnabledRuntime = new bool[5];
         [SerializeField] private int[] _fruitGoalsRuntime = new int[5];
+        [SerializeField] private int[] _fruitGoalsInitial = new int[5]; // 0..4, 스테이지 입장 시 스냅샷
         [SerializeField] private List<int> _activeFruitCodes = new();           // 201..205
         [SerializeField] private Dictionary<int, int> _fruitGoalsByCode = new(); // key:201..205
         [SerializeField] private bool _fruitAllClearedAnnounced = false;
@@ -1029,6 +1030,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // TODO : UI/사운드/이벤트 발행이 필요하면 여기서 호출
         }
 
+        public int GetInitialFruitGoalByCode(int code)
+        {
+            int idx = code - 201;
+            if ((uint)idx >= (uint)_fruitGoalsInitial.Length) return 0;
+            return _fruitGoalsInitial[idx];
+        }
+
         private void SyncFruitRuntimeFromMap(MapData map)
         {
             ClearFruitRuntime();
@@ -1039,11 +1047,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Array.Copy(map.fruitEnabled, _fruitEnabledRuntime, FruitCount);
             if (map.fruitGoals != null && map.fruitGoals.Length >= FruitCount)
                 Array.Copy(map.fruitGoals, _fruitGoalsRuntime, FruitCount);
+            // 초기 목표도 저장
+            if (map?.fruitGoals != null && map.fruitGoals.Length >= FruitCount)
+                Array.Copy(map.fruitGoals, _fruitGoalsInitial, FruitCount);
+
 
             // 2) enabled 기준으로 활성 코드/목표 구성 (201..205)
             for (int i = 0; i < FruitCount; i++)
             {
                 if (!_fruitEnabledRuntime[i]) continue;
+                if (_fruitGoalsRuntime[i] <= 0) continue;
                 int code = FruitBaseCode + i;
                 _activeFruitCodes.Add(code);
                 _fruitGoalsByCode[code] = _fruitGoalsRuntime[i];

@@ -30,6 +30,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private bool _slotStartLogged;   // 슬롯 내 '탐색 시작점'을 이미 찍었는지
         private int  _currentSlot = -1;  // 현재 슬롯 인덱스(슬롯 외부는 -1)
 
+        void OnEnable() { EnsureTrackerReady(); }
+
         // === Doc Numbering (기획서 넘버링 매핑표) ===
         // key: 논리 키, value: 넘버링 접두어(예: "a", "b-i", "b-iv-2")
         private static readonly Dictionary<string, string> _docNum = new()
@@ -57,8 +59,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {"End",                                "g"}
         };
 
+        private void EnsureTrackerReady()
+        {
+            _spawnTracker ??= new StringBuilder(4096);
+            _slotBuffer   ??= new StringBuilder(2048);
+            _slotBufMap   ??= new Dictionary<int, StringBuilder>(4);
+        }
+
         /// <summary> 외부에서 런타임으로 부분 매핑을 덮어쓸 수 있도록 제공(선택사항). </summary>
-        public void SetDocNumbering(Dictionary<string,string> overrides)
+        public void SetDocNumbering(Dictionary<string, string> overrides)
         {
             if (overrides == null) return;
             foreach (var kv in overrides) _docNum[kv.Key] = kv.Value;
@@ -81,6 +90,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void TSlotBegin(int slotIdx)
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null) return;
             _currentSlot = slotIdx;
             _slotStartLogged = false;
         }
@@ -89,8 +100,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void TSlotEndEx(int slotIdx, int snapshotIndex, string endLine)
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null || _slotBuffer == null) return;
             FlushPrevLine();
-            if (_spawnTracker == null) return;
             int start = Mathf.Clamp(snapshotIndex, 0, _spawnTracker.Length);
             int len = _spawnTracker.Length - start;
             string inner = len > 0 ? _spawnTracker.ToString(start, len).TrimEnd() : string.Empty;
@@ -118,6 +130,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void T(string msg)
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null) return;           // safety
             if (msg == _tPrev) { _tPrevCount++; return; } // 연속 동일 메시지 압축
             FlushPrevLine();
             _tPrev = msg; _tPrevCount = 1;
@@ -127,6 +141,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void Tn(string key, string line)
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null) return;
             if (string.IsNullOrEmpty(line)) return;
             if (_docNum != null && _docNum.TryGetValue(key, out var num) && !string.IsNullOrEmpty(num))
                 T($"{num}) {line}");
@@ -140,6 +156,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void TDo(string line)
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null) return;
             if (!string.IsNullOrEmpty(line)) T($"ㄴ {line}");
         }
 
@@ -147,6 +165,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void TDo2(string line)
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null) return;
             if (!string.IsNullOrEmpty(line)) T($"   · {line}");
         }
 
@@ -166,6 +186,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private int TSnapshot()
         {
 #if UNITY_EDITOR
+            EnsureTrackerReady();
+            if (_spawnTracker == null) return 0;
             FlushPrevLine();
             return _spawnTracker?.Length ?? 0;
 #else
@@ -174,24 +196,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
 
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
-        private void TSlotEnd(int slotIdx, int snapshotIndex, string endLine)
-        {
-            FlushPrevLine();
-            if (_spawnTracker == null) return;
-            int start = Mathf.Clamp(snapshotIndex, 0, _spawnTracker.Length);
-            int len   = _spawnTracker.Length - start;
-            string inner = len > 0 ? _spawnTracker.ToString(start, len).TrimEnd() : string.Empty;
-            _spawnTracker.Length = start; // 잘라내기
-
-            _slotBuffer.AppendLine($"Slot{slotIdx} : 선택 시작");
-            if (!string.IsNullOrEmpty(inner)) _slotBuffer.AppendLine(inner);
-            if (!string.IsNullOrEmpty(endLine)) _slotBuffer.AppendLine(endLine);
-            _slotBuffer.AppendLine();
-        }
-
-        [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void TDump(bool chunked = true, string title = null)
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null || _slotBuffer == null) return;
+
             if (!string.IsNullOrEmpty(title)) _spawnTracker.AppendLine(title);
             FlushPrevLine();
 
@@ -238,6 +247,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void TDumpSplit(string title = null)
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null) return;
+
             if (!string.IsNullOrEmpty(title)) _spawnTracker.AppendLine(title);
             FlushPrevLine();
 
@@ -277,7 +289,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _tPrev = null; _tPrevCount = 0;
         }
 
-        // ★ 청크 안전 로그 출력 유틸
+        // 청크 안전 로그 출력 유틸
         private void DumpChunked(string title, string text)
         {
             if (string.IsNullOrEmpty(text)) return;
@@ -293,6 +305,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private void FlushPrevLine()
         {
+            EnsureTrackerReady();
+            if (_spawnTracker == null) { _tPrev = null; _tPrevCount = 0; return; }
             if (_tPrevCount <= 0) return;
             if (_tPrevCount == 1) _spawnTracker.AppendLine(_tPrev);
             else _spawnTracker.AppendLine($"{_tPrev} x{_tPrevCount}회");

@@ -7,16 +7,6 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
     {
         public Image fruitImage;
 
-        public void DeactivateSquare()
-        {
-            gameObject.SetActive(false);
-        }
-
-        public void ActivateSquare()
-        {
-            gameObject.SetActive(true);
-        }
-
         public void SetFruitImage(Sprite sprite)
         {
             if (fruitImage == null) return;
