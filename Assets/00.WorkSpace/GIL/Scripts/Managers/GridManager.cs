@@ -1,5 +1,6 @@
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Messages;
+using _00.WorkSpace.GIL.Scripts.Shapes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -217,18 +218,36 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             ClearHoverPreview();
             // 블록 이미지/점유 처리
-            Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>().sprite;
+            Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>()?.sprite;
 
             if (!TryGetPlacement(shapeBlocks, out var targetSquares))
                 return false;
 
-            foreach (var square in targetSquares)
-                SetCellOccupied(square.RowIndex, square.ColIndex, true, targetImage);
+            int j = 0;
+            for (int i = 0; i < shapeBlocks.Count; i++)
+            {
+                var t = shapeBlocks[i];
+                if (!t.gameObject.activeSelf) continue;   // 비활성 칸 스킵
 
-            // 이번에 배치한 블록 칸 수(블록 자체 점수로 사용)
-            int blockUnits = targetSquares.Count;
+                var sq = targetSquares[j++];              // 타깃 셀 매칭
 
-            CheckForCompletedLines(blockUnits);
+                // 손패 셀의 과일 상태 읽기
+                var ss = t.GetComponent<ShapeSquare>();
+                bool hasFruit = ss != null && ss.HasFruit && ss.FruitSprite != null;
+
+                if (hasFruit)
+                {
+                    // 과일 칸: 과일 스프라이트 + isFruit = true
+                    SetCellOccupied(sq.RowIndex, sq.ColIndex, true, ss.FruitSprite, true);
+                }
+                else
+                {
+                    // 일반 칸: 베이스만
+                    SetCellOccupied(sq.RowIndex, sq.ColIndex, true, targetImage, false);
+                }
+            }
+
+            CheckForCompletedLines(targetSquares.Count);
             return true;
         }
 
