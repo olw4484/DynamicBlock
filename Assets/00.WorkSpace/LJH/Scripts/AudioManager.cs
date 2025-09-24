@@ -122,7 +122,7 @@ public class AudioManager : MonoBehaviour
     public void PlayBGM(AudioClip clip)
     {
         if (clip == null) { Debug.LogWarning("[BGM] null clip"); return; }
-        Debug.Log($"[BGM] play {clip.name} vol={BGMVolume}");
+        if (!IsBgmOn) return;
         if (bgmSource.clip == clip && bgmSource.isPlaying) return;
         bgmSource.clip = clip;
         bgmSource.volume = BGMVolume;
@@ -193,10 +193,13 @@ public class AudioManager : MonoBehaviour
         {
             float last = PlayerPrefs.GetFloat(KeyBgmLastOn, 1f);
             SetBGMVolume(last);
+            // 즉시 재생하고 싶으면:
+            // if (!bgmSource.isPlaying && BGM_Main) PlayBGM(BGM_Main);
         }
         else
         {
             SetBGMVolume(0f);
+            StopBGM();
         }
     }
     public void SetSeOn(bool on)

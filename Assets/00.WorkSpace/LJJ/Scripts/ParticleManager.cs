@@ -17,6 +17,7 @@ public class ParticleManager : MonoBehaviour
         public readonly Vector2 screen;            // ScreenPoint 모드
         public readonly Vector3 world;             // WorldPos 모드
         public readonly Vector2 pixelOffset;       // AnchorRect용 추가 오프셋
+        public readonly float rotationX;          // 최종 로컬 X 회전 (comboParticle 용)
         public readonly float rotationY;           // 최종 로컬 Y 회전 (comboParticle 용)
         public readonly float rotationZ;           // 최종 로컬 Z 회전
         public readonly bool unscaled;             // TimeScale 무시 여부
@@ -25,12 +26,14 @@ public class ParticleManager : MonoBehaviour
         public SpawnTarget(
             SpawnMode m, int idx = -1, RectTransform a = null,
             Vector2? scr = null, Vector3? w = null, Vector2? px = null,
-            float rotY = 0f, float rotZ = 0f, bool unscaledTime = false, float? dur = null)
+            float rotX = 0f, float rotY = 0f, float rotZ = 0f, 
+            bool unscaledTime = false, float? dur = null)
         {
             mode = m; index = idx; anchor = a;
             screen = scr ?? default;
             world = w ?? default;
             pixelOffset = px ?? default;
+            rotationX = rotX;
             rotationY = rotY;
             rotationZ = rotZ; unscaled = unscaledTime; durationOverride = dur;
         }
@@ -413,10 +416,12 @@ public class ParticleManager : MonoBehaviour
         var t = ps.transform;
         t.SetParent(fxRoot, false);
         t.localPosition = ToFxLocal(target);
-        t.localRotation = Quaternion.Euler(0f, target.rotationY, target.rotationZ);
+        t.localRotation = Quaternion.Euler(target.rotationX, target.rotationY, target.rotationZ);
         t.localScale = Vector3.one;
 
         if (fxLayer >= 0) LayerUtil.SetLayerRecursive(ps.gameObject, fxLayer);
+
+        SetUseUnscaledRecursive(ps, target.unscaled);
 
         ps.gameObject.SetActive(true);
         ps.Clear();
@@ -508,7 +513,7 @@ public class ParticleManager : MonoBehaviour
         var ps = destroyPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridRow, idx: rowIndex, rotZ: 90f, unscaledTime: false);
+            SpawnMode.GridRow, idx: rowIndex, rotZ: 90f, unscaledTime: true);
 
         var param = new FxParams(color, lineFx: true, applyScalingMode: true);
 
@@ -521,7 +526,7 @@ public class ParticleManager : MonoBehaviour
         var ps = destroyPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridCol, idx: colIndex, rotZ: 0f, unscaledTime: false);
+            SpawnMode.GridCol, idx: colIndex, rotZ: 0f, unscaledTime: true);
 
         var param = new FxParams(color, lineFx: true, applyScalingMode: true);
 
@@ -541,7 +546,8 @@ public class ParticleManager : MonoBehaviour
         var ps = comboPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridRow, idx: rowIndex, rotZ: 0f, unscaledTime: false);
+
+            SpawnMode.GridRow, idx: rowIndex, rotX: -90f, rotZ: 0f, unscaledTime: true);
 
         var param = new FxParams(Color.white, lineFx: true, applyScalingMode: true);
 
@@ -561,7 +567,7 @@ public class ParticleManager : MonoBehaviour
         var ps = comboPool.Dequeue();
 
         var target = new SpawnTarget(
-            SpawnMode.GridCol, idx: colIndex, rotY: 90f, rotZ: 90f, unscaledTime: false);
+            SpawnMode.GridCol, idx: colIndex, rotY: 90f, rotZ: 90f, unscaledTime: true);
 
         var param = new FxParams(Color.white, lineFx: true, applyScalingMode: true);
 
@@ -889,5 +895,15 @@ public class ParticleManager : MonoBehaviour
         // 수명 끝나면 완전히 정지/비활성 (자식까지 고려)
         var life = LifetimeMax(ps.main);
         StartCoroutine(WaitAndStop(ps, life, unscaled));
+    }
+    static void SetUseUnscaledRecursive(ParticleSystem root, bool unscaled)
+    {
+        if (!root) return;
+        var all = root.GetComponentsInChildren<ParticleSystem>(true);
+        foreach (var ps in all)
+        {
+            var m = ps.main;
+            m.useUnscaledTime = unscaled;
+        }
     }
 }
