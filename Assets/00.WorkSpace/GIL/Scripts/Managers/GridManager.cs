@@ -280,21 +280,44 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (_lineCount > 0)
             {
-                // 1) 예고 이벤트 : FX가 둘레/프리롤에 사용
+                // 1) 예고 이벤트 (기존)
                 var rowsArr = completedRows.ToArray();
                 var colsArr = completedCols.ToArray();
                 _bus?.PublishImmediate(new _00.WorkSpace.GIL.Scripts.Messages.LinesWillClear(rowsArr, colsArr, destroySprite));
 
-                // 2) 실제 셀 비우기
-                foreach (int r in completedRows)
+                // 1.5) 과일 차감: 먼저 지워질 칸을 중복 없이 수집하고, 코드 읽어 MapManager에 보고
+                var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+                if (mm != null)
                 {
-                    for (int c = 0; c < cols; c++)
+                    var cellsToClear = new HashSet<(int r, int c)>();
+                    foreach (int r in completedRows) for (int c = 0; c < cols; c++) cellsToClear.Add((r, c));
+                    foreach (int c in completedCols) for (int r = 0; r < rows; r++) cellsToClear.Add((r, c));
+
+                    foreach (var (r, c) in cellsToClear)
+                    {
+                        var cell = gridSquares[r, c];
+                        if (cell == null) continue;
+
+                        int code = cell.BlockSpriteIndex; // 과일이면 201~205
+                        if (_00.WorkSpace.GIL.Scripts.Managers.MapManager.IsFruitCode(code) && mm.IsFruitCodeActive(code))
+                        {
+                            mm.OnFruitCleared(code, 1);
+                        }
+                    }
+
+                    // 2) 실제 셀 비우기 (중복 제거된 동일 셋으로)
+                    foreach (var (r, c) in cellsToClear)
                         SetCellOccupied(r, c, false);
                 }
-                foreach (int c in completedCols)
+                else
                 {
-                    for (int r = 0; r < rows; r++)
-                        SetCellOccupied(r, c, false);
+                    // 기존 동작 유지(맵 매니저가 없으면)
+                    foreach (int r in completedRows)
+                        for (int c = 0; c < cols; c++)
+                            SetCellOccupied(r, c, false);
+                    foreach (int c in completedCols)
+                        for (int r = 0; r < rows; r++)
+                            SetCellOccupied(r, c, false);
                 }
 
                 // 프리뷰 싹 정리

@@ -221,13 +221,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             // 과일 목표 모드만
             if (mm.CurrentMapData.goalKind != MapGoalKind.Fruit) return;
 
-            // 50% 확률 ( 임시 )
-            if (UnityEngine.Random.value >= 0.5f)
-            {
-                // 과일 적용 안 하는 케이스: 안전하게 오버레이 초기화 시도
-                ClearFruitOverlay(block);
-                return;
-            }
+            // 50% 확률 ( 임시 ), 100% 생성 원할 시 아래 주석 처리
+            // 테스트를 위해 100% 생성을 진행하게 함
+            // if (UnityEngine.Random.value >= 0.5f)
+            // {
+            //     // 과일 적용 안 하는 케이스: 안전하게 오버레이 초기화 시도
+            //     ClearFruitOverlay(block);
+            //     return;
+            // }
 
             // 활성 과일 후보 수집(0..4)
             var candidates = new List<int>(5);

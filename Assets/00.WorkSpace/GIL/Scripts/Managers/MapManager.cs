@@ -33,6 +33,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private int[] _fruitGoalsRuntime = new int[5];
         [SerializeField] private List<int> _activeFruitCodes = new();           // 201..205
         [SerializeField] private Dictionary<int, int> _fruitGoalsByCode = new(); // key:201..205
+        [SerializeField] private bool _fruitAllClearedAnnounced = false;
 
         public IReadOnlyList<int> ActiveFruitCodes => _activeFruitCodes;
         public bool IsFruitEnabled(int idx) => (uint)idx < _fruitEnabledRuntime.Length && _fruitEnabledRuntime[idx];
@@ -968,13 +969,64 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             //StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
         }
-        
+
         private void ClearFruitRuntime()
         {
             Array.Clear(_fruitEnabledRuntime, 0, _fruitEnabledRuntime.Length);
-            Array.Clear(_fruitGoalsRuntime,   0, _fruitGoalsRuntime.Length);
+            Array.Clear(_fruitGoalsRuntime, 0, _fruitGoalsRuntime.Length);
             _activeFruitCodes.Clear();
             _fruitGoalsByCode.Clear();
+            _fruitAllClearedAnnounced = false;
+        }
+
+        // 과일 클리어 시 호출 (과일 코드, 개수)
+        public void OnFruitCleared(int fruitCode, int count = 1)
+        {
+            // 과일 코드가 아니거나 활성화 안 되어 있으면 무시
+            if (!IsFruitCode(fruitCode) || !_activeFruitCodes.Contains(fruitCode))
+                return;
+
+            // 코드→인덱스(0~4) 변환
+            int idx = fruitCode - 201; // FruitBaseCode
+            if ((uint)idx >= (uint)_fruitGoalsRuntime.Length) return;
+
+            // 남은 목표 갱신 (0 미만 방지)
+            if (_fruitGoalsByCode.TryGetValue(fruitCode, out int cur))
+            {
+                int next = Mathf.Max(0, cur - count);
+                _fruitGoalsByCode[fruitCode] = next;
+                _fruitGoalsRuntime[idx] = next;
+
+                // 모두 클리어되었는지 검사
+                AnnounceFruitAllCleared();
+#if UNITY_EDITOR
+                UnityEngine.Debug.Log($"[Fruit] cleared code={fruitCode} → remain={next}");
+        #endif
+            }
+        }
+
+        public bool IsAllFruitCleared()
+        {
+            // 과일 모드가 아니거나 활성 과일이 없으면 false
+            if (CurrentMapData == null || CurrentMapData.goalKind != MapGoalKind.Fruit) return false;
+            if (_activeFruitCodes == null || _activeFruitCodes.Count == 0) return false;
+
+            // 활성 과일들의 남은 목표가 모두 0이하인지
+            foreach (var code in _activeFruitCodes)
+            {
+                if (GetFruitGoalByCode(code) > 0) return false;
+            }
+            return true;
+        }
+
+        private void AnnounceFruitAllCleared()
+        {
+            if (_fruitAllClearedAnnounced) return;
+            if (!IsAllFruitCleared()) return;
+
+            _fruitAllClearedAnnounced = true;
+            Debug.Log("[Fruit] ALL CLEAR! (모든 과일 목표 달성)");
+            // TODO : UI/사운드/이벤트 발행이 필요하면 여기서 호출
         }
 
         private void SyncFruitRuntimeFromMap(MapData map)
@@ -996,12 +1048,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 _activeFruitCodes.Add(code);
                 _fruitGoalsByCode[code] = _fruitGoalsRuntime[i];
             }
-
-        #if UNITY_EDITOR
+            _fruitAllClearedAnnounced = false;
+#if UNITY_EDITOR
             UnityEngine.Debug.Log(
-                $"[MapManager] Fruit synced | enabled={string.Join(",", _fruitEnabledRuntime.Select(b=>b?1:0))} " +
+                $"[MapManager] Fruit synced | enabled={string.Join(",", _fruitEnabledRuntime.Select(b => b ? 1 : 0))} " +
                 $"goals={string.Join(",", _fruitGoalsRuntime)} codes={string.Join(",", _activeFruitCodes)}");
-        #endif
+#endif
         }
     }
 }
