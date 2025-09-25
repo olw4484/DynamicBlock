@@ -1,11 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UIElements.Experimental;
 public class StageManager : MonoBehaviour
 {
+    public static StageManager Instance;
+
     [Header("References")]
     [SerializeField] private StageList generator; // 호출할 StageList를 가지고 있는 오브젝트
     [SerializeField] private Button enterCurrentStageButton; // 현재 스테이지 진입 버튼
@@ -18,6 +21,14 @@ public class StageManager : MonoBehaviour
     [SerializeField] private TMP_InputField setCurrentStageInputField; // 현재 활성화 스테이지 설정용 InputField
 
     [SerializeField] private int currentStage = 0; // 0-based index
+
+    // 250925 : GIL_ADD, 상세 게임 모드
+    [SerializeField] private MapGoalKind currentGoalKind = default;
+    // Setter를 통한 접속.
+    public void SetCurrentGoalKind(MapGoalKind mapGoalKind)
+    {
+        currentGoalKind = mapGoalKind;
+    }
     [SerializeField] public bool isAllStagesCleared = false; // 모든 스테이지 클리어 여부
     private void OnValidate()
     {
@@ -30,6 +41,12 @@ public class StageManager : MonoBehaviour
 
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject); return;
+            }
+        Instance = this;
+
         SetCurrentActiveStage(1); // 기본값 1로 설정
     }
 
