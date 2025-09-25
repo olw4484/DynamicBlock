@@ -326,7 +326,6 @@ MonoBehaviour:
   modalsToClose:
   - GameOver
   - Option
-  - Stage
   clearRunStateOnClick: 0
   sfxMode: 1
   customId: 1001

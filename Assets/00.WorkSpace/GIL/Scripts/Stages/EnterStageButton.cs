@@ -34,7 +34,11 @@ public class EnterStageButton : MonoBehaviour
     {
         stageNumber = number;
     }
-
+    // Getter
+    public int GetStageNumber()
+    {
+        return stageNumber;
+    }
     public void SetClearSprite(Sprite sprite)
     {
         clearSprite = sprite;

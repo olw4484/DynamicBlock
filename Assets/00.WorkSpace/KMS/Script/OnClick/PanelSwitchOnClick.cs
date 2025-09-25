@@ -3,6 +3,7 @@ using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using System.Collections;
+using _00.WorkSpace.GIL.Scripts.Maps;
 
 public enum InvokeSfxMode
 {
@@ -16,7 +17,7 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 {
     [Header("Target")]
     [SerializeField] string targetPanel = "Game";   // "Game" or "Main"
-
+    
     [Header("Modal close")]
     [SerializeField] bool closeModalFirst = true;
     [SerializeField] string[] modalsToClose = { "GameOver", "Option" };
@@ -44,6 +45,14 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
     {
         _invoking = false;
         _cool = 0f;
+    }
+    /// <summary>
+    /// 외부에서 타겟 패널을 바꿀 수 있게 함.
+    /// </summary>    
+    // 스테이지 버튼을 생성할 때 타겟을 바꿔야 하므로 public Setter 제공
+    public void SetTargetPanel(string panelName)
+    {
+        targetPanel = panelName;
     }
 
     public void OnPointerClick(PointerEventData _) => Invoke();
@@ -92,6 +101,25 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 var reason = ResetReason.ToMain;
                 bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
             }
+            // TODO : [PanelSwitchOnClick] swtich문으로 바꿔야 할 것으로 생각됨
+            else if (targetPanel == "Score")
+            {
+                // 1) UI 리셋/전환을 먼저 요청
+                var reason = ResetReason.ToGame;
+                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
+
+                // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
+                StartCoroutine(EnterGameNextFrame());
+            }
+            else if (targetPanel == "Fruit")
+            {
+                // 1) UI 리셋/전환을 먼저 요청
+                var reason = ResetReason.ToGame;
+                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
+
+                // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
+                StartCoroutine(EnterGameNextFrame());
+            }
             else
             {
                 var reason = ResetReason.None;
@@ -127,18 +155,36 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         if (!map) { Debug.LogError("[Home] MapManager missing on EnterGameNextFrame"); yield break; }
 
         var bus = Game.Bus;
-
+        // 튜토리얼 입장
         if (enterMode == GameMode.Tutorial)
         {
             map.SetGameMode(GameMode.Tutorial);
             map.RequestTutorialApply();
             Debug.Log("[Home] Tutorial apply (after reset)");
         }
-        else
+        // 클래식 모드 입장
+        else if (enterMode == GameMode.Classic)
         {
             map.SetGameMode(GameMode.Classic);
             map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
             Debug.Log("[BTN] EnterGameNextFrame: mode=Classic policy=ForceLoadSave");
+        }
+        // 어드벤쳐 모드 입장
+        // 250925 : GIL_ADD, 어드벤쳐 모드일 경우 상세 게임 모드까지 StageManager에 저장하기 
+        else if (enterMode == GameMode.Adventure)
+        {
+            map.SetGameMode(GameMode.Adventure);
+            // 스코어일 경우, 과일일 경우에 따라 다른 분기
+            if (targetPanel == "Score")
+            {
+                StageManager.Instance.SetCurrentGoalKind(MapGoalKind.Score);
+            }
+            else if (targetPanel == "Fruit")
+            {
+                StageManager.Instance.SetCurrentGoalKind(MapGoalKind.Fruit);
+            }
+            // TODO : 여기서부터 Adventure 입장 로직 구현하기...
+            Debug.Log("TODO : 여기서부터 Adventure 입장 로직 구현하기...");
         }
     }
 
