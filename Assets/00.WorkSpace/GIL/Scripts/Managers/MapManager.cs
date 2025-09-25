@@ -1105,11 +1105,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             ui.Initialize(target, current);
 
-            // 점수 실시간 갱신 이벤트 구독 (존재한다면)
+            // 점수 실시간 갱신 이벤트 구독
             var scoreMgr = ScoreManager.Instance;
             if (scoreMgr != null)
             {
-                // 중복 구독 방지용 해제-재구독 패턴을 써 주세요(필요 시 가드 필드 유지)
+                // 중복 구독 방지용 해제-재구독 패턴
                 scoreMgr.OnScoreChanged -= OnScoreChangedHandler;
                 scoreMgr.OnScoreChanged += OnScoreChangedHandler;
 
@@ -1125,6 +1125,36 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void SetAdvFruitObjects()
         {
             //StageManager의 adventureFruitModeObjects[1] 번에 과일모드 현재 과일 목표들 오브젝트 있음
+            var stage = StageManager.Instance;
+            if (stage == null || stage.adventureScoreModeObjects == null || stage.adventureScoreModeObjects.Length == 0)
+            {
+                Debug.LogWarning("[AdvFruit] StageManager UI 루트가 없습니다.");
+                return;
+            }
+
+            var fruitRoot = stage.adventureFruitModeObjects[1]; // <- 실제 인덱스에 맞게
+            if (!fruitRoot)
+            {
+                Debug.LogWarning("[AdvFruit] Fruit UI 루트가 비어있습니다.");
+                return;
+            }
+
+            var ui = fruitRoot.GetComponent<AdventureFruitProgress>();
+            if (!ui)
+            {
+                Debug.LogWarning("[AdvFruit] AdventureFruitProgress 컴포넌트가 없습니다.");
+                return;
+            }
+
+            // 런타임 데이터(활성/목표). 이름은 프로젝트 필드명에 맞게 치환
+            // 예: fruitEnabledRuntime: bool[], fruitGoalsRuntime: int[]
+            bool[] enabled = _fruitEnabledRuntime;  
+            int[]  goals   = _fruitGoalsRuntime;    
+
+            // 아이콘 스프라이트: GameDataStorage에서 로딩됨
+            var icons = _00.WorkSpace.GIL.Scripts.GDS.I.FruitIconsSprites; // GameDataStorage
+            ui.Initialize(enabled, goals, icons);
+
         }
     }
 }
