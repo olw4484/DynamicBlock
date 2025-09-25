@@ -199,14 +199,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
                 var mM = MapManager.Instance;
                 // 기존 과일 오버레이 방식, 개별 블록마다 50% 확률로 적용
-                if (mM.CurrentMode != GameMode.Classic
-                    && mM.CurrentMapData != null
-                    && mM.CurrentMapData.goalKind == MapGoalKind.Fruit)
+                if (mM?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
                 {
                     TryApplyFruitOverlayToBlock(block);
                 }
             }
-            // 신규 오버레이 방식, 모든 블록에 적용, 현재는 이슈로 인해 미 사용
+            // 신규 오버레이 방식, 모든 블록에 적용
             // if (MapManager.Instance?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
             // {
             //     ApplyFruitWaveAlgorithm(_currentBlocks);
