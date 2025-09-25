@@ -71,7 +71,6 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         yield return new WaitForSecondsRealtime(s);
         _suppressSnapshot = false;
     }
-
     // ------------- Lifecycle (Mono) -------------
     private void Awake()
     {
@@ -81,9 +80,23 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         _filePath = Path.Combine(dir, "save.json");
         _backupPath = Path.Combine(dir, "save.json.bak");
 
+        EnsurePaths();
+
         TryMigrateLegacyLanguageOnce();
         LoadGame();
         StartCoroutine(CoApplyLocale(gameData?.LanguageIndex ?? 0));
+    }
+
+    private void EnsurePaths()
+    {
+        if (string.IsNullOrEmpty(_filePath) || string.IsNullOrEmpty(_backupPath))
+        {
+            var dir = Path.Combine(Application.persistentDataPath, DirName);
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+            _filePath = Path.Combine(dir, FileName);
+            _backupPath = Path.Combine(dir, FileName + ".bak");
+        }
     }
 
 
@@ -251,6 +264,8 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     {
         if (gameData == null) return;
 
+        EnsurePaths();
+
         var json = JsonUtility.ToJson(gameData, true);
         try
         {
@@ -266,36 +281,50 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     }
     private static void AtomicWriteWithBackup(string mainPath, string bakPath, string content)
     {
+        if (string.IsNullOrEmpty(mainPath)) throw new ArgumentNullException(nameof(mainPath));
+        if (string.IsNullOrEmpty(bakPath)) throw new ArgumentNullException(nameof(bakPath));
+
+        var dir = Path.GetDirectoryName(mainPath);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+
         var tmp = mainPath + ".tmp";
-        File.WriteAllText(tmp, content);              // 1) 임시파일에 기록
-                                                      // 일부 플랫폼에서 Replace 미지원일 수 있어 try/fallback
+        File.WriteAllText(tmp, content);
+
         try
         {
-            // 메인이 있으면 백업을 갱신하며 교체, 없으면 교체 동작 = 이동
             if (File.Exists(mainPath))
+            {
+                // Replace가 일부 플랫폼에서 미지원일 수 있음 → catch로 폴백
                 File.Replace(tmp, mainPath, bakPath);
+            }
             else
             {
-                // 메인이 없을 때는 단순 Move 후, 기존 백업 갱신
                 if (File.Exists(bakPath)) File.Delete(bakPath);
                 File.Move(tmp, mainPath);
-                File.Copy(mainPath, bakPath);
+                File.Copy(mainPath, bakPath, overwrite: true);
             }
         }
         catch
         {
-            // Replace 불가 플랫폼 폴백
-            if (File.Exists(bakPath)) File.Delete(bakPath);
-            if (File.Exists(mainPath)) File.Copy(mainPath, bakPath);
+            // 폴백 경로
+            try { if (File.Exists(bakPath)) File.Delete(bakPath); } catch { /* ignore */ }
+            try { if (File.Exists(mainPath)) File.Copy(mainPath, bakPath, overwrite: true); } catch { /* ignore */ }
+
+            // 최종 쓰기
             File.Copy(tmp, mainPath, overwrite: true);
-            File.Delete(tmp);
         }
-        if (File.Exists(tmp)) File.Delete(tmp);
+        finally
+        {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* ignore */ }
+        }
     }
 
     public void LoadGame()
     {
         bool needSave = false;
+
+        EnsurePaths();
 
         try
         {
@@ -406,6 +435,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     // ------------- Legacy Migration (1회) -------------
     private void TryMigrateLegacyLanguageOnce()
     {
+        EnsurePaths();
 #if UNITY_EDITOR
         string legacyPath = Path.Combine(Application.dataPath, "00.WorkSpace/SJH/SaveFile/SaveData.json");
 #else
