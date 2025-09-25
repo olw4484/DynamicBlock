@@ -295,6 +295,8 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
     public void LoadGame()
     {
+        bool needSave = false;
+
         try
         {
             if (File.Exists(_filePath))
@@ -311,6 +313,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             else
             {
                 gameData = GameData.NewDefault(DefaultStages);
+                needSave = true; // 새로 만들었으니 저장 필요
             }
 
             // 보정
@@ -326,9 +329,20 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             Debug.LogError("[Save] Load failed: " + ex);
             // 백업 시도
             if (TryRestoreAndReload()) { /* ok */ }
-            else gameData = GameData.NewDefault(DefaultStages);
+            else { gameData = GameData.NewDefault(DefaultStages); needSave = true; }
         }
 
+        // 1) 마이그레이션 먼저 (v4 이식 포함)
+        int beforeVer = gameData.Version;
+        int beforeStampCount = gameData.achievementTierStamps?.Count ?? 0;
+        gameData.MigrateIfNeeded();
+        if (gameData.Version != beforeVer ||
+            (gameData.achievementTierStamps?.Count ?? 0) != beforeStampCount)
+        {
+            needSave = true;
+        }
+
+        // 2) 다운드 펜딩 중립화 (있으면)
         if (gameData.classicDownedPending)
         {
             Debug.Log("[Save] Pending detected on load -> neutralize run snapshot");
@@ -344,13 +358,18 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             gameData.currentScore = 0;
             gameData.currentCombo = 0;
 
-            SaveGame();
+            needSave = true;
         }
 
+        // 3) 변경사항 저장
+        if (needSave) SaveGame();
+
         Debug.Log($"[Save] Loaded: blocks={gameData.currentBlockSlots?.Count}");
+        // 이벤트/브로드캐스트는 최신 데이터로
         AfterLoad?.Invoke(gameData);
         PublishState(gameData);
     }
+
     private void RestoreFromBackup()
     {
         File.Copy(_backupPath, _filePath, overwrite: true);
@@ -398,13 +417,13 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             if (!File.Exists(legacyPath) || File.Exists(bak)) return;
 
             string json = File.ReadAllText(legacyPath);
-            SJH.GameData legacy = JsonUtility.FromJson<SJH.GameData>(json);
-            if (legacy == null) return;
-
-            if (gameData == null) gameData = GameData.NewDefault(DefaultStages);
-
-            int before = gameData.LanguageIndex;
-            gameData.LanguageIndex = legacy.LanguageIndex;
+            //SJH.GameData legacy = JsonUtility.FromJson<SJH.GameData>(json);
+            //if (legacy == null) return;
+            //
+            //if (gameData == null) gameData = GameData.NewDefault(DefaultStages);
+            //
+            //int before = gameData.LanguageIndex;
+            //gameData.LanguageIndex = legacy.LanguageIndex;
 
             SaveGame();
 
@@ -412,7 +431,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             File.Move(legacyPath, bak);
 
 #if UNITY_EDITOR
-            Debug.Log($"[Save] Migrated LanguageIndex {before}→{legacy.LanguageIndex} from legacy file.");
+            //Debug.Log($"[Save] Migrated LanguageIndex {before}→{legacy.LanguageIndex} from legacy file.");
 #endif
         }
         catch (Exception ex) { Debug.LogException(ex); }

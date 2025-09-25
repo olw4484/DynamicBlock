@@ -135,6 +135,7 @@ public static class Game
         Audio = audio;
         UI = ui;
         Scene = scene;
+        Save = save;
 
         IsBound = true; 
         return report;
@@ -145,5 +146,6 @@ public static class Game
     {
         Bus = null; GM = null; Audio = null; UI = null; Scene = null; IsBound = false;
         AudioFx = null; BlockFx = null; EffectLane = null; SoundLane = null; Ads = null;
+        Save = null;
     }
 }
