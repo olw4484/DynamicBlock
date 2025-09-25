@@ -141,6 +141,7 @@ public class StageManager : MonoBehaviour
             var enterButton = generator.stageButtons[currentStage].GetComponent<EnterStageButton>();
             if (enterButton != null)
                 enterButton.EnterStage();
+            generator.stageButtons[currentStage].GetComponent<PanelSwitchOnClick>().Invoke();
         });
     }
     /// <summary>

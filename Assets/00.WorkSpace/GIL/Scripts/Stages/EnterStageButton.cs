@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using TMPro;
 using UnityEngine;
@@ -55,9 +56,18 @@ public class EnterStageButton : MonoBehaviour
         var mM = MapManager.Instance;
         if (mM == null) Debug.LogError("[EnterStage] Error : MapManager Instance is null");
         // MapManager의 EnterStage 함수 호출 -> 이후 작업은 MapManager에서 진행
-        mM.EnterStage(stageNumber);
+        //mM.EnterStage(stageNumber);
+        // 한 프레임 뒤 호출
+        StartCoroutine(CoEnterNextFrame());
     }
     
+    private IEnumerator CoEnterNextFrame()
+    {
+        yield return null;
+        yield return null;
+        MapManager.Instance.EnterStage(stageNumber);
+    }
+
     /// <summary>
     /// 현재 버튼의 상태를 변경, 버튼의 상태에 따라 해당하는 이미지 적용
     /// Cleared : 클리어함 Playable : 플레이 가능 Locked : 잠김
@@ -68,7 +78,7 @@ public class EnterStageButton : MonoBehaviour
         var currState = stageButtonState;
         // 1) 현재 버튼의 상태 저장
         stageButtonState = state;
-        
+
         // 2) 현재 버튼의 상태에 따라 상호작용 여부 결정
         // Playable일 경우에만 가능, 아닐 경우 불가능
         if (state == ButtonState.Playable)

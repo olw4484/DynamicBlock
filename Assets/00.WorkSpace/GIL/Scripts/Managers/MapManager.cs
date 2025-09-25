@@ -24,7 +24,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [Header("Map Runtime")]
         [SerializeField] private int defaultMapIndex = 0;
-        [SerializeField] private GameObject grid;
         private MapData[] _mapList;
 
         [SerializeField] private MapData _currentMapData; // 현재 로딩된 맵 (디버그 확인용)
@@ -359,9 +358,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (!publishGridReady) return;
 
-            Game.Bus?.PublishSticky(new GridReady(gm.rows, gm.cols), alsoEnqueue: false);
-            // Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
-            GridManager.Instance.PublishGridReady();
+            // Game.Bus?.PublishSticky(new GridReady(gm.rows, gm.cols), alsoEnqueue: false);
+            // // Game.Bus?.PublishImmediate(new GridReady(gm.rows, gm.cols));
+            // GridManager.Instance.PublishGridReady();
         }
 
         // 블록 규칙성
@@ -952,8 +951,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             EnterClassic(ClassicEnterPolicy.ForceNew);
         }
 
+        private int _pendingStageIndex = -1;
+
         public void EnterStage(int stageNumber)
         {
+            _pendingStageIndex = stageNumber;
             // currentMapData 안전 초기화 이후 진행
             _currentMapData = null;
             Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
@@ -966,9 +968,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 ClearFruitRuntime();
             Debug.Log($"Current Map Data의 클리어 종류 : {_currentMapData.goalKind}");
             // 어드벤처 모드 진입 로직 구현
-            SetMapDataToGrid(stageNumber);
+            
+            _pendingIndex = stageNumber;
 
-            //StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
+            _bus.Subscribe<GridReady>(_ =>
+                {
+                    SetMapDataToGrid(_pendingIndex);
+                    _pendingIndex = 0;
+                }, replaySticky: true);
         }
 
         private void ClearFruitRuntime()

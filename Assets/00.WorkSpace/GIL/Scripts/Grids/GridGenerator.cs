@@ -40,7 +40,7 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         public void CreateGrid()
         {
             ClearGrid();
-            if (gridSquare == null) return;
+            //if (gridSquare == null) return;
 
             RectTransform squareRect = gridSquare.GetComponent<RectTransform>();
             Vector2 squareSize = squareRect.sizeDelta;
