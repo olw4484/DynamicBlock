@@ -217,8 +217,12 @@ public class StageList : MonoBehaviour
             var goal = map.goalKind; // Score or Fruit
 
             // 2) 버튼의 타겟 패널 설정
-            var psoc = stageButtons[i].GetComponent<PanelSwitchOnClick>();
-            psoc.SetTargetPanel(goal == MapGoalKind.Score ? "Score" : "Fruit");
+            // PanelSwitchOnClick 사용하기, GameClear이벤트로 Game씬에만 매핑되는 것 같음.
+            stageButtons[i].GetComponent<PanelSwitchOnClick>()
+                .SetTargetPanel(goal == MapGoalKind.Score ? "Score" : "Fruit");
+            // PanelToggleOnClick 사용하기, 토글을 위에 추가하는 방식으로 우선 구현
+            // TODO : 더 좋은 방법이 있을 경우 그걸 사용하기
+            //stageButtons[i].GetComponent<PanelToggleOnClick>().SetKey(goal == MapGoalKind.Score ? "Score" : "Fruit");
         }
     }
 }

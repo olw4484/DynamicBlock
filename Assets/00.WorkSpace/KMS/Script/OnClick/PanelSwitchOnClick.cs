@@ -66,6 +66,8 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         _invoking = true;
         _cool = cooldown;
 
+        var map = MapManager.Instance;
+
         try
         {
             PlayInvokeSfx();
@@ -102,24 +104,26 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
             }
             // TODO : [PanelSwitchOnClick] swtich문으로 바꿔야 할 것으로 생각됨
+            else if (targetPanel == "Stage")
+            {
+                // Stage부터 게임모드를 설정함
+                map.SetGameMode(GameMode.Adventure);
+                bus.PublishImmediate(new PanelToggle(targetPanel, true));
+            }
             else if (targetPanel == "Score")
             {
-                // 1) UI 리셋/전환을 먼저 요청
-                var reason = ResetReason.ToGame;
-                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
-
-                // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
-                StartCoroutine(EnterGameNextFrame());
+                Debug.Log("스코어 패널 스위칭");
+                StageManager.Instance.SetCurrentGoalKind(MapGoalKind.Score);
+                bus.PublishImmediate(new PanelToggle(targetPanel, true));
             }
             else if (targetPanel == "Fruit")
             {
-                // 1) UI 리셋/전환을 먼저 요청
-                var reason = ResetReason.ToGame;
-                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
-
-                // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
-                StartCoroutine(EnterGameNextFrame());
+                Debug.Log("과일 패널 스위칭");
+                StageManager.Instance.SetCurrentGoalKind(MapGoalKind.Fruit);
+                bus.PublishImmediate(new PanelToggle(targetPanel, true));
             }
+            // 어드벤쳐 모드 입장
+            // 250925 : GIL_ADD, 어드벤쳐 모드일 경우 상세 게임 모드까지 StageManager에 저장하기 
             else
             {
                 var reason = ResetReason.None;
@@ -168,23 +172,6 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
             map.SetGameMode(GameMode.Classic);
             map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
             Debug.Log("[BTN] EnterGameNextFrame: mode=Classic policy=ForceLoadSave");
-        }
-        // 어드벤쳐 모드 입장
-        // 250925 : GIL_ADD, 어드벤쳐 모드일 경우 상세 게임 모드까지 StageManager에 저장하기 
-        else if (enterMode == GameMode.Adventure)
-        {
-            map.SetGameMode(GameMode.Adventure);
-            // 스코어일 경우, 과일일 경우에 따라 다른 분기
-            if (targetPanel == "Score")
-            {
-                StageManager.Instance.SetCurrentGoalKind(MapGoalKind.Score);
-            }
-            else if (targetPanel == "Fruit")
-            {
-                StageManager.Instance.SetCurrentGoalKind(MapGoalKind.Fruit);
-            }
-            // TODO : 여기서부터 Adventure 입장 로직 구현하기...
-            Debug.Log("TODO : 여기서부터 Adventure 입장 로직 구현하기...");
         }
     }
 

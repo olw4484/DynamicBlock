@@ -1489,6 +1489,7 @@ GameObject:
   - component: {fileID: 8158738989459596649}
   - component: {fileID: 8710654650736185321}
   - component: {fileID: 5113520674121518959}
+  - component: {fileID: 4321894963310094141}
   m_Layer: 5
   m_Name: Home_back
   m_TagString: Untagged
@@ -1618,6 +1619,28 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &4321894963310094141
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4083925758483345822}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68ef6b8dfc9409c4293251e938943853, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetPanel: Main
+  closeModalFirst: 1
+  modalsToClose:
+  - GameOver
+  - Option
+  clearRunStateOnClick: 0
+  sfxMode: 1
+  customId: 1001
+  cooldown: 0.12
+  enterMode: 1
 --- !u!1 &4127416155586410595
 GameObject:
   m_ObjectHideFlags: 0

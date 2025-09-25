@@ -16,6 +16,11 @@ public sealed class PanelToggleOnClick : MonoBehaviour, IPointerClickHandler
         if (_cool > 0f) _cool -= Time.unscaledDeltaTime;
     }
 
+    public void SetKey(string value)
+    {
+        key = value;
+    }
+
     public void OnPointerClick(PointerEventData _) => Invoke();
 
     public void Invoke()
@@ -27,8 +32,8 @@ public sealed class PanelToggleOnClick : MonoBehaviour, IPointerClickHandler
         {
             if (root == this.gameObject)
             {
-                Debug.LogError($"[UI] '{key}'ÀÇ root°¡ ¹öÆ° ÀÚ½ÅÀÔ´Ï´Ù: {root.name}. " +
-                               $"UIManager Panels¿¡¼­ root¸¦ '¿É¼Ç Ã¢ ·çÆ®(ÄÁÅ×ÀÌ³Ê)'·Î ´Ù½Ã ÁöÁ¤ÇÏ¼¼¿ä.");
+                Debug.LogError($"[UI] '{key}'ï¿½ï¿½ rootï¿½ï¿½ ï¿½ï¿½Æ° ï¿½Ú½ï¿½ï¿½Ô´Ï´ï¿½: {root.name}. " +
+                               $"UIManager Panelsï¿½ï¿½ï¿½ï¿½ rootï¿½ï¿½ 'ï¿½É¼ï¿½ Ã¢ ï¿½ï¿½Æ®(ï¿½ï¿½ï¿½ï¿½ï¿½Ì³ï¿½)'ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¼ï¿½ï¿½ï¿½.");
                 return;
             }
         }
