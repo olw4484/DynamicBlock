@@ -80,6 +80,9 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
                 Debug.Log($"입장 모드 : {enterMode}, 어드벤쳐 종류 {goalKind}");
 
+                // 1.5) 입장하는 게임 오브젝트의 종류에 따라 다른 오브젝트 활성화
+                StageManager.Instance.SetObjectsByGameModeNGoalKind(enterMode, goalKind);
+
                 // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
                 StartCoroutine(EnterGameNextFrame());
 
@@ -177,6 +180,20 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
             map.SetGameMode(GameMode.Classic);
             map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
             Debug.Log("[BTN] EnterGameNextFrame: mode=Classic policy=ForceLoadSave");
+        }
+        // 어드벤쳐 모드 입장
+        else if (enterMode == GameMode.Adventure)
+        {
+            // 점수제일 경우 MapManager를 통해 데이터를 바꾸기
+            if (goalKind == MapGoalKind.Score)
+            {
+                map.SetAdvScoreObjects();
+            }
+            // 과일제일 경우 어딘가 저장된 MapGoal정보를 통해 데이터를 바꾸기
+            else if (goalKind == MapGoalKind.Fruit)
+            {
+                map.SetAdvFruitObjects();
+            }
         }
     }
 

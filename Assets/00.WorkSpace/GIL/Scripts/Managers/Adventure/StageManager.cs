@@ -17,8 +17,11 @@ public class StageManager : MonoBehaviour
     [SerializeField] private Sprite clearTrophyImage; // 클리어 이미지
 
     [Header("Game Mode Objects, 게임 모드마다 보여줄 오브젝트들")]
+    [Tooltip("0번 : 최고 점수 텍스트, 1번 : 현재 점수 텍스트")]
     [SerializeField] private GameObject[] classicModeObjects;
+    [Tooltip("0번 : 메인 화면 이동 버튼, 1번 : 점수모드 현재 상태 슬라이더")]
     [SerializeField] private GameObject[] adventureScoreModeObjects;
+    [Tooltip("0번 : 메인 화면 이동 버튼, 1번 : 과일 목표치 점수 텍스트")]
     [SerializeField] private GameObject[] adventureFruitModeObjects;
  
     [Header("Test / QA Debug"), Tooltip("테스트 및 QA용 디버그 버튼")]
@@ -164,6 +167,7 @@ public class StageManager : MonoBehaviour
     /// <param name="goalKind">어드벤쳐일 경우 골 타입 </param>
     public void SetObjectsByGameModeNGoalKind(GameMode gameMode, MapGoalKind goalKind = default)
     {
+        // 클래식 모드일 경우
         if (gameMode == GameMode.Classic)
         {
             foreach (var obj in classicModeObjects)
@@ -173,8 +177,10 @@ public class StageManager : MonoBehaviour
             foreach (var obj in adventureScoreModeObjects)
                 obj.SetActive(false);
         }
+        // 어드벤쳐 모드일 경우
         else if (gameMode == GameMode.Adventure)
         {
+            // 점수 모드일 경우
             if (goalKind == MapGoalKind.Score)
             {
                 foreach (var obj in classicModeObjects)
@@ -184,6 +190,7 @@ public class StageManager : MonoBehaviour
                 foreach (var obj in adventureScoreModeObjects)
                     obj.SetActive(true);
             }
+            // 과일 모드일 경우
             else if (goalKind == MapGoalKind.Fruit)
             {
                 foreach (var obj in classicModeObjects)

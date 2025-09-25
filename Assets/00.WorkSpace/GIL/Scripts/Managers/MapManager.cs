@@ -1002,7 +1002,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 AnnounceFruitAllCleared();
 #if UNITY_EDITOR
                 UnityEngine.Debug.Log($"[Fruit] cleared code={fruitCode} → remain={next}");
-        #endif
+#endif
             }
         }
 
@@ -1067,6 +1067,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 $"[MapManager] Fruit synced | enabled={string.Join(",", _fruitEnabledRuntime.Select(b => b ? 1 : 0))} " +
                 $"goals={string.Join(",", _fruitGoalsRuntime)} codes={string.Join(",", _activeFruitCodes)}");
 #endif
+        }
+        /// <summary>
+        /// 점수 슬라이더 셋팅하기
+        /// </summary>
+        public void SetAdvScoreObjects()
+        {
+            //StageManager의 adventureScoreModeObjects[1] 번에 점수모드 현재 상태 슬라이더 있음
+        }
+        /// <summary>
+        /// 활성화된 과일 종류, 갯수 붙이기
+        /// </summary>
+        public void SetAdvFruitObjects()
+        {
+            //StageManager의 adventureFruitModeObjects[1] 번에 과일모드 현재 과일 목표들 오브젝트 있음
         }
     }
 }
