@@ -198,18 +198,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 block.SetSpriteData(sprite);
 
                 // 기존 과일 오버레이 방식, 개별 블록마다 확률로 적용
-                // if (MapManager.Instance != null && MapManager.Instance.CurrentMapData != null && MapManager.Instance.CurrentMapData.goalKind == MapGoalKind.Fruit)
-                // {
-                //     TryApplyFruitOverlayToBlock(block);
-                // }
-                // BlockStorage.cs (블록 3개 생성이 끝난 지점, 200~240줄 근처에)
-
+                if (MapManager.Instance != null && MapManager.Instance.CurrentMapData != null && MapManager.Instance.CurrentMapData.goalKind == MapGoalKind.Fruit)
+                {
+                    TryApplyFruitOverlayToBlock(block);
+                }
             }
-            // 신규 오버레이 방식, 모든 블록에 적용
-            if (MapManager.Instance?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
-            {
-                ApplyFruitWaveAlgorithm(_currentBlocks);
-            }
+            // 신규 오버레이 방식, 모든 블록에 적용, 현재는 오류로 미 사용
+            // if (MapManager.Instance?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
+            // {
+            //     ApplyFruitWaveAlgorithm(_currentBlocks);
+            // }
 
             var fitsInfo = spawner.LastGeneratedFits;
 
