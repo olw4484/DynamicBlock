@@ -218,7 +218,7 @@ public class StageList : MonoBehaviour
 
             // 2) 버튼의 타겟 패널 설정
             var psoc = stageButtons[i].GetComponent<PanelSwitchOnClick>();
-            psoc.SetTargetPanel(goal == MapGoalKind.Score ? "Score" : "Fruit");
+            psoc.SetGoalKind(goal);
         }
     }
 }

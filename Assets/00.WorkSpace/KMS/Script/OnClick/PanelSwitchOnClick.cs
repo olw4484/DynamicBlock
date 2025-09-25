@@ -33,7 +33,8 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
     [Header("Game Enter Mode")]
     [SerializeField] GameMode enterMode = GameMode.Classic;
-
+    [Tooltip("어드벤쳐일 경우 어떤 모드로 진입하냐?")]
+    [SerializeField] MapGoalKind goalKind = MapGoalKind.Score;
     float _cool;
     bool _invoking; // 재진입 방지
 
@@ -51,9 +52,9 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
     /// 외부에서 타겟 패널을 바꿀 수 있게 함.
     /// </summary>    
     // 스테이지 버튼을 생성할 때 타겟을 바꿔야 하므로 public Setter 제공
-    public void SetTargetPanel(string panelName)
+    public void SetGoalKind(MapGoalKind kind)
     {
-        targetPanel = panelName;
+        goalKind = kind;
     }
 
     public void OnPointerClick(PointerEventData _) => Invoke();
@@ -77,9 +78,11 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 // 1) UI 리셋/전환을 먼저 요청
                 var reason = ResetReason.ToGame;
                 bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
+                Debug.Log($"입장 모드 : {enterMode}, 어드벤쳐 종류 {goalKind}");
 
                 // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
                 StartCoroutine(EnterGameNextFrame());
+
             }
             else if (targetPanel == "Main")
             {

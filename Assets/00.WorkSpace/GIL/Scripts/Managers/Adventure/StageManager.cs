@@ -124,9 +124,12 @@ public class StageManager : MonoBehaviour
         // 최신 스테이지에 대한 리스너 추가
         enterCurrentStageButton.onClick.AddListener(() =>
         {
+            // 기존 버튼의 Invoke
             var enterButton = generator.stageButtons[currentStage].GetComponent<EnterStageButton>();
             if (enterButton != null)
                 enterButton.EnterStage();
+            // PanelSwitchOnClick Invoke
+            generator.stageButtons[currentStage].GetComponent<PanelSwitchOnClick>().Invoke();
         });
     }
     /// <summary>

@@ -326,8 +326,10 @@ MonoBehaviour:
   modalsToClose:
   - GameOver
   - Option
+  - Stage
   clearRunStateOnClick: 0
   sfxMode: 1
   customId: 1001
   cooldown: 0.12
   enterMode: 2
+  goalKind: 1
