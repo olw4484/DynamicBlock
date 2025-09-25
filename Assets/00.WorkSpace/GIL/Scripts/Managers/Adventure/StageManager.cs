@@ -20,9 +20,9 @@ public class StageManager : MonoBehaviour
     [Tooltip("0번 : 최고 점수 텍스트, 1번 : 현재 점수 텍스트")]
     [SerializeField] private GameObject[] classicModeObjects;
     [Tooltip("0번 : 메인 화면 이동 버튼, 1번 : 점수모드 현재 상태 슬라이더")]
-    [SerializeField] private GameObject[] adventureScoreModeObjects;
+    [SerializeField] public GameObject[] adventureScoreModeObjects;
     [Tooltip("0번 : 메인 화면 이동 버튼, 1번 : 과일 목표치 점수 텍스트")]
-    [SerializeField] private GameObject[] adventureFruitModeObjects;
+    [SerializeField] public GameObject[] adventureFruitModeObjects;
  
     [Header("Test / QA Debug"), Tooltip("테스트 및 QA용 디버그 버튼")]
     [SerializeField] private Button showStageNumberButton;      // 스테이지 번호 숫자 Text 표시 버튼

@@ -8,8 +8,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SocialPlatforms.Impl;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
@@ -1074,6 +1076,48 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void SetAdvScoreObjects()
         {
             //StageManager의 adventureScoreModeObjects[1] 번에 점수모드 현재 상태 슬라이더 있음
+            // 목표/현재 점수
+            int target  = Mathf.Max(1, _currentMapData?.scoreGoal ?? 1);
+            int current = 0; // "0 / 목표"로 시작하려면 0. 이어하기라면 saveManager.gameData.currentScore 등.
+
+            // StageManager에서 1번 인덱스(슬라이더 루트) 가져오기
+            var stage = StageManager.Instance;
+            if (stage == null || stage.adventureScoreModeObjects == null || stage.adventureScoreModeObjects.Length <= 1)
+            {
+                Debug.LogWarning("[AdvScore] UI 루트가 없습니다.");
+                return;
+            }
+
+            var root = stage.adventureScoreModeObjects[1];
+            if (!root)
+            {
+                Debug.LogWarning("[AdvScore] ScoreProgress 루트가 비어있습니다.");
+                return;
+            }
+
+            // 루트에서 전용 컴포넌트만 가져와서 초기화
+            var ui = root.GetComponent<AdventureScoreProgress>();
+            if (!ui)
+            {
+                Debug.LogWarning("[AdvScore] AdventureScoreProgress 컴포넌트가 없습니다.");
+                return;
+            }
+
+            ui.Initialize(target, current);
+
+            // 점수 실시간 갱신 이벤트 구독 (존재한다면)
+            var scoreMgr = ScoreManager.Instance;
+            if (scoreMgr != null)
+            {
+                // 중복 구독 방지용 해제-재구독 패턴을 써 주세요(필요 시 가드 필드 유지)
+                scoreMgr.OnScoreChanged -= OnScoreChangedHandler;
+                scoreMgr.OnScoreChanged += OnScoreChangedHandler;
+
+                void OnScoreChangedHandler(int newScore)
+                {
+                    ui.UpdateCurrent(newScore);
+                }
+            }
         }
         /// <summary>
         /// 활성화된 과일 종류, 갯수 붙이기

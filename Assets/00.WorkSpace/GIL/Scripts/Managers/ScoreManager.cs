@@ -16,6 +16,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [SerializeField] public int baseScroe = 30;
 
+        public event Action<int> OnScoreChanged;
+
         private EventQueue _bus;
         private int _score = 0;
         public int Score => _score;
@@ -160,6 +162,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (scoreText) scoreText.text = _score.ToString();
             if (_bus == null) return;
+
+            OnScoreChanged?.Invoke(_score);
+
             var e = new ScoreChanged(_score);
             _bus.PublishSticky(e, alsoEnqueue: false);
             _bus.PublishImmediate(e);
