@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using System.Collections;
 using _00.WorkSpace.GIL.Scripts.Maps;
+using UnityEditor.Localization.Plugins.XLIFF.V12;
 
 public enum InvokeSfxMode
 {
@@ -120,6 +121,11 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
                 StartCoroutine(EnterGameNextFrame());
             }
+            else if (targetPanel == "Stage")
+            {
+                Debug.Log("스테이지 선택창 이동");
+                bus.PublishImmediate(new PanelToggle(targetPanel, true));
+            }
             else
             {
                 var reason = ResetReason.None;
@@ -168,23 +174,6 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
             map.SetGameMode(GameMode.Classic);
             map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
             Debug.Log("[BTN] EnterGameNextFrame: mode=Classic policy=ForceLoadSave");
-        }
-        // 어드벤쳐 모드 입장
-        // 250925 : GIL_ADD, 어드벤쳐 모드일 경우 상세 게임 모드까지 StageManager에 저장하기 
-        else if (enterMode == GameMode.Adventure)
-        {
-            map.SetGameMode(GameMode.Adventure);
-            // 스코어일 경우, 과일일 경우에 따라 다른 분기
-            if (targetPanel == "Score")
-            {
-                StageManager.Instance.SetCurrentGoalKind(MapGoalKind.Score);
-            }
-            else if (targetPanel == "Fruit")
-            {
-                StageManager.Instance.SetCurrentGoalKind(MapGoalKind.Fruit);
-            }
-            // TODO : 여기서부터 Adventure 입장 로직 구현하기...
-            Debug.Log("TODO : 여기서부터 Adventure 입장 로직 구현하기...");
         }
     }
 

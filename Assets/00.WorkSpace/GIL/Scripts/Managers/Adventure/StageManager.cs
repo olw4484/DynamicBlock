@@ -6,6 +6,8 @@ using UnityEngine.UI;
 using UnityEngine.UIElements.Experimental;
 public class StageManager : MonoBehaviour
 {
+    public static StageManager Instance;
+
     [Header("References")]
     [SerializeField] private StageList generator; // 호출할 StageList를 가지고 있는 오브젝트
     [SerializeField] private Button enterCurrentStageButton; // 현재 스테이지 진입 버튼
@@ -30,6 +32,7 @@ public class StageManager : MonoBehaviour
 
     private void Awake()
     {
+        Instance = this;
         SetCurrentActiveStage(1); // 기본값 1로 설정
     }
 
