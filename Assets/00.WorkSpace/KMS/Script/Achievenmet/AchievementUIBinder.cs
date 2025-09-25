@@ -50,7 +50,7 @@ public sealed class AchievementUIBinder : MonoBehaviour
         if (saveManager)
         {
             saveManager.AfterLoad += OnAfterSaveLoad;
-            saveManager.AfterSave += OnAfterSave; // ← 추가
+            saveManager.AfterSave += OnAfterSave;
         }
         RefreshAll(recordUnlocks: false);
     }
@@ -61,7 +61,7 @@ public sealed class AchievementUIBinder : MonoBehaviour
         if (saveManager)
         {
             saveManager.AfterLoad -= OnAfterSaveLoad;
-            saveManager.AfterSave -= OnAfterSave; // ← 추가
+            saveManager.AfterSave -= OnAfterSave;
         }
     }
 
