@@ -197,13 +197,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _currentBlocksSpriteData.Add(sprite);
                 block.SetSpriteData(sprite);
 
-                // 기존 과일 오버레이 방식, 개별 블록마다 확률로 적용
-                if (MapManager.Instance != null && MapManager.Instance.CurrentMapData != null && MapManager.Instance.CurrentMapData.goalKind == MapGoalKind.Fruit)
+                var mM = MapManager.Instance;
+                // 기존 과일 오버레이 방식, 개별 블록마다 50% 확률로 적용
+                if (mM.CurrentMode != GameMode.Classic
+                    && mM.CurrentMapData != null
+                    && mM.CurrentMapData.goalKind == MapGoalKind.Fruit)
                 {
                     TryApplyFruitOverlayToBlock(block);
                 }
             }
-            // 신규 오버레이 방식, 모든 블록에 적용, 현재는 오류로 미 사용
+            // 신규 오버레이 방식, 모든 블록에 적용, 현재는 이슈로 인해 미 사용
             // if (MapManager.Instance?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
             // {
             //     ApplyFruitWaveAlgorithm(_currentBlocks);
@@ -551,13 +554,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (mm.CurrentMapData.goalKind != MapGoalKind.Fruit) return;
 
             // 50% 확률 ( 임시 ), 100% 생성 원할 시 아래 주석 처리
-            // 테스트를 위해 100% 생성을 진행하게 함
-            // if (UnityEngine.Random.value >= 0.5f)
-            // {
-            //     // 과일 적용 안 하는 케이스: 안전하게 오버레이 초기화 시도
-            //     ClearFruitOverlay(block);
-            //     return;
-            // }
+            if (UnityEngine.Random.value >= 0.5f)
+            {
+                // 과일 적용 안 하는 케이스: 안전하게 오버레이 초기화 시도
+                ClearFruitOverlay(block);
+                return;
+            }
 
             // 활성 과일 후보 수집(0..4)
             var candidates = new List<int>(5);
