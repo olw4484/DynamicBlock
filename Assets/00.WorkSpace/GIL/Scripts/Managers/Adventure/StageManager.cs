@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,6 +15,12 @@ public class StageManager : MonoBehaviour
     [SerializeField] private Image trophyImage;
     [SerializeField] private Sprite normalTrophyImage;
     [SerializeField] private Sprite clearTrophyImage; // 클리어 이미지
+
+    [Header("Game Mode Objects, 게임 모드마다 보여줄 오브젝트들")]
+    [SerializeField] private GameObject[] classicModeObjects;
+    [SerializeField] private GameObject[] adventureScoreModeObjects;
+    [SerializeField] private GameObject[] adventureFruitModeObjects;
+ 
     [Header("Test / QA Debug"), Tooltip("테스트 및 QA용 디버그 버튼")]
     [SerializeField] private Button showStageNumberButton;      // 스테이지 번호 숫자 Text 표시 버튼
     [SerializeField] private Button setAllStageActiveButton;    // 모든 스테이지 활성화 버튼
@@ -149,6 +156,45 @@ public class StageManager : MonoBehaviour
             enterCurrentStageButton.transition = Selectable.Transition.None;
             enterCurrentStageButton.interactable = false;
         }
+    }
+    /// <summary>
+    /// 게임 모드에 따라 활성화 / 비활성화 할 오브젝트 설정
+    /// </summary>
+    /// <param name="gameMode">게임 모드</param>
+    /// <param name="goalKind">어드벤쳐일 경우 골 타입 </param>
+    public void SetObjectsByGameModeNGoalKind(GameMode gameMode, MapGoalKind goalKind = default)
+    {
+        if (gameMode == GameMode.Classic)
+        {
+            foreach (var obj in classicModeObjects)
+                obj.SetActive(true);
+            foreach (var obj in adventureFruitModeObjects)
+                obj.SetActive(false);
+            foreach (var obj in adventureScoreModeObjects)
+                obj.SetActive(false);
+        }
+        else if (gameMode == GameMode.Adventure)
+        {
+            if (goalKind == MapGoalKind.Score)
+            {
+                foreach (var obj in classicModeObjects)
+                    obj.SetActive(false);
+                foreach (var obj in adventureFruitModeObjects)
+                    obj.SetActive(false);
+                foreach (var obj in adventureScoreModeObjects)
+                    obj.SetActive(true);
+            }
+            else if (goalKind == MapGoalKind.Fruit)
+            {
+                foreach (var obj in classicModeObjects)
+                    obj.SetActive(false);
+                foreach (var obj in adventureFruitModeObjects)
+                    obj.SetActive(true);
+                foreach (var obj in adventureScoreModeObjects)
+                    obj.SetActive(false);
+            }
+        }
+
     }
 
     #region // Test / QA Debug Button Events
