@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="05478bf7-1345-4bc1-91c6-b2ef941f7b20" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.vscode/extensions.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.vscode/launch.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.vscode/settings.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adv_FruitGoal.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adv_FruitGoal.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adv_Home_back.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adv_Home_back.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adv_ScoreProgress.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adv_ScoreProgress.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adven_Fruit_Target.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adven_Fruit_Target.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adven_Score_Target.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Adven_Score_Target.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/GIL_Adven_Fruit_Scene.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/GIL_Adven_Fruit_Scene.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/GIL_Adven_Score_Scene.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/GIL_Adven_Score_Scene.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Progress-Item-Power.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Progress-Item-Power.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_61.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_61.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_62.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_62.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_63.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_63.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_64.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_64.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_65.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_65.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_66.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_66.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_67.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_67.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_68.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_68.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_69.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_69.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_70.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_70.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_71.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_71.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_72.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_72.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_73.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_73.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_74.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_74.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_75.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_75.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_76.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_76.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_77.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_77.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_78.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_78.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_79.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_79.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_80.asset" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_80.asset.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scenes/GIL_Imported_KMS_SampleScene 1.unity" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scenes/GIL_Imported_KMS_SampleScene 1.unity.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/AdventureFruitProgress.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/AdventureFruitProgress.cs.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/AdventureScoreProgress.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/AdventureScoreProgress.cs.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.LoggingHooks.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.LoggingHooks.cs.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.Patch_V.1.7.0.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.Patch_V.1.7.0.cs.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.Tracker.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.Tracker.cs.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/Script/AchievementsButtonNotifier.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/Script/AchievementsButtonNotifier.cs.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/Prefab/FirestoreManager.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/Prefab/FirestoreManager.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/SJH_FirestoreTestScene.unity" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/SJH_FirestoreTestScene.unity.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/SaveFile/SaveData.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/SaveFile/SaveData.json.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/SaveFile/StageData.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/SaveFile/StageData.json.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/Scripts/FirestoreManager.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/Scripts/FirestoreManager.cs.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/Scenes/Adven_Score_Scene.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/Scenes/Adven_Score_Scene.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/Scenes/UI_FILE/Red_Spot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/Scenes/UI_FILE/Red_Spot.png.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/Scenes/UI_FILE/Sparkles.prefab" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/Scenes/UI_FILE/Sparkles.prefab.meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Assets/Scenes/test2/New Folder.meta" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Stage_N_Button.prefab" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/Adventure/Stage_N_Button.prefab" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/ShapePrefab.prefab" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Prefabs/ShapePrefab.prefab" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_0.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_0.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_1.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_1.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_10.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_10.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_11.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_11.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_12.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_12.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_13.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_13.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_14.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_14.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_15.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_15.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_16.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_16.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_17.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_17.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_18.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_18.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_19.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_19.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_2.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_2.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_20.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_20.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_21.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_21.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_22.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_22.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_23.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_23.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_24.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_24.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_25.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_25.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_26.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_26.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_27.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_27.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_28.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_28.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_29.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_29.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_3.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_3.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_30.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_30.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_31.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_31.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_32.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_32.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_33.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_33.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_34.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_34.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_35.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_35.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_36.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_36.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_37.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_37.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_38.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_38.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_39.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_39.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_4.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_4.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_40.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_40.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_41.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_41.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_42.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_42.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_43.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_43.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_44.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_44.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_45.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_45.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_46.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_46.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_47.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_47.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_48.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_48.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_49.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_49.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_5.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_5.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_50.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_50.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_51.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_51.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_52.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_52.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_53.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_53.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_54.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_54.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_55.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_55.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_56.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_56.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_57.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_57.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_58.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_58.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_59.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_59.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_6.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_6.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_60.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_60.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_7.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_7.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_8.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_8.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_9.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Maps/Stage_9.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/02.2_block_1_up.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/02.2_block_1_up.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/12.3_block_3_up.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/12.3_block_3_up.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/13.3_block_3_right.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/13.3_block_3_right.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/16.4_block_2_up.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/16.4_block_2_up.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/18.4_block_2_down.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/18.4_block_2_down.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/19.4_block_2_left.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/19.4_block_2_left.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/20.4_block_3_up.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/20.4_block_3_up.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/21.4_block_3_right.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/21.4_block_3_right.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/22.4_block_3_down.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/22.4_block_3_down.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/23.4_block_3_left.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/23.4_block_3_left.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/24.4_block_4_up.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/24.4_block_4_up.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/25.4_block_4_right.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/25.4_block_4_right.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/26.4_block_5_up.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/26.4_block_5_up.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/27.4_block_5_right.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/27.4_block_5_right.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/28.4_block_6_up.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/28.4_block_6_up.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/29.4_block_6_right.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/29.4_block_6_right.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/30.4_block_6_down.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/30.4_block_6_down.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/31.4_block_6_left.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/31.4_block_6_left.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/32.4_block_7_up.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Resources/Shapes/32.4_block_7_up.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Blocks/BlockStorage.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Blocks/BlockStorage.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/GameDataStorage.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/GameDataStorage.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Grids/GridSquare.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Grids/GridSquare.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/Adventure/StageManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/Adventure/StageManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.LineCorrection.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.LineCorrection.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.PickPlaceable.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.PickPlaceable.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.Util.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.Util.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.WaveSpawn.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.WaveSpawn.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/BlockSpawnManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/GridManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/GridManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/MapManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/MapManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/ScoreManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Managers/ScoreManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Shapes/ShapeSquare.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Shapes/ShapeSquare.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Stages/EnterStageButton.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Stages/EnterStageButton.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Stages/StageList.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/GIL/Scripts/Stages/StageList.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/KMS_SampleScene 1.unity" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/KMS_SampleScene 1.unity" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/Script/Achievenmet/AchievementPopupController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/Script/Achievenmet/AchievementPopupController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/Script/Achievenmet/AchievementUIBinder.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/Script/Achievenmet/AchievementUIBinder.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/Script/OnClick/PanelSwitchOnClick.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/KMS/Script/OnClick/PanelSwitchOnClick.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/LJJ/Scripts/SafeArea.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/LJJ/Scripts/SafeArea.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/Scripts/AnalyticsManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/Scripts/AnalyticsManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/Scripts/SaveLoadManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/00.WorkSpace/SJH/Scripts/SaveLoadManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scenes/test2.meta" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scenes/test2.meta" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ProjectSettings/EditorBuildSettings.asset" beforeDir="false" afterPath="$PROJECT_DIR$/ProjectSettings/EditorBuildSettings.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ProjectSettings/ProjectSettings.asset" beforeDir="false" afterPath="$PROJECT_DIR$/ProjectSettings/ProjectSettings.asset" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "olw4484"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/olw4484/DynamicBlock.git",
+    "accountId": "605ba66f-aa56-4743-bb83-0b20c88bf007"
+  }
+}]]></component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 8
+}]]></component>
+  <component name="ProjectId" id="33DM8P6AQFz3cZwtVHhflPJmi5o" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "Merging KMS__ui",
+    "kotlin-language-version-configured": "true",
+    "show.migrate.to.gradle.popup": "false"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="05478bf7-1345-4bc1-91c6-b2ef941f7b20" name="Changes" comment="" />
+      <created>1758847030984</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1758847030984</updated>
+    </task>
+    <servers />
+  </component>
+</project>
