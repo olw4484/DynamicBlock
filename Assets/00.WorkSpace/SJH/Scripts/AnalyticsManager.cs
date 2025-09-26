@@ -10,7 +10,13 @@ public class AnalyticsManager : MonoBehaviour
     public static AnalyticsManager Instance { get; private set; }
 	public FirebaseApp FirebaseApp { get; private set; }
 
-	void Start()
+    void Awake()
+    {
+        if (Instance && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+    void Start()
 	{
 		Instance = this;
 		Init();
@@ -63,21 +69,25 @@ public class AnalyticsManager : MonoBehaviour
 		FirebaseAnalytics.LogEvent(eventName, paramArray);
 	}
 
-	public void LogEvent(string eventName, params string[] _params)
-	{
-		Parameter[] parameters = new Parameter[_params.Length];
-		int pLen = _params.Length;
-		for (int i = 0; i < pLen; i++)
-		{
-			parameters[i] = new Parameter($"param{i + 1}", _params[i]);
-			FirebaseAnalytics.LogEvent(eventName, parameters);
-		}
-	}
+    public void LogEvent(string eventName, params string[] _params)
+    {
+        if (_params == null || _params.Length == 0)
+        {
+            FirebaseAnalytics.LogEvent(eventName);
+            return;
+        }
 
-	/// <summary>
-	/// 리워드광고 실행될 때 호출
-	/// </summary>
-	public void RewardLog()
+        var parameters = new Parameter[_params.Length];
+        for (int i = 0; i < _params.Length; i++)
+            parameters[i] = new Parameter($"param{i + 1}", _params[i]);
+
+        FirebaseAnalytics.LogEvent(eventName, parameters);
+    }
+
+    /// <summary>
+    /// 리워드광고 실행될 때 호출
+    /// </summary>
+    public void RewardLog()
 	{
 		// 리워드 광고 시청
 		LogEvent("Reward_Impression");

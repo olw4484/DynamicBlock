@@ -47,6 +47,8 @@ public class GameData
     public int specialBlocksRemoved;        // 특수 블록 제거 수
     public int fruitCollected;              // 과일 수집 수
 
+    public int adventureBestIndex = 0;      // 최고 진행 스테이지 수
+
     // ===== 스테이지 단위 기록(기존) =====
     public int[] stageCleared;              // 0=미클,1=클
     public int[] stageScores;               // 각 스테이지 최고 점수

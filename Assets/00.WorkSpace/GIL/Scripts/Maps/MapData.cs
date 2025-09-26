@@ -39,6 +39,7 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
         [Range(0f, 2f)] public float charlieMin = 0.5f;
         [Range(0f, 2f)] public float charlieMax = 1.5f;
 
+        public string stageName => string.IsNullOrEmpty(id) ? $"Stage_{mapIndex}" : id;
         public int Get(int r, int c) => layout[r * cols + c];
         public void Set(int r, int c, int v) { layout[r * cols + c] = v; }
         

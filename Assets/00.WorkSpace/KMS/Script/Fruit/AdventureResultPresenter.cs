@@ -1,11 +1,13 @@
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Messages;
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using System.Collections;
 
 public sealed class AdventureResultPresenter : MonoBehaviour
 {
@@ -36,6 +38,9 @@ public sealed class AdventureResultPresenter : MonoBehaviour
 
     [Header("Fruit Group UI")]
     [SerializeField] private TMP_Text fruitTotalText;    // "수집/목표" 총합 (개별 뱃지는 프로젝트 컴포넌트에 연결)
+
+    [Header("Fruit Layout")]
+    [SerializeField] private FruitBadgeLayoutRows fruitLayout; // 과일 뱃지 2열 배치
 
     private EventQueue _bus;
     private Coroutine _scoreTween;
@@ -81,6 +86,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     {
         OpenPanel();
         if (ADResult_Canvas) ADResult_Canvas.SetActive(true);
+
         if (Fail_Button) Fail_Button.SetActive(false);
         if (FailBG) FailBG.SetActive(false);
         if (ADResult_FailPanel) ADResult_FailPanel.SetActive(false);
@@ -88,7 +94,25 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (ClearBG) ClearBG.SetActive(true);
         if (Clear_Button) Clear_Button.SetActive(true);
         if (ADResult_ClearPanel) ADResult_ClearPanel.SetActive(true);
-        if (Clear_ResultScore) Clear_ResultScore.text = score.ToString();
+        if (Clear_ResultScore) Clear_ResultScore.text = score.ToString("N0");
+
+        // 결과 노출 로깅(선택)
+        AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "clear");
+
+        // 버튼 리스너 바인딩(중복 방지)
+        var btn = Clear_Button ? Clear_Button.GetComponent<Button>() : null;
+        if (btn)
+        {
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() =>
+            {
+                AnalyticsManager.Instance?.LogEvent("Clear_Confirm");
+                ClosePanel();
+                // TODO: 다음 스테이지 진입 메시지/씬 전환 호출
+            });
+        }
+
+        if (EventSystem.current && btn) EventSystem.current.SetSelectedGameObject(btn.gameObject);
 
         ApplyModeUI(kind, score);
     }
@@ -97,6 +121,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     {
         OpenPanel();
         if (ADResult_Canvas) ADResult_Canvas.SetActive(true);
+
         if (Clear_Button) Clear_Button.SetActive(false);
         if (ClearBG) ClearBG.SetActive(false);
         if (ADResult_ClearPanel) ADResult_ClearPanel.SetActive(false);
@@ -104,7 +129,25 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (FailBG) FailBG.SetActive(true);
         if (Fail_Button) Fail_Button.SetActive(true);
         if (ADResult_FailPanel) ADResult_FailPanel.SetActive(true);
-        if (Fail_ResultScore) Fail_ResultScore.text = score.ToString();
+        if (Fail_ResultScore) Fail_ResultScore.text = score.ToString("N0");
+
+        // 결과 노출 로깅
+        AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "fail");
+
+        // 버튼 리스너 바인딩(중복 방지)
+        var btn = Fail_Button ? Fail_Button.GetComponent<Button>() : null;
+        if (btn)
+        {
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() =>
+            {
+                AnalyticsManager.Instance?.RetryLog(false);   // Adventure 재시도
+                ClosePanel();
+                // TODO: 리트라이 메시지/씬 리셋 호출
+            });
+        }
+
+        if (EventSystem.current && btn) EventSystem.current.SetSelectedGameObject(btn.gameObject);
 
         ApplyModeUI(kind, score);
     }
@@ -137,6 +180,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         }
         else
         {
+            RebuildFruitBadgesForResult();
             UpdateFruitProgressText();
         }
     }
@@ -174,29 +218,46 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     private void UpdateFruitProgressText()
     {
         var mm = MapManager.Instance;
-        if (!mm)
-        {
-            if (fruitTotalText) fruitTotalText.text = "-";
-            return;
-        }
+        if (!mm) { if (fruitTotalText) fruitTotalText.text = "-"; return; }
 
         var codes = mm.ActiveFruitCodes;
-        int totalInit = 0;
-        int remaining = 0;
+        int totalTarget = 0, totalCurrent = 0;
 
         if (codes != null)
         {
             foreach (var code in codes)
             {
-                totalInit += mm.GetInitialFruitGoalByCode(code);        // 스테이지 시작 시 목표치
-                remaining += Mathf.Max(0, mm.GetFruitGoalByCode(code)); // 남은 개수
+                totalTarget += mm.GetInitialFruitGoalByCode(code);
+                totalCurrent += mm.GetFruitCurrentByCode(code);
             }
+
+            if (fruitTotalText) fruitTotalText.text = $"{totalCurrent}/{totalTarget}";
         }
+    }
+    private void RebuildFruitBadgesForResult()
+    {
+        if (!fruitLayout) return;
 
-        int collected = Mathf.Max(0, totalInit - remaining);
-        if (fruitTotalText) fruitTotalText.text = $"{collected}/{totalInit}";
+        var mm = MapManager.Instance;
+        var codes = mm?.ActiveFruitCodes;
+        if (mm == null || codes == null || codes.Count == 0)
+        { fruitLayout.Show(null); return; }
 
-        // (선택) 개별 뱃지/슬롯 UI가 있다면 여기서 갱신 호출
-        // fruitBadgeGroup?.RefreshFromMapManager(mm);
+        var list = new List<FruitReq>(codes.Count);
+        foreach (var code in codes)
+        {
+            int target = mm.GetInitialFruitGoalByCode(code);
+            int current = mm.GetFruitCurrentByCode(code);
+            bool done = current >= target;
+            Sprite icon = mm.GetFruitIconByCode(code);
+
+            // 1) "모은 개수"를 보여주고 싶으면 current 사용
+            //list.Add(new FruitReq { sprite = icon, count = current, achieved = done });
+
+            // 2) "남은 개수"를 보여주고 싶으면 위 한 줄 대신 아래 사용
+            int remain = mm.GetFruitRemainingByCode(code);
+            list.Add(new FruitReq { sprite = icon, count = remain, achieved = done });
+        }
+        fruitLayout.Show(list.ToArray());
     }
 }
