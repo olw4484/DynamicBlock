@@ -84,12 +84,13 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             int startOy = Random.Range(0, oyMax + 1);
             int startOx = Random.Range(0, oxMax + 1);
-
+#if UNITY_EDITOR
             if (_currentSlot >= 0 && !_slotStartLogged)
             {
                 TDo($"탐색 시작점 : {startOy} , {startOx} 선정");
                 _slotStartLogged = true;
             }
+#endif
 
             for (int dy = 0; dy <= oyMax; dy++)
             {
