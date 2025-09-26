@@ -1,11 +1,12 @@
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Messages;
+using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using System.Collections;
 
 public sealed class AdventureResultPresenter : MonoBehaviour
 {
@@ -81,6 +82,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     {
         OpenPanel();
         if (ADResult_Canvas) ADResult_Canvas.SetActive(true);
+
         if (Fail_Button) Fail_Button.SetActive(false);
         if (FailBG) FailBG.SetActive(false);
         if (ADResult_FailPanel) ADResult_FailPanel.SetActive(false);
@@ -88,7 +90,25 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (ClearBG) ClearBG.SetActive(true);
         if (Clear_Button) Clear_Button.SetActive(true);
         if (ADResult_ClearPanel) ADResult_ClearPanel.SetActive(true);
-        if (Clear_ResultScore) Clear_ResultScore.text = score.ToString();
+        if (Clear_ResultScore) Clear_ResultScore.text = score.ToString("N0");
+
+        // 결과 노출 로깅(선택)
+        AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "clear");
+
+        // 버튼 리스너 바인딩(중복 방지)
+        var btn = Clear_Button ? Clear_Button.GetComponent<Button>() : null;
+        if (btn)
+        {
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() =>
+            {
+                AnalyticsManager.Instance?.LogEvent("Clear_Confirm");
+                ClosePanel();
+                // TODO: 다음 스테이지 진입 메시지/씬 전환 호출
+            });
+        }
+
+        if (EventSystem.current && btn) EventSystem.current.SetSelectedGameObject(btn.gameObject);
 
         ApplyModeUI(kind, score);
     }
@@ -97,6 +117,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     {
         OpenPanel();
         if (ADResult_Canvas) ADResult_Canvas.SetActive(true);
+
         if (Clear_Button) Clear_Button.SetActive(false);
         if (ClearBG) ClearBG.SetActive(false);
         if (ADResult_ClearPanel) ADResult_ClearPanel.SetActive(false);
@@ -104,7 +125,25 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (FailBG) FailBG.SetActive(true);
         if (Fail_Button) Fail_Button.SetActive(true);
         if (ADResult_FailPanel) ADResult_FailPanel.SetActive(true);
-        if (Fail_ResultScore) Fail_ResultScore.text = score.ToString();
+        if (Fail_ResultScore) Fail_ResultScore.text = score.ToString("N0");
+
+        // 결과 노출 로깅
+        AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "fail");
+
+        // 버튼 리스너 바인딩(중복 방지)
+        var btn = Fail_Button ? Fail_Button.GetComponent<Button>() : null;
+        if (btn)
+        {
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() =>
+            {
+                AnalyticsManager.Instance?.RetryLog(false);   // Adventure 재시도
+                ClosePanel();
+                // TODO: 리트라이 메시지/씬 리셋 호출
+            });
+        }
+
+        if (EventSystem.current && btn) EventSystem.current.SetSelectedGameObject(btn.gameObject);
 
         ApplyModeUI(kind, score);
     }

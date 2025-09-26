@@ -69,9 +69,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     private int _lastHighScore = 0;
     int _pendingDownedScore;
 
+    private int _lastLoggedClassicBest = -1;
+
     private EventQueue _bus;
     private GameManager _game;
 
+    // 집계 재시작용
+    private bool _runStartLogged = false;
     public int Order => 100;
 
     public void SetDependencies(EventQueue bus, GameManager game) { _bus = bus; _game = game; }
@@ -206,14 +210,26 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
             SetPanel("Revive", false);
 
-            // 어드벤처면 클래식 결과 패널은 열지 않음
-            if (_00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance?.CurrentMode
-                == GameMode.Adventure)
-                return;
+            // Classic 신기록 로깅
+            var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+            bool isAdventure = (mm?.CurrentMode == GameMode.Adventure);
+            if (!isAdventure && e.isNewBest)
+            {
+                // 간단 중복 방지 가드: 동일 점수 중복 로그 방지
+                if (_lastLoggedClassicBest != e.score)
+                {
+                    AnalyticsManager.Instance?.ClassicBestLog(e.score);
+                    _lastLoggedClassicBest = e.score;
+                }
+            }
+
+            if (isAdventure) return;
 
             SetPanel("GameOver", !e.isNewBest);
             SetPanel("NewRecord", e.isNewBest);
+
         }, replaySticky: false);
+
 
         // 광고 성공 시 모달/패널 닫기
         _bus.Subscribe<ContinueGranted>(_ =>
@@ -563,6 +579,18 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         var onEvt = new PanelToggle(onKey, true);
         _bus.PublishSticky(onEvt, alsoEnqueue: false);
         _bus.PublishImmediate(onEvt);
+
+        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+        bool isAdventure = (mm?.CurrentMode == GameMode.Adventure);
+        int stageIndex = mm?.CurrentMapData?.mapIndex ?? 0;
+
+        if (toGame && !_runStartLogged)
+        {
+            AnalyticsManager.Instance?.GameStartLog(!isAdventure, stageIndex);
+            _runStartLogged = true;
+        }
+
+        if (!toGame) _runStartLogged = false;
 
         NormalizeAllPanelsAlpha();
         ForceMainUIClean();

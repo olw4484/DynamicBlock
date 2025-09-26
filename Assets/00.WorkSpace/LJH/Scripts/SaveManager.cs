@@ -900,6 +900,28 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     }
 
     public void SkipNextSnapshot(string reason = null) { skipNextGridSnapshot = true; Debug.Log($"[Save] Skip next grid snapshot (reason: {reason})"); }
+
+    public bool TryUpdateAdventureBest(int newIndex, string stageName)
+    {
+        if (gameData == null) return false;
+
+        if (newIndex < 1) newIndex = 1;
+
+        int prev = gameData.adventureBestIndex;
+        if (newIndex <= prev) return false;
+
+        gameData.adventureBestIndex = newIndex;
+        SaveGame();
+
+        string name = string.IsNullOrEmpty(stageName) ? $"Stage_{newIndex}" : stageName;
+
+        Game.Bus?.PublishImmediate(new AdventureBestUpdated(
+            prevIndex: prev,
+            newIndex: newIndex,
+            stageName: name));
+
+        return true;
+    }
     // ------------- ISaveService (직접 호출 경로) -------------
     public bool LoadOrCreate() { LoadGame(); return true; }
     public void Save() { SaveGame(); }

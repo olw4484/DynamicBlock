@@ -159,11 +159,15 @@ public class AdManager : MonoBehaviour, IAdService
                 Interstitial.Failed -= OnFailedInternal;
             }
             _interstitialInProgress = false;
-
             if (_interstitialWatchdog != null) { StopCoroutine(_interstitialWatchdog); _interstitialWatchdog = null; }
         }
 
-        void OnOpened() { _interstitialInProgress = true; }
+        void OnOpened()
+        {
+            _interstitialInProgress = true;
+            AnalyticsManager.Instance?.InterstitialLog();   // 전면 광고 노출 로그
+        }
+
         void OnClosedInternal()
         {
             Cleanup();
@@ -175,9 +179,10 @@ public class AdManager : MonoBehaviour, IAdService
         {
             Cleanup();
             Refresh();
+            // 실패 로깅도 원하면:
+            // AnalyticsManager.Instance?.LogEvent("Interstitial_Failed");
         }
 
-        // 선제 정리 후 연결
         Cleanup();
         Interstitial.Opened += OnOpened;
         Interstitial.Closed += OnClosedInternal;
@@ -186,8 +191,7 @@ public class AdManager : MonoBehaviour, IAdService
         Debug.Log("[Ads] ShowInterstitial()");
         _lastInterShowAt = Time.realtimeSinceStartup;
 
-        Interstitial.ShowAd(); // 내부에서 CanShow/쿨다운 체크
-
+        Interstitial.ShowAd();
         _interstitialWatchdog = StartCoroutine(Co_Watchdog(isReward: false, timeout: WATCHDOG_SEC));
     }
 
@@ -325,7 +329,12 @@ public class AdManager : MonoBehaviour, IAdService
             _rewardInProgress = false;
             if (_rewardWatchdog != null) { StopCoroutine(_rewardWatchdog); _rewardWatchdog = null; }
         }
-        void OnOpenedEvt() { opened = true; _rewardInProgress = true; }
+        void OnOpenedEvt()
+        {
+            opened = true;
+            _rewardInProgress = true;
+            AnalyticsManager.Instance?.RewardLog();
+        }
         void OnClosedEvt() { CleanupLocal(); try { onClosed?.Invoke(); } catch (Exception e) { Debug.LogException(e); } Refresh(); }
         void OnFailedEvt() { CleanupLocal(); try { onFailed?.Invoke(); } catch (Exception e) { Debug.LogException(e); } Refresh(); }
         void OnRewardedEvt() { try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); } }

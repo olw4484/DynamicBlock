@@ -402,3 +402,12 @@ public readonly struct GameEntered
 }
 
 public readonly struct BlockCommitted { }
+
+public readonly struct AdventureBestUpdated
+{
+    public readonly int prevIndex;
+    public readonly int newIndex;
+    public readonly string stageName;
+    public AdventureBestUpdated(int prevIndex, int newIndex, string stageName)
+    { this.prevIndex = prevIndex; this.newIndex = newIndex; this.stageName = stageName; }
+}

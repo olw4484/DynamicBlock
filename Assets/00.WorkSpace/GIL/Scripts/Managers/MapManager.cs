@@ -64,6 +64,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         int _tutorialApplyTicket = 0;
         private bool _pendingClassicEnter;
         private ClassicEnterPolicy _pendingClassicPolicy;
+        [SerializeField] private bool _scoreGoalClearedAnnounced = false;
 
         bool _pendingTutorialApply;
         int _pendingIndex;
@@ -984,6 +985,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             // currentMapData 안전 초기화 이후 진행
             _currentMapData = null;
+            _scoreGoalClearedAnnounced = false;
+            _fruitAllClearedAnnounced = false;
             Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
             SetGameMode(GameMode.Adventure);
             _currentMapData = _mapList[stageNumber]; // 현재 맵 데이터 설정
@@ -1067,9 +1070,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (_fruitAllClearedAnnounced) return;
             if (!IsAllFruitCleared()) return;
-
             _fruitAllClearedAnnounced = true;
-            Debug.Log("[Fruit] ALL CLEAR! (모든 과일 목표 달성)");
+
+            int index = Mathf.Max(1, _currentMapData?.mapIndex ?? 1);
+            string name = _currentMapData?.stageName ?? $"Stage{index}";
+            saveManager?.TryUpdateAdventureBest(index, name);
 
             int finalScore = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
             Game.Bus?.PublishImmediate(new AdventureStageCleared(MapGoalKind.Fruit, finalScore));
@@ -1118,12 +1123,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         public void SetAdvScoreObjects()
         {
-            //StageManager의 adventureScoreModeObjects[1] 번에 점수모드 현재 상태 슬라이더 있음
-            // 목표/현재 점수
             int target = Mathf.Max(1, _currentMapData?.scoreGoal ?? 1);
-            int current = 0; // "0 / 목표"로 시작하려면 0. 이어하기라면 saveManager.gameData.currentScore 등.
+            int current = 0; // 이어하기면 saveManager.gameData.currentScore 등으로 대체 가능
 
-            // StageManager에서 1번 인덱스(슬라이더 루트) 가져오기
             var stage = StageManager.Instance;
             if (stage == null || stage.adventureScoreModeObjects == null || stage.adventureScoreModeObjects.Length <= 1)
             {
@@ -1138,7 +1140,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
 
-            // 루트에서 전용 컴포넌트만 가져와서 초기화
             var ui = root.GetComponent<AdventureScoreProgress>();
             if (!ui)
             {
@@ -1146,17 +1147,55 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
 
+            // ✅ UI 초기화
             ui.Initialize(target, current);
 
-            // 점수 실시간 갱신 이벤트 구독
+            // ✅ 점수 이벤트 구독 (중복 구독 방지)
             var scoreMgr = ScoreManager.Instance;
             if (scoreMgr != null)
             {
                 if (_scoreProgressHandler != null)
                     scoreMgr.OnScoreChanged -= _scoreProgressHandler;
 
-                _scoreProgressHandler = (newScore) => ui.UpdateCurrent(newScore);
+                _scoreProgressHandler = (newScore) =>
+                {
+                    ui.UpdateCurrent(newScore);
+
+                    // 점수 모드일 때만 체크
+                    if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Score)
+                    {
+                        if (!_scoreGoalClearedAnnounced && newScore >= target)
+                        {
+                            _scoreGoalClearedAnnounced = true;
+
+                            // 신기록 저장 시도 (최고 스테이지 갱신)
+                            int index = Mathf.Max(1, _currentMapData.mapIndex);
+                            string name = _currentMapData.stageName ?? $"Stage{index}";
+                            saveManager?.TryUpdateAdventureBest(index, name);
+
+                            int finalScore = scoreMgr ? scoreMgr.Score : newScore;
+
+                            // 스테이지 클리어 이벤트 발행(점수 모드)
+                            Game.Bus?.PublishImmediate(new AdventureStageCleared(MapGoalKind.Score, finalScore));
+                        }
+                    }
+                };
                 scoreMgr.OnScoreChanged += _scoreProgressHandler;
+
+                // 이어하기 케이스: 현재 점수로 바로 한 번 평가
+                int now = scoreMgr.Score;
+                ui.UpdateCurrent(now);
+                if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Score
+                    && !_scoreGoalClearedAnnounced && now >= target)
+                {
+                    _scoreGoalClearedAnnounced = true;
+
+                    int index = Mathf.Max(1, _currentMapData.mapIndex);
+                    string name = _currentMapData.stageName ?? $"Stage{index}";
+                    saveManager?.TryUpdateAdventureBest(index, name);
+
+                    Game.Bus?.PublishImmediate(new AdventureStageCleared(MapGoalKind.Score, now));
+                }
             }
         }
         /// <summary>
