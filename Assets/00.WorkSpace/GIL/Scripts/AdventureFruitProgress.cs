@@ -20,6 +20,14 @@ public class AdventureFruitProgress : MonoBehaviour
         public Image      icon;
         public TMP_Text   amountText;
     }
+    
+    [Header("Layout Presets (중앙 앵커 기준 좌표)")]
+    [Tooltip("활성 과일 개수(1~5)에 따른 좌표 프리셋. 필요 시 인스펙터에서 수정하세요.")]
+    [SerializeField] private Vector2[] layout1 = { new Vector2(0, 100) };
+    [SerializeField] private Vector2[] layout2 = { new Vector2(-250, 100), new Vector2(250, 100) };
+    [SerializeField] private Vector2[] layout3 = { new Vector2(-250, 100), new Vector2(0, 100), new Vector2(250, 100) };
+    [SerializeField] private Vector2[] layout4 = { new Vector2(-250, 0), new Vector2(0, 0), new Vector2(250, 0), new Vector2(-125, 220) };
+    [SerializeField] private Vector2[] layout5 = { new Vector2(-250, 0), new Vector2(0, 0), new Vector2(250, 0), new Vector2(-125, 220), new Vector2(125, 220) };
 
     [SerializeField] private List<Slot> _slots = new();
 
@@ -36,7 +44,7 @@ public class AdventureFruitProgress : MonoBehaviour
             Debug.LogWarning("[AdvFruit] slots 비어있음(수동 매핑 필요).");
             return;
         }
-        
+
         int enabledCount = 0;
         for (int i = 0; i < _slots.Count; i++)
         {
@@ -45,7 +53,7 @@ public class AdventureFruitProgress : MonoBehaviour
 
         // 안전 복사
         int n = Mathf.Min(enabled?.Length ?? 0, targets?.Length ?? 0);
-        _targetCounts  = new int[n];
+        _targetCounts = new int[n];
         _currentCounts = new int[n];
         _enabledIndexMap = new int[_slots.Count]; // 화면 슬롯 → 실제 fruit index, 미활성은 -1
         Array.Fill(_enabledIndexMap, -1);
@@ -72,6 +80,36 @@ public class AdventureFruitProgress : MonoBehaviour
 
             _enabledIndexMap[slotIdx] = fi;
             enabledCount++;
+        }
+        
+        ApplyLayout(enabledCount);
+    }
+
+    private void ApplyLayout(int activeCount)
+    {
+        Vector2[] preset = null;
+        switch (activeCount)
+        {
+            case 1: preset = layout1; break;
+            case 2: preset = layout2; break;
+            case 3: preset = layout3; break;
+            case 4: preset = layout4; break;
+            case 5: preset = layout5; break;
+        }
+        if (preset == null) return;
+
+        int used = 0;
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            var s = _slots[i];
+            if (s == null || s.root == null || !s.root.activeSelf) continue;
+            if (used >= preset.Length) break;
+
+            var rt = s.root.transform as RectTransform;
+            if (rt != null)
+                rt.anchoredPosition = preset[used];
+
+            used++;
         }
     }
 
