@@ -1,4 +1,5 @@
 ﻿using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Utils;
 using System;
@@ -29,7 +30,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         [Header("Block Placement Helper")]
         [SerializeField] private bool previewMode = false;
-
+        [SerializeField] private int fruitFullFillCapPerWave = 0; // 0=무제한, 기본 1개만 FullFill
         [Header("AD")]
         [SerializeField] private float interstitialDelayAfterGameOver = 1f;
         private bool _adQueuedForThisGameOver;
@@ -149,12 +150,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             if (spawner == null) { Debug.LogError("[Storage] Spawner null"); return; }
 
-            var wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
+            var wave = spawner.GenerateWaveV170(blockSpawnPosList.Count);
 
             if (wave == null || wave.Count == 0)
             {
                 Debug.LogError("[Storage] Wave is null/empty. Rebuilding weights and retry.");
-                wave = spawner.GenerateBasicWave(blockSpawnPosList.Count);
+                wave = spawner.GenerateWaveV170(blockSpawnPosList.Count);
                 if (wave == null || wave.Count == 0) return;
             }
 
@@ -195,7 +196,19 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _currentBlocksShapeData.Add(shape);
                 _currentBlocksSpriteData.Add(sprite);
                 block.SetSpriteData(sprite);
+
+                var mM = MapManager.Instance;
+                // 기존 과일 오버레이 방식, 개별 블록마다 50% 확률로 적용
+                if (mM?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
+                {
+                    TryApplyFruitOverlayToBlock(block);
+                }
             }
+            // 신규 오버레이 방식, 모든 블록에 적용
+            // if (MapManager.Instance?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
+            // {
+            //     ApplyFruitWaveAlgorithm(_currentBlocks);
+            // }
 
             var fitsInfo = spawner.LastGeneratedFits;
 
@@ -213,6 +226,384 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         #endregion
 
+        #region Fruit Overlay Algorithm
+
+        // 신규 과일 오버레이 알고리즘 (웨이브 단위)
+        private void ApplyFruitWaveAlgorithm(List<Block> wave)
+        {
+            var mm = MapManager.Instance;
+            if (mm == null) return;
+
+            // --- (2) 기본/현재 목표, 활성 과일, 보드 내 과일 개수 집계 ---
+            var activeCodes = mm.ActiveFruitCodes;          // e.g., [201,203,205]
+            if (activeCodes == null || activeCodes.Count == 0) return;
+
+            int TotalInitial() { int s = 0; foreach (var code in activeCodes) s += mm.GetInitialFruitGoalByCode(code); return s; }
+            int TotalCurrent() { int s = 0; foreach (var code in activeCodes) s += mm.GetFruitGoalByCode(code); return s; }
+
+            var boardCounts = CountFruitsOnBoard(activeCodes); // code→현재 보드 내 과일 칸 수
+
+            int totalInit = Mathf.Max(1, TotalInitial());
+            int totalCur = Mathf.Clamp(TotalCurrent(), 0, totalInit);
+            // --- (5) 특수 타일 소환 조건 확률 ---
+            // P = 0.60 - (totalCur/totalInit)*0.20
+            float pCond = Mathf.Clamp01(0.60f - (totalCur / (float)totalInit) * 0.20f);
+
+            // (예외) 현재 목표 중 0이 된 타일 존재?
+            bool anyZero = false;
+            foreach (var code in activeCodes)
+            {
+                // 초기 목표가 1 이상이었던 과일이 현재 0이 된 경우만 '도달'로 취급
+                int init = mm.GetInitialFruitGoalByCode(code);
+                int cur  = mm.GetFruitGoalByCode(code);
+                if (init > 0 && cur <= 0) { anyZero = true; break; }
+            }
+            // 로그 뭉치
+            TDO($"[FruitWave] a) 웨이브 과일 준비", () =>
+            {
+                T($" - activeCodes: {string.Join(",", activeCodes)}");
+                T($" - goals init={totalInit}, cur={totalCur}, progress={(1f - totalCur/(float)totalInit):P0}");
+                T($" - pCond={pCond:F2}, anyZero={anyZero}");
+                var bc = string.Join(", ", activeCodes.Select(c => $"{c}:{boardCounts[c]}"));
+                T($" - boardCounts: {bc}");
+            });
+
+            if (anyZero)
+            {
+                T("[FruitWave] b-i) 목표 0 도달 예외 → FullFill 반복");
+                // ---- 5-1. "목표 0 도달" 예외처리: 대상 블록 선정 → 전체 타일 덮기 → 반복
+                TrySpawnOnBlocks_FullFill(wave, activeCodes, mm, boardCounts, perBlockOnce: true, repeatWhileAvailable: false);
+                return;
+            }
+
+            float roll = UnityEngine.Random.value;
+            if (roll <= pCond)
+            {
+                T($"[FruitWave] b-ii) 확률 성공 roll={roll:F2} ≤ pCond={pCond:F2} → FullFill 1개");
+                // ---- 5-2. "확률 성공": 대상 블록 1개에 전체 타일 덮기
+                TrySpawnOnBlocks_FullFill(wave, activeCodes, mm, boardCounts,
+                    perBlockOnce: true, repeatWhileAvailable: false);
+            }
+            else
+            {
+                T($"[FruitWave] b-iii) 확률 실패 roll={roll:F2} > pCond={pCond:F2} → RandomInside");
+                // ---- 5-3. "확률 실패": 대상 블록 1개에 랜덤 위치 소환 → 필요시 추가 스폰/추가 블록
+                TrySpawnOnBlocks_RandomInside(wave, activeCodes, mm, boardCounts, totalCur, totalInit);
+            }
+        }
+
+        // === 보조: 보드 내 과일 카운트 ===
+        private Dictionary<int, int> CountFruitsOnBoard(IReadOnlyList<int> activeCodes)
+        {
+            var dict = new Dictionary<int, int>();
+            foreach (var code in activeCodes) dict[code] = 0;
+            var gm = FindObjectOfType<GridManager>();
+            if (gm == null) return dict;
+
+            int rows = gm.rows, cols = gm.cols;
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = gm.gridSquares[r, c];
+                    if (cell == null) continue;
+                    int code = cell.BlockSpriteIndex; // 201..205일 때 과일
+                    if (dict.ContainsKey(code)) dict[code]++;
+                }
+            return dict;
+        }
+
+        // === 가중치: 타일 선택 점수(10/8/6/4/2) = (현재 목표 많을수록 ↑) + (보드 내 개수 적을수록 ↑) ===
+        private int ScoreFruitForSelection(int code, MapManager mm, Dictionary<int, int> boardCounts, IReadOnlyList<int> activeCodes)
+        {
+            // 현재 목표 순위(내림차순) → 10/8/6/4/2
+            var sortedByGoal = new List<int>(activeCodes);
+            sortedByGoal.Sort((a, b) => mm.GetFruitGoalByCode(b).CompareTo(mm.GetFruitGoalByCode(a)));
+            int goalRank = Mathf.Clamp(sortedByGoal.IndexOf(code), 0, 4);
+            int goalScore = 10 - goalRank * 2;
+
+            // 보드 내 개수 순위(오름차순: 적을수록 높음) → 10/8/6/4/2
+            var sortedByBoard = new List<int>(activeCodes);
+            sortedByBoard.Sort((a, b) => boardCounts[a].CompareTo(boardCounts[b]));
+            int boardRank = Mathf.Clamp(sortedByBoard.IndexOf(code), 0, 4);
+            int boardScore = 10 - boardRank * 2;
+
+            return goalScore + boardScore; // 20..4
+        }
+
+        // === 블록 후보: "이번 웨이브 생성 순서" 우선, 이미 과일 소환된 블록 제외 ===
+        private Block PickTargetBlock(List<Block> wave)
+        {
+            foreach (var b in wave)
+                if (!BlockHasAnyFruit(b)) return b;
+            return null; // 전부 과일 있으면 없음
+        }
+
+        private bool BlockHasAnyFruit(Block b)
+        {
+            var root = b.shapePrefab ? b.shapePrefab.transform : b.transform;
+            var squares = root.GetComponentsInChildren<ShapeSquare>(true);
+            foreach (var s in squares)
+            {
+                if (s != null && s.gameObject.activeSelf)
+                {
+                    var img = s.FruitSprite;
+                    if (img != null) return true;
+                }
+            }
+            return false;
+        }
+
+        // === 전 블록 타일 덮기(5-1 / 5-2 공통) ===
+        private void TrySpawnOnBlocks_FullFill(
+            List<Block> wave, IReadOnlyList<int> activeCodes, MapManager mm,
+            Dictionary<int, int> boardCounts, bool perBlockOnce, bool repeatWhileAvailable)
+        {
+            var usable = new List<Block>(wave);
+            int spawnedBlocks = 0;
+
+            while (usable.Count > 0)
+            {
+                if (fruitFullFillCapPerWave > 0 && spawnedBlocks >= fruitFullFillCapPerWave)
+                {
+                    T($"[FruitWave] z) FullFill 캡 도달 → 종료 (spawnedBlocks={spawnedBlocks})");
+                    break;
+                }
+
+                var b = PickTargetBlock(usable);
+                if (b == null)
+                {
+                    T("[FruitWave] c) 대상 없음(모두 이미 과일 존재) → 종료");
+                    break;
+                }
+
+                int pickCode = WeightedPickFruit(activeCodes, code => ScoreFruitForSelection(code, mm, boardCounts, activeCodes));
+                int pickIdx = pickCode - 201;
+
+                int tiles = CountActiveCells(b);
+                TDO($"[FruitWave] c) 대상 블록 slot={b.SpawnSlotIndex}, tiles={tiles}", () =>
+                {
+                    T($" - pickCode={pickCode} (idx={pickIdx}) | score={ScoreFruitForSelection(pickCode, mm, boardCounts, activeCodes)}");
+                });
+
+                ApplyFruitToBlock_AllCells(b, pickIdx);
+                spawnedBlocks++;
+
+                // 웨이브 한정: 같은 타일은 목록에서 제거(문서 5-1/5-2-c-i)
+                // → 이번 루프에선 같은 code를 다시 뽑지 않도록 보정(선택적)
+                boardCounts[pickCode] += tiles;
+
+                // 한 블록만 하고 끝(5-2) or 계속(5-1)
+                if (!repeatWhileAvailable)
+                {
+                    T($"[FruitWave] d) FullFill 완료(1개) → 종료");
+                    break;
+                }
+
+                // 다음 대상 탐색
+                usable.Remove(b);
+            }
+            
+            T($"[FruitWave] z) FullFill 총 {spawnedBlocks}개 블록");
+        }
+
+        // === 확률 실패 분기(5-3): 블록 1개 랜덤 위치 소환 + 추가 스폰/추가 블록 확률 ===
+        private void TrySpawnOnBlocks_RandomInside(
+            List<Block> wave, IReadOnlyList<int> activeCodes, MapManager mm,
+            Dictionary<int, int> boardCounts, int totalCur, int totalInit)
+        {
+            var b = PickTargetBlock(wave);
+            if (b == null)
+            {
+                T("[FruitWave] c) 대상 없음 → 종료");
+                return;
+            }
+
+            int code = WeightedPickFruit(activeCodes, c => ScoreFruitForSelection(c, mm, boardCounts, activeCodes));
+            int idx = code - 201;
+
+            TDO($"[FruitWave] c) 대상 블록 slot={b.SpawnSlotIndex}", () =>
+                T($" - pickCode={code} (idx={idx}), score={ScoreFruitForSelection(code, mm, boardCounts, activeCodes)}")
+            );
+
+            // 최초 1개 랜덤 배치
+            int placed = ApplyFruitToBlock_RandomCells(b, idx, minCount: 1, maxCount: 1);
+            T($"[FruitWave] d) 첫 배치 placed={placed}");
+
+            // d) 2개 미만이면(e) 추가 소환 확률
+            if (placed < 2)
+            {
+                float pExtra = Mathf.Clamp01(1.00f - (totalCur / (float)totalInit) * 0.30f);
+                float roll = UnityEngine.Random.value;
+                T($"[FruitWave] e) 추가 소환 roll={roll:F2} ≤ pExtra={pExtra:F2}? {(roll<=pExtra ? "Y" : "N")}");
+                if (roll <= pExtra)
+                {
+                    int add = ApplyFruitToBlock_RandomCells(b, idx, 1, 1);
+                    T($"[FruitWave] e) 추가 배치 add={add}");
+                    placed += add;
+                }
+            }
+
+            // f) 블록 추가 선정 확률
+            int blocksWithFruit = wave.Count(BlockHasAnyFruit);
+            float baseP = (blocksWithFruit <= 1) ? 1.0f : 0.8f;
+            float pNext = Mathf.Clamp01(baseP - (totalCur / (float)totalInit) * 0.20f);
+            float r2    = UnityEngine.Random.value;
+            T($"[FruitWave] f) 추가 블록 선정 roll={r2:F2} ≤ pNext={pNext:F2}? {(r2<=pNext ? "Y" : "N")} (blocksWithFruit={blocksWithFruit})");
+            if (r2 <= pNext)
+            {
+                // 다음 블록 1개에 동일 절차 반복(한 번만)
+                var others = wave.Where(x => x != b).ToList();
+                var b2 = PickTargetBlock(others);
+                if (b2 != null)
+                {
+                    int code2 = WeightedPickFruit(activeCodes, c => ScoreFruitForSelection(c, mm, boardCounts, activeCodes));
+                    int idx2  = code2 - 201;
+
+                    T($"[FruitWave] f) 추가 블록 slot={b2.SpawnSlotIndex}, code={code2} (idx={idx2})");
+
+                    int p2 = ApplyFruitToBlock_RandomCells(b2, idx2, 1, 1);
+                    T($"[FruitWave] f) 추가 블록 첫 배치={p2}");
+
+                    if (p2 < 2)
+                    {
+                        float pExtra2 = Mathf.Clamp01(1.00f - (totalCur / (float)totalInit) * 0.30f);
+                        float r3 = UnityEngine.Random.value;
+                        T($"[FruitWave] f) 추가 블록의 추가 소환 roll={r3:F2} ≤ pExtra2={pExtra2:F2}? {(r3<=pExtra2 ? "Y" : "N")}");
+                        if (r3 <= pExtra2)
+                        {
+                            int add2 = ApplyFruitToBlock_RandomCells(b2, idx2, 1, 1);
+                            T($"[FruitWave] f) 추가 블록의 추가 배치 add={add2}");
+                        }
+                    }
+                }
+                else T("[FruitWave] f) 추가 블록 없음");
+            }
+        }
+
+        // === 유틸: 가중치 픽 ===
+        private int WeightedPickFruit(IReadOnlyList<int> codes, System.Func<int, int> score)
+        {
+            int sum = 0;
+            foreach (var c in codes) sum += Mathf.Max(1, score(c));
+            int r = Random.Range(0, sum);
+            foreach (var c in codes)
+            {
+                int w = Mathf.Max(1, score(c));
+                if (r < w) return c;
+                r -= w;
+            }
+            return codes[Random.Range(0, codes.Count)];
+        }
+
+        // === 유틸: 블록의 활성 칸 수 ===
+        private int CountActiveCells(Block b)
+        {
+            var root = b.shapePrefab ? b.shapePrefab.transform : b.transform;
+            int n = 0;
+            foreach (var s in root.GetComponentsInChildren<ShapeSquare>(true))
+                if (s != null && s.gameObject.activeSelf) n++;
+            return n;
+        }
+
+        // === 실제 적용: 전체 칸 덮기 ===
+        private void ApplyFruitToBlock_AllCells(Block b, int fruitIdx)
+        {
+            var mm = MapManager.Instance;
+            var sprite = mm?.GetFruitSpriteByIndex(fruitIdx);
+            var root = b.shapePrefab ? b.shapePrefab.transform : b.transform;
+            int cnt = 0;
+            foreach (var s in root.GetComponentsInChildren<ShapeSquare>(true))
+                if (s != null && s.gameObject.activeSelf)
+                { s.SetFruitImage(sprite); cnt++; }
+            T($"[FruitWave] → ApplyAll(slot={b.SpawnSlotIndex}, idx={fruitIdx}, cells={cnt})");
+        }
+
+        // === 실제 적용: 랜덤 칸 n개만 배치 ===
+        private int ApplyFruitToBlock_RandomCells(Block b, int fruitIdx, int minCount, int maxCount)
+        {
+            var mm = MapManager.Instance;
+            var sprite = mm?.GetFruitSpriteByIndex(fruitIdx);
+            if (sprite == null) return 0;
+
+            var root = b.shapePrefab ? b.shapePrefab.transform : b.transform;
+            var cells = root.GetComponentsInChildren<ShapeSquare>(true)
+                            .Where(s => s != null && s.gameObject.activeSelf && s.FruitSprite == null)
+                            .ToList();
+            if (cells.Count == 0) { T($"[FruitWave] → ApplyRandom(slot={b.SpawnSlotIndex}) 대상 0"); return 0; }
+
+            int k = Mathf.Clamp(UnityEngine.Random.Range(minCount, maxCount + 1), 1, cells.Count);
+            for (int i = 0; i < k; i++)
+            {
+                int pick = UnityEngine.Random.Range(0, cells.Count);
+                cells[pick].SetFruitImage(sprite);
+                cells.RemoveAt(pick);
+            }
+            T($"[FruitWave] → ApplyRandom(slot={b.SpawnSlotIndex}, idx={fruitIdx}, k={k})");
+            return k;
+        }
+        // 구 과일 오버레이 알고리즘 (블록 개별 단위 확률)
+        private void TryApplyFruitOverlayToBlock(Block block)
+        {
+            if (block == null) return;
+
+            var mm = MapManager.Instance;
+            if (mm == null || mm.CurrentMapData == null) return;
+            // 과일 목표 모드만
+            if (mm.CurrentMapData.goalKind != MapGoalKind.Fruit) return;
+
+            // 50% 확률 ( 임시 ), 100% 생성 원할 시 아래 주석 처리
+            if (UnityEngine.Random.value >= 0.5f)
+            {
+                // 과일 적용 안 하는 케이스: 안전하게 오버레이 초기화 시도
+                ClearFruitOverlay(block);
+                return;
+            }
+
+            // 활성 과일 후보 수집(0..4)
+            var candidates = new List<int>(5);
+            for (int i = 0; i < 5; i++)
+                if (mm.IsFruitEnabled(i))
+                    candidates.Add(i);
+
+            if (candidates.Count == 0)
+            {
+                ClearFruitOverlay(block);
+                return;
+            }
+
+            // 후보 중 랜덤 선택
+            int pickIdx = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            var overlaySprite = mm.GetFruitSpriteByIndex(pickIdx); // MapManager._fruitSpriteList 기반 getter
+            if (overlaySprite == null)
+            {
+                ClearFruitOverlay(block);
+                return;
+            }
+
+            // shapePrefab 아래의 활성 ShapeSquare에만 과일 이미지 덮기
+            var root = block.shapePrefab != null ? block.shapePrefab.transform : block.transform;
+            var squares = root.GetComponentsInChildren<ShapeSquare>(true);
+            foreach (var sq in squares)
+            {
+                if (sq == null) continue;
+                // 블록 활성 칸(자기꺼 활성)만 과일 오버레이
+                bool active = sq.gameObject.activeSelf;
+                sq.SetFruitImage(active ? overlaySprite : null);
+            }
+        }
+
+        private void ClearFruitOverlay(Block block)
+        {
+            if (block == null) return;
+            var root = block.shapePrefab != null ? block.shapePrefab.transform : block.transform;
+            var squares = root.GetComponentsInChildren<ShapeSquare>(true);
+            foreach (var sq in squares)
+            {
+                if (sq == null) continue;
+                sq.SetFruitImage(null);
+            }
+        }
+        #endregion
 
         #region Game Check
 
@@ -725,7 +1116,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Debug.Log("[Hand] Refill → GenerateAllBlocks()");
             GenerateAllBlocks();
         }
-    private void OnGameResetting(GameResetting _)
+        private void OnGameResetting(GameResetting _)
         {
             _gameOverFired = false;
             Time.timeScale = 1f;
@@ -766,5 +1157,19 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 GenerateAllBlocks();
             }
         }
+
+#region Tracker (FruitWave)
+        #if UNITY_EDITOR
+        private void T(string msg) => UnityEngine.Debug.Log(msg);
+        private void TDO(string title, System.Action body)
+        {
+            if (!string.IsNullOrEmpty(title)) UnityEngine.Debug.Log(title);
+            body?.Invoke();
+        }
+        #else
+        [System.Diagnostics.Conditional("UNITY_EDITOR")] private void T(string msg) {}
+        [System.Diagnostics.Conditional("UNITY_EDITOR")] private void TDO(string title, System.Action body) {}
+        #endif
+#endregion
     }
 }

@@ -1,17 +1,29 @@
 using System.Collections;
 using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UIElements.Experimental;
 public class StageManager : MonoBehaviour
 {
+    public static StageManager Instance;
+
     [Header("References")]
     [SerializeField] private StageList generator; // 호출할 StageList를 가지고 있는 오브젝트
     [SerializeField] private Button enterCurrentStageButton; // 현재 스테이지 진입 버튼
     [SerializeField] private Image trophyImage;
     [SerializeField] private Sprite normalTrophyImage;
     [SerializeField] private Sprite clearTrophyImage; // 클리어 이미지
+
+    [Header("Game Mode Objects, 게임 모드마다 보여줄 오브젝트들")]
+    [Tooltip("0번 : 최고 점수 텍스트, 1번 : 현재 점수 텍스트")]
+    [SerializeField] private GameObject[] classicModeObjects;
+    [Tooltip("0번 : 메인 화면 이동 버튼, 1번 : 점수모드 현재 상태 슬라이더")]
+    [SerializeField] public GameObject[] adventureScoreModeObjects;
+    [Tooltip("0번 : 메인 화면 이동 버튼, 1번 : 과일 목표치 점수 텍스트")]
+    [SerializeField] public GameObject[] adventureFruitModeObjects;
+ 
     [Header("Test / QA Debug"), Tooltip("테스트 및 QA용 디버그 버튼")]
     [SerializeField] private Button showStageNumberButton;      // 스테이지 번호 숫자 Text 표시 버튼
     [SerializeField] private Button setAllStageActiveButton;    // 모든 스테이지 활성화 버튼
@@ -30,6 +42,7 @@ public class StageManager : MonoBehaviour
 
     private void Awake()
     {
+        Instance = this;
         SetCurrentActiveStage(1); // 기본값 1로 설정
     }
 
@@ -121,9 +134,12 @@ public class StageManager : MonoBehaviour
         // 최신 스테이지에 대한 리스너 추가
         enterCurrentStageButton.onClick.AddListener(() =>
         {
+            // 기존 버튼의 Invoke
             var enterButton = generator.stageButtons[currentStage].GetComponent<EnterStageButton>();
             if (enterButton != null)
                 enterButton.EnterStage();
+            // PanelSwitchOnClick Invoke
+            generator.stageButtons[currentStage].GetComponent<PanelSwitchOnClick>().Invoke();
         });
     }
     /// <summary>
@@ -143,6 +159,49 @@ public class StageManager : MonoBehaviour
             enterCurrentStageButton.transition = Selectable.Transition.None;
             enterCurrentStageButton.interactable = false;
         }
+    }
+    /// <summary>
+    /// 게임 모드에 따라 활성화 / 비활성화 할 오브젝트 설정
+    /// </summary>
+    /// <param name="gameMode">게임 모드</param>
+    /// <param name="goalKind">어드벤쳐일 경우 골 타입 </param>
+    public void SetObjectsByGameModeNGoalKind(GameMode gameMode, MapGoalKind goalKind = default)
+    {
+        // 클래식 모드일 경우
+        if (gameMode == GameMode.Classic)
+        {
+            foreach (var obj in classicModeObjects)
+                obj.SetActive(true);
+            foreach (var obj in adventureFruitModeObjects)
+                obj.SetActive(false);
+            foreach (var obj in adventureScoreModeObjects)
+                obj.SetActive(false);
+        }
+        // 어드벤쳐 모드일 경우
+        else if (gameMode == GameMode.Adventure)
+        {
+            // 점수 모드일 경우
+            if (goalKind == MapGoalKind.Score)
+            {
+                foreach (var obj in classicModeObjects)
+                    obj.SetActive(false);
+                foreach (var obj in adventureFruitModeObjects)
+                    obj.SetActive(false);
+                foreach (var obj in adventureScoreModeObjects)
+                    obj.SetActive(true);
+            }
+            // 과일 모드일 경우
+            else if (goalKind == MapGoalKind.Fruit)
+            {
+                foreach (var obj in classicModeObjects)
+                    obj.SetActive(false);
+                foreach (var obj in adventureFruitModeObjects)
+                    obj.SetActive(true);
+                foreach (var obj in adventureScoreModeObjects)
+                    obj.SetActive(false);
+            }
+        }
+
     }
 
     #region // Test / QA Debug Button Events

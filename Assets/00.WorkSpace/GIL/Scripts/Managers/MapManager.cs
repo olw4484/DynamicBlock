@@ -6,9 +6,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SocialPlatforms.Impl;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
@@ -26,12 +29,36 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         [SerializeField] private GameObject grid;
         private MapData[] _mapList;
 
+        [SerializeField] private MapData _currentMapData; // 현재 로딩된 맵 (디버그 확인용)
+        public MapData CurrentMapData => _currentMapData; // 읽기 전용 접근자
+        [SerializeField] private bool[] _fruitEnabledRuntime = new bool[5];
+        [SerializeField] private int[] _fruitGoalsRuntime = new int[5];
+        [SerializeField] private int[] _fruitGoalsInitial = new int[5]; // 0..4, 스테이지 입장 시 스냅샷
+        [SerializeField] private List<int> _activeFruitCodes = new();           // 201..205
+        [SerializeField] private Dictionary<int, int> _fruitGoalsByCode = new(); // key:201..205
+        [SerializeField] private bool _fruitAllClearedAnnounced = false;
+
+        public IReadOnlyList<int> ActiveFruitCodes => _activeFruitCodes;
+        public bool IsFruitEnabled(int idx) => (uint)idx < _fruitEnabledRuntime.Length && _fruitEnabledRuntime[idx];
+        public int GetFruitGoal(int idx) => (uint)idx < _fruitGoalsRuntime.Length ? _fruitGoalsRuntime[idx] : 0;
+        public bool IsFruitCodeActive(int code) => _activeFruitCodes.Contains(code);
+        public int GetFruitGoalByCode(int code) => _fruitGoalsByCode.TryGetValue(code, out var v) ? v : 0;
+
+        private const int FruitBaseCode = 201;
+        private const int FruitCount = 5;
+
+        [SerializeField] private int[] fruitCurrentsRuntime = new int[FruitCount];
+
+
+        // UI 캐시
+        private AdventureFruitProgress _fruitUI;
+
         private readonly Dictionary<int, Sprite> _codeToSprite = new();
         private static readonly Regex s_CodeRegex = new(@"^\s*(\d+)(?=_)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        private Sprite[] _blockSpriteList;
-        private Sprite[] _fruitSpriteList;
-        private Sprite[] _fruitBackgroundSprite;
+        private Sprite[] _blockSpriteList; // 단순 블록 스프라이트 리스트
+        private Sprite[] _fruitSpriteList; // 블록 + 과일 스프라이트 리스트
+        private Sprite[] _fruitBackgroundSprite; // 블록 + 과일 스프라이트의 블록 배경화면 이미지 리스트, 현재는 단 하나
 
         private bool _codeMapsBuilt = false;
         bool _isApplyingMap;
@@ -203,6 +230,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public static bool IsFruitCode(int code) => code >= 200 && code < 300;
 
+        // index = 0..4  (code로 받으려면 아래 GetFruitSpriteByCode 사용)
+        public Sprite GetFruitSpriteByIndex(int idx)
+        {
+            if (_fruitSpriteList == null || idx < 0 || idx >= _fruitSpriteList.Length) return null;
+            return _fruitSpriteList[idx];
+        }
+
+        public Sprite GetFruitSpriteByCode(int code)
+        {
+            // 201번부터 시작이라 제거하고 시작함
+            int idx = code - 201;
+            return GetFruitSpriteByIndex(idx);
+        }
+
         /// <summary>
         /// 맵 데이터를 토대로 그리드를 칠하기, 게임 시작 -> 블럭 생성 이전에 써야 할듯
         /// 게임 시작 위치를 정확히 모르겠어서 어디서든 코드를 사용하여 바로 붙일 수 있게 해야함.
@@ -290,6 +331,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int rows = Mathf.Min(map.rows, gm.rows);
             int cols = Mathf.Min(map.cols, gm.cols);
 
+            StringBuilder sb = new();
+
             for (int r = 0; r < rows; r++)
                 for (int c = 0; c < cols; c++)
                 {
@@ -301,12 +344,24 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     }
 
                     var sprite = GDS.I?.GetBlockSpriteByLayoutCode(code);
-
                     if (!sprite && _codeToSprite != null)
                         _codeToSprite.TryGetValue(code, out sprite);
 
-                    gm.SetCellOccupied(r, c, sprite != null, sprite);
+                    // 200이 넘을 경우 ( 과일 블록일 경우 ) 강제 매핑.
+                    if (!sprite && code >= 200 && _fruitSpriteList != null && _fruitSpriteList.Length > 0)
+                    {
+                        int i = Mathf.Clamp(code - 201, 0, _fruitSpriteList.Length - 1);
+                        sprite = _fruitSpriteList[i];
+                    }
+                    // 과일 블록일 경우의 5번째 파라미터 isFruit : true를 추가
+                    sb.Append($"[MapManager] Applying cell ({r},{c}): code={code}, sprite={(sprite != null ? sprite.name : "null")}");
+                    if (code >= 200)
+                        gm.SetCellOccupied(r, c, true, sprite, isFruit: true);
+                    else
+                        gm.SetCellOccupied(r, c, sprite != null, sprite);
                 }
+
+            Debug.Log(sb.ToString());
 
             gm.ValidateGridConsistency();
 
@@ -907,10 +962,224 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void EnterStage(int stageNumber)
         {
+            // currentMapData 안전 초기화 이후 진행
+            _currentMapData = null;
             Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
-            // 어드벤처 모드 진입 로직 구현 필요
+            CurrentMode = GameMode.Adventure;
+            _currentMapData = _mapList[stageNumber]; // 현재 맵 데이터 설정
+            // 맵 데이터가 과일 모드일 경우 활성화된 과일 종류 및 갯수 저장 
+            if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
+                SyncFruitRuntimeFromMap(_currentMapData);
+            else
+                ClearFruitRuntime();
+            Debug.Log($"Current Map Data의 클리어 종류 : {_currentMapData.goalKind}");
+            // 어드벤처 모드 진입 로직 구현
             SetMapDataToGrid(stageNumber);
+            // Fruit 모드 UI / 진행값 준비
+            if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
+            {
+                ResetFruitProgress();          // 새로 시작이면 0으로, 이어하기면 여기 대신 세이브 반영 루틴 호출
+                SetAdvFruitObjects();          // UI에 목표/아이콘/현재(0 또는 복원값) 표시
+            }
             //StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
+        }
+
+        private void ClearFruitRuntime()
+        {
+            Array.Clear(_fruitEnabledRuntime, 0, _fruitEnabledRuntime.Length);
+            Array.Clear(_fruitGoalsRuntime, 0, _fruitGoalsRuntime.Length);
+            _activeFruitCodes.Clear();
+            _fruitGoalsByCode.Clear();
+            _fruitAllClearedAnnounced = false;
+        }
+
+        // 과일 클리어 시 호출 (과일 코드, 개수)
+        public void OnFruitCleared(int fruitCode, int count = 1)
+        {
+            // 과일 코드가 아니거나 활성화 안 되어 있으면 무시
+            if (!IsFruitCode(fruitCode) || !_activeFruitCodes.Contains(fruitCode))
+                return;
+
+            // 코드→인덱스(0~4) 변환
+            int idx = fruitCode - 201; // FruitBaseCode
+            if ((uint)idx >= (uint)_fruitGoalsRuntime.Length) return;
+
+            // 현재 수집값 누적 (목표 초과 캡)
+            int target = Mathf.Max(0, _fruitGoalsInitial[idx]);
+            int nextCurrent = Mathf.Clamp(fruitCurrentsRuntime[idx] + Mathf.Max(0, count), 0, target);
+            fruitCurrentsRuntime[idx] = nextCurrent;
+
+            // UI: 남은 = target - current 를 내부에서 계산해 표시
+            _fruitUI?.SetCurrent(idx, nextCurrent);
+
+            // 전부 달성 체크
+            AnnounceFruitAllCleared();
+            #if UNITY_EDITOR
+            Debug.Log($"[Fruit] cleared code={fruitCode} idx={idx} current={nextCurrent}/{target} (remain={Mathf.Max(0,target-nextCurrent)})");
+            #endif
+        }
+        
+        public bool IsAllFruitCleared()
+        {
+            // 과일 모드가 아니거나 활성 과일이 없으면 false
+            if (CurrentMapData == null || CurrentMapData.goalKind != MapGoalKind.Fruit) return false;
+            if (_activeFruitCodes == null || _activeFruitCodes.Count == 0) return false;
+
+            // 활성 과일들의 남은 목표가 모두 0이하인지
+            foreach (var code in _activeFruitCodes)
+            {
+                int idx = code - FruitBaseCode;
+                int target  = Mathf.Max(0, _fruitGoalsInitial[idx]);
+                int current = Mathf.Clamp(fruitCurrentsRuntime[idx], 0, target);
+                if (current < target) return false;
+            }
+            return true;
+        }
+
+        private void AnnounceFruitAllCleared()
+        {
+            if (_fruitAllClearedAnnounced) return;
+            if (!IsAllFruitCleared()) return;
+
+            _fruitAllClearedAnnounced = true;
+            Debug.Log("[Fruit] ALL CLEAR! (모든 과일 목표 달성)");
+            // TODO : UI/사운드/이벤트 발행이 필요하면 여기서 호출
+        }
+
+        public int GetInitialFruitGoalByCode(int code)
+        {
+            int idx = code - 201;
+            if ((uint)idx >= (uint)_fruitGoalsInitial.Length) return 0;
+            return _fruitGoalsInitial[idx];
+        }
+
+        private void SyncFruitRuntimeFromMap(MapData map)
+        {
+            ClearFruitRuntime();
+            if (map == null) return;
+
+            // 1) enabled / goals 복사 (길이 보호)
+            if (map.fruitEnabled != null && map.fruitEnabled.Length >= FruitCount)
+                Array.Copy(map.fruitEnabled, _fruitEnabledRuntime, FruitCount);
+            if (map.fruitGoals != null && map.fruitGoals.Length >= FruitCount)
+                Array.Copy(map.fruitGoals, _fruitGoalsRuntime, FruitCount);
+            // 초기 목표도 저장
+            if (map?.fruitGoals != null && map.fruitGoals.Length >= FruitCount)
+                Array.Copy(map.fruitGoals, _fruitGoalsInitial, FruitCount);
+
+
+            // 2) enabled 기준으로 활성 코드/목표 구성 (201..205)
+            for (int i = 0; i < FruitCount; i++)
+            {
+                if (!_fruitEnabledRuntime[i]) continue;
+                if (_fruitGoalsRuntime[i] <= 0) continue;
+                int code = FruitBaseCode + i;
+                _activeFruitCodes.Add(code);
+                _fruitGoalsByCode[code] = _fruitGoalsRuntime[i];
+            }
+            _fruitAllClearedAnnounced = false;
+#if UNITY_EDITOR
+            UnityEngine.Debug.Log(
+                $"[MapManager] Fruit synced | enabled={string.Join(",", _fruitEnabledRuntime.Select(b => b ? 1 : 0))} " +
+                $"goals={string.Join(",", _fruitGoalsRuntime)} codes={string.Join(",", _activeFruitCodes)}");
+#endif
+        }
+        /// <summary>
+        /// 점수 슬라이더 셋팅하기
+        /// </summary>
+        public void SetAdvScoreObjects()
+        {
+            //StageManager의 adventureScoreModeObjects[1] 번에 점수모드 현재 상태 슬라이더 있음
+            // 목표/현재 점수
+            int target = Mathf.Max(1, _currentMapData?.scoreGoal ?? 1);
+            int current = 0; // "0 / 목표"로 시작하려면 0. 이어하기라면 saveManager.gameData.currentScore 등.
+
+            // StageManager에서 1번 인덱스(슬라이더 루트) 가져오기
+            var stage = StageManager.Instance;
+            if (stage == null || stage.adventureScoreModeObjects == null || stage.adventureScoreModeObjects.Length <= 1)
+            {
+                Debug.LogWarning("[AdvScore] UI 루트가 없습니다.");
+                return;
+            }
+
+            var root = stage.adventureScoreModeObjects[1];
+            if (!root)
+            {
+                Debug.LogWarning("[AdvScore] ScoreProgress 루트가 비어있습니다.");
+                return;
+            }
+
+            // 루트에서 전용 컴포넌트만 가져와서 초기화
+            var ui = root.GetComponent<AdventureScoreProgress>();
+            if (!ui)
+            {
+                Debug.LogWarning("[AdvScore] AdventureScoreProgress 컴포넌트가 없습니다.");
+                return;
+            }
+
+            ui.Initialize(target, current);
+
+            // 점수 실시간 갱신 이벤트 구독
+            var scoreMgr = ScoreManager.Instance;
+            if (scoreMgr != null)
+            {
+                // 중복 구독 방지용 해제-재구독 패턴
+                scoreMgr.OnScoreChanged -= OnScoreChangedHandler;
+                scoreMgr.OnScoreChanged += OnScoreChangedHandler;
+
+                void OnScoreChangedHandler(int newScore)
+                {
+                    ui.UpdateCurrent(newScore);
+                }
+            }
+        }
+        /// <summary>
+        /// 활성화된 과일 종류, 갯수 붙이기
+        /// </summary>
+        public void SetAdvFruitObjects()
+        {
+            //StageManager의 adventureFruitModeObjects[1] 번에 과일모드 현재 과일 목표들 오브젝트 있음
+            var stage = StageManager.Instance;
+            if (stage == null || stage.adventureFruitModeObjects == null || stage.adventureFruitModeObjects.Length == 0)
+            {
+                Debug.LogWarning("[AdvFruit] StageManager UI 루트가 없습니다.");
+                return;
+            }
+
+            var fruitRoot = stage.adventureFruitModeObjects[1]; // <- 실제 인덱스에 맞게
+            if (!fruitRoot)
+            {
+                Debug.LogWarning("[AdvFruit] Fruit UI 루트가 비어있습니다.");
+                return;
+            }
+
+            _fruitUI = fruitRoot.GetComponent<AdventureFruitProgress>();
+            if (_fruitUI == null)
+            {
+                Debug.LogWarning("[AdvFruit] AdventureFruitProgress 컴포넌트가 없습니다.");
+                return;
+            }
+
+            // 런타임 데이터(활성/목표). 이름은 프로젝트 필드명에 맞게 치환
+            // 예: fruitEnabledRuntime: bool[], fruitGoalsRuntime: int[]
+            bool[] enabled = _fruitEnabledRuntime;
+            int[] goals = _fruitGoalsRuntime;
+
+            // 아이콘 스프라이트: GameDataStorage에서 로딩됨
+            var icons = _00.WorkSpace.GIL.Scripts.GDS.I.FruitIconsSprites; // GameDataStorage
+            _fruitUI.Initialize(enabled, goals, icons);
+            // 이어하기, 현재값 반영할때 사용
+            _fruitUI.SetCurrents(fruitCurrentsRuntime);
+        }
+        
+        private void ResetFruitProgress()
+        {
+            if (fruitCurrentsRuntime == null || fruitCurrentsRuntime.Length != FruitCount)
+                fruitCurrentsRuntime = new int[FruitCount];
+            else
+                Array.Clear(fruitCurrentsRuntime, 0, fruitCurrentsRuntime.Length);
+
+            _fruitUI?.SetCurrents(fruitCurrentsRuntime);
         }
     }
 }
