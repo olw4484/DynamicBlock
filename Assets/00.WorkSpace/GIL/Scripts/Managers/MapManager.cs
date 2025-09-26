@@ -1266,5 +1266,29 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             sm?.ClearRunState(true);
             Sfx.GameOver();
         }
+        public int GetFruitCurrentByCode(int code)
+        {
+            int idx = code - FruitBaseCode;
+            if ((uint)idx >= (uint)fruitCurrentsRuntime.Length) return 0;
+            int target = GetInitialFruitGoalByCode(code);
+            return Mathf.Clamp(fruitCurrentsRuntime[idx], 0, target);
+        }
+
+        // 남은 수량(target - current, 최소 0)
+        public int GetFruitRemainingByCode(int code)
+        {
+            int target = GetInitialFruitGoalByCode(code);
+            int current = GetFruitCurrentByCode(code);
+            return Mathf.Max(0, target - current);
+        }
+
+        // 과일 아이콘(있으면 전용 아이콘, 없으면 블록스프라이트로 폴백)
+        public Sprite GetFruitIconByCode(int code)
+        {
+            var icons = GDS.I?.FruitIconsSprites;
+            int idx = code - FruitBaseCode;
+            if (icons != null && idx >= 0 && idx < icons.Length) return icons[idx];
+            return GetFruitSpriteByCode(code);
+        }
     }
 }

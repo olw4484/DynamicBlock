@@ -11,7 +11,15 @@ public sealed class FruitBadge : MonoBehaviour
     public void Set(Sprite sprite, int count, bool achieved)
     {
         if (icon) icon.sprite = sprite;
-        if (countText) countText.text = count.ToString();
-        if (checkMark) checkMark.enabled = achieved;
+
+        // 달성 상태면 숫자 끄기
+        if (countText)
+        {
+            countText.text = achieved ? string.Empty : count.ToString();
+            countText.enabled = !achieved;
+            // 또는 countText.gameObject.SetActive(!achieved);
+        }
+
+        if (checkMark) checkMark.gameObject.SetActive(achieved);
     }
 }

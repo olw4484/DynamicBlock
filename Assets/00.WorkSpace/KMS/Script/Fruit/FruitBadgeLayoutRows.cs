@@ -23,28 +23,27 @@ public sealed class FruitBadgeLayoutRows : MonoBehaviour
     [SerializeField, Min(0)] private int trapezoidInset = 125;   // 윗줄 좌우 패딩(사다리꼴 강도)
     [SerializeField] private bool enableTrapezoid = true;
 
+    [Header("Row Offsets (center anchor 기준)")]
+    [SerializeField] private float topRowYOffset = 100f;   // 위로 +100
+    [SerializeField] private float bottomRowYOffset = -100f; // 아래로 -100
+    [SerializeField] private float bottomRowXOffset = 250f;
+
     private readonly List<FruitBadge> pool = new();
 
     public void Show(FruitReq[] reqs)
     {
-        // 필수 레퍼런스 체크(둘 중 하나라도 없으면 리턴)
-        if (!badgePrefab || topRow == null || bottomRow == null) return;
-
+        if (!badgePrefab || !topRow || !bottomRow) return;
         EnsureRowComponents();
 
-        // null-safe 개수 계산 → 풀 확보
         int n = reqs?.Length ?? 0;
         EnsurePool(n);
-
         HideAll();
-
         if (n <= 0) { ApplyTrapezoid(0, 0); return; }
 
         int topCount = Mathf.Min(n, 3);
         int bottomCount = n - topCount;
 
         int idx = 0;
-        // 윗줄 채우기
         for (int i = 0; i < topCount; i++, idx++)
         {
             var v = pool[idx];
@@ -52,8 +51,6 @@ public sealed class FruitBadgeLayoutRows : MonoBehaviour
             v.gameObject.SetActive(true);
             v.Set(reqs[idx].sprite, reqs[idx].count, reqs[idx].achieved);
         }
-
-        // 아랫줄 채우기
         for (int i = 0; i < bottomCount; i++, idx++)
         {
             var v = pool[idx];
@@ -62,17 +59,29 @@ public sealed class FruitBadgeLayoutRows : MonoBehaviour
             v.Set(reqs[idx].sprite, reqs[idx].count, reqs[idx].achieved);
         }
 
-        // 아랫줄 on/off
         bottomRow.gameObject.SetActive(bottomCount > 0);
 
-        // 줄 간 Y 오프셋(앵커 Center 기준)
-        var topPos = topRow.anchoredPosition; topPos.y = 0f; topRow.anchoredPosition = topPos;
-        var botPos = bottomRow.anchoredPosition; botPos.y = -rowSpacingY; bottomRow.anchoredPosition = botPos;
+        // 줄 위치: 탑은 +100, 바텀은 -100 (한 줄만 있으면 가운데 유지)
+        var tp = topRow.anchoredPosition;
+        tp.x = 0f;
+        tp.y = (bottomCount > 0) ? topRowYOffset : 0f;
+        topRow.anchoredPosition = tp;
 
-        // 사다리꼴 패딩 및 간격 적용
+        var bp = bottomRow.anchoredPosition;
+        if (bottomCount > 0)
+        {
+            bp.x = bottomRowXOffset;
+            bp.y = bottomRowYOffset;
+        }
+        else
+        {
+            bp.x = 0f;
+            bp.y = 0f;
+        }
+        bottomRow.anchoredPosition = bp;
+
         ApplyTrapezoid(topCount, bottomCount);
 
-        // 즉시 리빌드
         LayoutRebuilder.ForceRebuildLayoutImmediate(topRow);
         if (bottomCount > 0) LayoutRebuilder.ForceRebuildLayoutImmediate(bottomRow);
     }
