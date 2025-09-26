@@ -23,6 +23,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public int Score => _score;
         public int Combo { get; private set; }
 
+        private bool _adventureScoreClearNotified = false;
+
         private bool _handHadClear = false; // ??? ???(3??) ???? ?? ????? ?? ????? ????��?
 
         public int comboCount
@@ -81,6 +83,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _score = 0;
             Combo = 0;
             _handHadClear = false; // ??? ????
+            _adventureScoreClearNotified = false;
             PublishScore();
             PublishCombo();
         }
@@ -90,6 +93,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int before = _score;
             _score += amount;
             PublishScore();
+            CheckAdventureScoreClearAndConfirm();
         }
 
         public void SetCombo(int value)
@@ -131,11 +135,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 var mM = MapManager.Instance;
                 if (mM.CurrentMapData != null && mM.CurrentMapData.goalKind == MapGoalKind.Score)
                 {
-                    if (_score >= mM.CurrentMapData.scoreGoal)
+                    if (_score >= mM.CurrentMapData.scoreGoal && !_adventureScoreClearNotified)
                     {
-                        Debug.Log($"[ScoreManager] 점수 목표 달성! 현재 점수: {_score}, 목표 점수: {mM.CurrentMapData.scoreGoal}");
-                        // TODO: 점수 목표 달성 시 처리 (예: 맵 클리어 이벤트 발송)
-
+                        _adventureScoreClearNotified = true;
+                        Debug.Log($"[ScoreManager] 점수 목표 달성! 현재 점수: {_score}, 목표: {mM.CurrentMapData.scoreGoal}");
+                        _bus?.PublishImmediate(new AdventureStageCleared(MapGoalKind.Score, _score));
                     }
                 }
             }
@@ -240,6 +244,25 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {
                 Game.Bus.PublishImmediate(new ScoreChanged(_score));
                 Game.Bus.PublishImmediate(new ComboChanged(Combo));
+            }
+        }
+        private void CheckAdventureScoreClearAndConfirm()
+        {
+            var mm = MapManager.Instance;
+            var md = mm?.CurrentMapData;
+            if (mm?.CurrentMode != GameMode.Adventure) return;
+            if ((md?.goalKind ?? MapGoalKind.Score) != MapGoalKind.Score) return;
+
+            int goal = Mathf.Max(1, md.scoreGoal);
+            if (_score >= goal && !_adventureScoreClearNotified)
+            {
+                _adventureScoreClearNotified = true;
+                Debug.Log($"[ScoreManager] Adventure 목표 달성! score={_score}, goal={goal}");
+
+                // 1) 결과 이벤트 먼저
+                Game.Bus.PublishImmediate(new AdventureStageCleared(MapGoalKind.Score, _score));
+                // 2) 바로 확정으로 밀어넣기 (리바이브 스킵)
+                Game.Bus.PublishImmediate(new GiveUpRequest());
             }
         }
     }

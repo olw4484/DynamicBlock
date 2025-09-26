@@ -12,6 +12,8 @@ public interface ISaveService
     bool LoadOrCreate();
     void Save();
     void ResetData();
+    void UpdateClassicScore(int score);
+    void ClearRunState(bool save);
 
     // Locale
     void SetLanguageIndex(int index);

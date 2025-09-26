@@ -21,4 +21,7 @@ public static class Sfx
     public static void NewRecord() => Play((int)SfxId.ClassicNewRecord);
     public static void GameOver() => Play((int)SfxId.ClassicGameOver);
     public static void ClassicStageEnter() => Play((int)SfxId.ClassicStageEnter);
+
+    public static void StageClear() => Play((int)SfxId.AdvenClear);
+    public static void Stagefail() => Play((int)SfxId.AdvenFail);
 }
