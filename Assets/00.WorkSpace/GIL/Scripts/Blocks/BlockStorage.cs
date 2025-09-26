@@ -100,7 +100,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _bus.Unsubscribe<GameResetting>(OnGameResetting);
                 _bus.Unsubscribe<GameResetRequest>(OnGameResetRequest);
                 _bus.Unsubscribe<ReviveRequest>(OnReviveRequest);
-                _bus.Unsubscribe<GiveUpRequest>(OnGiveUpRequest);
+                //_bus.Unsubscribe<GiveUpRequest>(OnGiveUpRequest);
                 _bus.Unsubscribe<GameDataChanged>(OnGameDataChanged);
                 _subscribed = false;
             }
@@ -861,7 +861,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _bus.Subscribe<GridReady>(OnGridReady, replaySticky: true);
             _bus.Subscribe<GameEntered>(OnGameEntered, replaySticky: false);
             _bus.Subscribe<ReviveRequest>(OnReviveRequest, replaySticky: false);
-            _bus.Subscribe<GiveUpRequest>(OnGiveUpRequest, replaySticky: false);
+            //_bus.Subscribe<GiveUpRequest>(OnGiveUpRequest, replaySticky: false);
             _bus.Subscribe<GameDataChanged>(OnGameDataChanged, replaySticky: true);
 
             _subscribed = true;
@@ -1133,10 +1133,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (!GenerateAdRewardWave()) ConfirmGameOver();
         }
 
-        private void OnGiveUpRequest(GiveUpRequest _)
-        {
-            ConfirmGameOver();
-        }
+       //private void OnGiveUpRequest(GiveUpRequest _)
+       //{
+       //    ConfirmGameOver();
+       //}
 
         private void OnGameDataChanged(GameDataChanged e)
         {

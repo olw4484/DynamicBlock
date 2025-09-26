@@ -14,9 +14,17 @@ public struct UnlockedAchievement   // Unity 직렬화 안전한 struct
 }
 
 [Serializable]
+public struct AchievementTierStamp
+{
+    public int id;   // AchievementId as int
+    public int tier; // 1-based
+    public long utc; // Unix ms (UTC)
+}
+
+[Serializable]
 public class GameData
 {
-    public int Version = 3;
+    public int Version = 4;
 
     // ===== 공통 설정 =====
     public int LanguageIndex;               // 0 = 기본
@@ -69,14 +77,15 @@ public class GameData
     public long classicDownedUtc;
 
     // ===== 업적 해금 로그 =====
-    public List<UnlockedAchievement> unlocked = new(); // 마지막 해금 티어/시각
+    public List<UnlockedAchievement> unlocked = new();               // 마지막(최고) 티어/시각
+    public List<AchievementTierStamp> achievementTierStamps = new();
 
     // ---------- 팩토리 ----------
     public static GameData NewDefault(int stages = 200)
     {
         return new GameData
         {
-            Version = 3,
+            Version = 4,
             LanguageIndex = 0,
             lastScore = 0,
             highScore = 0,
@@ -113,7 +122,8 @@ public class GameData
             classicDownedScore = 0,
             classicDownedUtc = 0,
 
-            unlocked = new()
+            unlocked = new(),
+            achievementTierStamps = new()
         };
     }
 
@@ -178,6 +188,43 @@ public class GameData
         {
             unlocked.Add(new UnlockedAchievement { id = achievementId, tier = tier, utc = ts });
         }
+
+        // 티어별 타임스탬프도 기록/갱신
+        UpsertTierStamp(achievementId, tier, ts);
+    }
+
+    // ---------- 티어별 타임스탬프 조회 ----------
+    public bool TryGetAchievementUnlockUtc(int achievementId, int tier, out DateTime utc)
+    {
+        if (achievementTierStamps != null)
+        {
+            for (int i = 0; i < achievementTierStamps.Count; i++)
+            {
+                var s = achievementTierStamps[i];
+                if (s.id == achievementId && s.tier == tier && s.utc > 0)
+                {
+                    utc = DateTimeOffset.FromUnixTimeMilliseconds(s.utc).UtcDateTime;
+                    return true;
+                }
+            }
+        }
+
+        // (폴백) 구버전: 최고티어만 기록돼 있었던 경우
+        if (unlocked != null)
+        {
+            for (int i = 0; i < unlocked.Count; i++)
+            {
+                var u = unlocked[i];
+                if (u.id == achievementId && u.tier == tier && u.utc > 0)
+                {
+                    utc = DateTimeOffset.FromUnixTimeMilliseconds(u.utc).UtcDateTime;
+                    return true;
+                }
+            }
+        }
+
+        utc = default;
+        return false;
     }
 
     // ---------- 버전 마이그레이션 ----------
@@ -203,6 +250,43 @@ public class GameData
             if (stageScores == null) stageScores = new int[200];
 
             Version = 3;
+        }
+
+        // v3 → v4: 최고티어 기록을 티어 스탬프로 이식
+        if (Version < 4)
+        {
+            achievementTierStamps ??= new List<AchievementTierStamp>();
+            if (unlocked != null)
+            {
+                foreach (var u in unlocked)
+                {
+                    if (u.tier > 0 && u.utc > 0)
+                        UpsertTierStamp(u.id, u.tier, u.utc);
+                }
+            }
+            Version = 4;
+        }
+    }
+
+    // ---------- 내부 헬퍼 ----------
+    private void UpsertTierStamp(int achievementId, int tier, long unixMs)
+    {
+        achievementTierStamps ??= new List<AchievementTierStamp>();
+        int k = achievementTierStamps.FindIndex(e => e.id == achievementId && e.tier == tier);
+        if (k >= 0)
+        {
+            var e = achievementTierStamps[k];
+            e.utc = unixMs;
+            achievementTierStamps[k] = e;
+        }
+        else
+        {
+            achievementTierStamps.Add(new AchievementTierStamp
+            {
+                id = achievementId,
+                tier = tier,
+                utc = unixMs
+            });
         }
     }
 }

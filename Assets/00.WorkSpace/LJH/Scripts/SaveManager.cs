@@ -71,7 +71,6 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         yield return new WaitForSecondsRealtime(s);
         _suppressSnapshot = false;
     }
-
     // ------------- Lifecycle (Mono) -------------
     private void Awake()
     {
@@ -81,9 +80,23 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         _filePath = Path.Combine(dir, "save.json");
         _backupPath = Path.Combine(dir, "save.json.bak");
 
+        EnsurePaths();
+
         TryMigrateLegacyLanguageOnce();
         LoadGame();
         StartCoroutine(CoApplyLocale(gameData?.LanguageIndex ?? 0));
+    }
+
+    private void EnsurePaths()
+    {
+        if (string.IsNullOrEmpty(_filePath) || string.IsNullOrEmpty(_backupPath))
+        {
+            var dir = Path.Combine(Application.persistentDataPath, DirName);
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+            _filePath = Path.Combine(dir, FileName);
+            _backupPath = Path.Combine(dir, FileName + ".bak");
+        }
     }
 
 
@@ -251,6 +264,8 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     {
         if (gameData == null) return;
 
+        EnsurePaths();
+
         var json = JsonUtility.ToJson(gameData, true);
         try
         {
@@ -266,35 +281,51 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     }
     private static void AtomicWriteWithBackup(string mainPath, string bakPath, string content)
     {
+        if (string.IsNullOrEmpty(mainPath)) throw new ArgumentNullException(nameof(mainPath));
+        if (string.IsNullOrEmpty(bakPath)) throw new ArgumentNullException(nameof(bakPath));
+
+        var dir = Path.GetDirectoryName(mainPath);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+
         var tmp = mainPath + ".tmp";
-        File.WriteAllText(tmp, content);              // 1) 임시파일에 기록
-                                                      // 일부 플랫폼에서 Replace 미지원일 수 있어 try/fallback
+        File.WriteAllText(tmp, content);
+
         try
         {
-            // 메인이 있으면 백업을 갱신하며 교체, 없으면 교체 동작 = 이동
             if (File.Exists(mainPath))
+            {
+                // Replace가 일부 플랫폼에서 미지원일 수 있음 → catch로 폴백
                 File.Replace(tmp, mainPath, bakPath);
+            }
             else
             {
-                // 메인이 없을 때는 단순 Move 후, 기존 백업 갱신
                 if (File.Exists(bakPath)) File.Delete(bakPath);
                 File.Move(tmp, mainPath);
-                File.Copy(mainPath, bakPath);
+                File.Copy(mainPath, bakPath, overwrite: true);
             }
         }
         catch
         {
-            // Replace 불가 플랫폼 폴백
-            if (File.Exists(bakPath)) File.Delete(bakPath);
-            if (File.Exists(mainPath)) File.Copy(mainPath, bakPath);
+            // 폴백 경로
+            try { if (File.Exists(bakPath)) File.Delete(bakPath); } catch { /* ignore */ }
+            try { if (File.Exists(mainPath)) File.Copy(mainPath, bakPath, overwrite: true); } catch { /* ignore */ }
+
+            // 최종 쓰기
             File.Copy(tmp, mainPath, overwrite: true);
-            File.Delete(tmp);
         }
-        if (File.Exists(tmp)) File.Delete(tmp);
+        finally
+        {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* ignore */ }
+        }
     }
 
     public void LoadGame()
     {
+        bool needSave = false;
+
+        EnsurePaths();
+
         try
         {
             if (File.Exists(_filePath))
@@ -311,6 +342,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             else
             {
                 gameData = GameData.NewDefault(DefaultStages);
+                needSave = true; // 새로 만들었으니 저장 필요
             }
 
             // 보정
@@ -326,9 +358,20 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             Debug.LogError("[Save] Load failed: " + ex);
             // 백업 시도
             if (TryRestoreAndReload()) { /* ok */ }
-            else gameData = GameData.NewDefault(DefaultStages);
+            else { gameData = GameData.NewDefault(DefaultStages); needSave = true; }
         }
 
+        // 1) 마이그레이션 먼저 (v4 이식 포함)
+        int beforeVer = gameData.Version;
+        int beforeStampCount = gameData.achievementTierStamps?.Count ?? 0;
+        gameData.MigrateIfNeeded();
+        if (gameData.Version != beforeVer ||
+            (gameData.achievementTierStamps?.Count ?? 0) != beforeStampCount)
+        {
+            needSave = true;
+        }
+
+        // 2) 다운드 펜딩 중립화 (있으면)
         if (gameData.classicDownedPending)
         {
             Debug.Log("[Save] Pending detected on load -> neutralize run snapshot");
@@ -344,13 +387,18 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             gameData.currentScore = 0;
             gameData.currentCombo = 0;
 
-            SaveGame();
+            needSave = true;
         }
 
+        // 3) 변경사항 저장
+        if (needSave) SaveGame();
+
         Debug.Log($"[Save] Loaded: blocks={gameData.currentBlockSlots?.Count}");
+        // 이벤트/브로드캐스트는 최신 데이터로
         AfterLoad?.Invoke(gameData);
         PublishState(gameData);
     }
+
     private void RestoreFromBackup()
     {
         File.Copy(_backupPath, _filePath, overwrite: true);
@@ -387,6 +435,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     // ------------- Legacy Migration (1회) -------------
     private void TryMigrateLegacyLanguageOnce()
     {
+        EnsurePaths();
 #if UNITY_EDITOR
         string legacyPath = Path.Combine(Application.dataPath, "00.WorkSpace/SJH/SaveFile/SaveData.json");
 #else
@@ -398,13 +447,13 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             if (!File.Exists(legacyPath) || File.Exists(bak)) return;
 
             string json = File.ReadAllText(legacyPath);
-            SJH.GameData legacy = JsonUtility.FromJson<SJH.GameData>(json);
-            if (legacy == null) return;
-
-            if (gameData == null) gameData = GameData.NewDefault(DefaultStages);
-
-            int before = gameData.LanguageIndex;
-            gameData.LanguageIndex = legacy.LanguageIndex;
+            //SJH.GameData legacy = JsonUtility.FromJson<SJH.GameData>(json);
+            //if (legacy == null) return;
+            //
+            //if (gameData == null) gameData = GameData.NewDefault(DefaultStages);
+            //
+            //int before = gameData.LanguageIndex;
+            //gameData.LanguageIndex = legacy.LanguageIndex;
 
             SaveGame();
 
@@ -412,7 +461,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             File.Move(legacyPath, bak);
 
 #if UNITY_EDITOR
-            Debug.Log($"[Save] Migrated LanguageIndex {before}→{legacy.LanguageIndex} from legacy file.");
+            //Debug.Log($"[Save] Migrated LanguageIndex {before}→{legacy.LanguageIndex} from legacy file.");
 #endif
         }
         catch (Exception ex) { Debug.LogException(ex); }

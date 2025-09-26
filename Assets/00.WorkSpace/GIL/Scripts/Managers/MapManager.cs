@@ -1,5 +1,6 @@
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Maps;
+using _00.WorkSpace.GIL.Scripts.Messages;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using _00.WorkSpace.GIL.Scripts.Utils;
 using System;
@@ -8,10 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using TMPro;
 using UnityEngine;
-using UnityEngine.SocialPlatforms.Impl;
-using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
@@ -46,6 +44,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private const int FruitBaseCode = 201;
         private const int FruitCount = 5;
+        private bool _shownOnce;
 
         [SerializeField] private int[] fruitCurrentsRuntime = new int[FruitCount];
 
@@ -68,6 +67,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         bool _pendingTutorialApply;
         int _pendingIndex;
+        private Action<int> _scoreProgressHandler;
 
         private Action<GridReady> _classicEnterHandler;
         private Action<GridReady> _onGridReadyTutorial;
@@ -104,6 +104,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
         }
 
+        private void OnDestroy()
+        {
+            if (saveManager != null)
+                saveManager.AfterLoad -= ApplySavedGameMode;
+        }
+
         public int Order => 13;
         public void PreInit() { }
 
@@ -125,6 +131,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             if (PendingEnterIntent.TryConsume(out var intent))
             {
+                _shownOnce = false;
                 SetGameMode(intent.mode);
 
                 if (intent.mode == GameMode.Tutorial)
@@ -147,6 +154,18 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     Debug.Log("[Map] Classic enter requested (ForceLoadSave via PendingEnterIntent)");
                 }
             }
+            Game.Bus?.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: false);
+
+            Game.Bus?.Subscribe<GameResetRequest>(_ =>
+            {
+                _shownOnce = false;
+            }, replaySticky: false);
+        }
+
+        void OnDisable()
+        {
+            Game.Bus?.Unsubscribe<GameOverConfirmed>(OnGameOverConfirmed);
+            Game.Bus?.Unsubscribe<GameResetRequest>((Action<GameResetRequest>)null);
         }
 
         private void ApplySavedGameMode(GameData data)
@@ -269,7 +288,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
                 ApplyMapToCurrentGrid(map, publishGridReady);
                 Debug.Log("[MapManager] SetMapDataToGrid 완료: index=" + index);
-                StartCoroutine(RestoreScoreNextFrame());
+                if (CurrentMode == GameMode.Classic)
+                    StartCoroutine(RestoreScoreNextFrame());
             }
             finally { _isApplyingMap = false; }
         }
@@ -358,7 +378,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (code >= 200)
                         gm.SetCellOccupied(r, c, true, sprite, isFruit: true);
                     else
-                        gm.SetCellOccupied(r, c, sprite != null, sprite);
+                        gm.SetCellOccupied(r, c, /*occupied:*/ true, sprite);
                 }
 
             Debug.Log(sb.ToString());
@@ -965,7 +985,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // currentMapData 안전 초기화 이후 진행
             _currentMapData = null;
             Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
-            CurrentMode = GameMode.Adventure;
+            SetGameMode(GameMode.Adventure);
             _currentMapData = _mapList[stageNumber]; // 현재 맵 데이터 설정
             // 맵 데이터가 과일 모드일 경우 활성화된 과일 종류 및 갯수 저장 
             if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
@@ -976,12 +996,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 어드벤처 모드 진입 로직 구현
             SetMapDataToGrid(stageNumber);
             // Fruit 모드 UI / 진행값 준비
-            if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
+            if (_currentMapData != null)
             {
-                ResetFruitProgress();          // 새로 시작이면 0으로, 이어하기면 여기 대신 세이브 반영 루틴 호출
-                SetAdvFruitObjects();          // UI에 목표/아이콘/현재(0 또는 복원값) 표시
+                if (_currentMapData.goalKind == MapGoalKind.Fruit)
+                {
+                    ResetFruitProgress();
+                    SetAdvFruitObjects();
+                }
+                else if (_currentMapData.goalKind == MapGoalKind.Score)
+                {
+                    SetAdvScoreObjects(); // 점수 모드 UI
+                }
             }
-            //StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
+            StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
         }
 
         private void ClearFruitRuntime()
@@ -1014,11 +1041,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             // 전부 달성 체크
             AnnounceFruitAllCleared();
-            #if UNITY_EDITOR
-            Debug.Log($"[Fruit] cleared code={fruitCode} idx={idx} current={nextCurrent}/{target} (remain={Mathf.Max(0,target-nextCurrent)})");
-            #endif
+#if UNITY_EDITOR
+            Debug.Log($"[Fruit] cleared code={fruitCode} idx={idx} current={nextCurrent}/{target} (remain={Mathf.Max(0, target - nextCurrent)})");
+#endif
         }
-        
+
         public bool IsAllFruitCleared()
         {
             // 과일 모드가 아니거나 활성 과일이 없으면 false
@@ -1029,7 +1056,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             foreach (var code in _activeFruitCodes)
             {
                 int idx = code - FruitBaseCode;
-                int target  = Mathf.Max(0, _fruitGoalsInitial[idx]);
+                int target = Mathf.Max(0, _fruitGoalsInitial[idx]);
                 int current = Mathf.Clamp(fruitCurrentsRuntime[idx], 0, target);
                 if (current < target) return false;
             }
@@ -1043,7 +1070,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             _fruitAllClearedAnnounced = true;
             Debug.Log("[Fruit] ALL CLEAR! (모든 과일 목표 달성)");
-            // TODO : UI/사운드/이벤트 발행이 필요하면 여기서 호출
+
+            int finalScore = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
+            Game.Bus?.PublishImmediate(new AdventureStageCleared(MapGoalKind.Fruit, finalScore));
         }
 
         public int GetInitialFruitGoalByCode(int code)
@@ -1123,14 +1152,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             var scoreMgr = ScoreManager.Instance;
             if (scoreMgr != null)
             {
-                // 중복 구독 방지용 해제-재구독 패턴
-                scoreMgr.OnScoreChanged -= OnScoreChangedHandler;
-                scoreMgr.OnScoreChanged += OnScoreChangedHandler;
+                if (_scoreProgressHandler != null)
+                    scoreMgr.OnScoreChanged -= _scoreProgressHandler;
 
-                void OnScoreChangedHandler(int newScore)
-                {
-                    ui.UpdateCurrent(newScore);
-                }
+                _scoreProgressHandler = (newScore) => ui.UpdateCurrent(newScore);
+                scoreMgr.OnScoreChanged += _scoreProgressHandler;
             }
         }
         /// <summary>
@@ -1171,7 +1197,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 이어하기, 현재값 반영할때 사용
             _fruitUI.SetCurrents(fruitCurrentsRuntime);
         }
-        
+
         private void ResetFruitProgress()
         {
             if (fruitCurrentsRuntime == null || fruitCurrentsRuntime.Length != FruitCount)
@@ -1180,6 +1206,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Array.Clear(fruitCurrentsRuntime, 0, fruitCurrentsRuntime.Length);
 
             _fruitUI?.SetCurrents(fruitCurrentsRuntime);
+        }
+        private void OnGameOverConfirmed(GameOverConfirmed e)
+        {
+            if (_shownOnce) return;
+            _shownOnce = true;
+
+            var mm = MapManager.Instance;
+            var sm = Game.Save;
+            var mode = mm?.CurrentMode ?? GameMode.Classic;
+
+            if (mode == GameMode.Adventure)
+            {
+                sm?.ClearRunState(true);
+                return;
+            }
+
+            // Classic 경로
+            sm?.UpdateClassicScore(e.score);
+            sm?.ClearRunState(true);
+            Sfx.GameOver();
         }
     }
 }

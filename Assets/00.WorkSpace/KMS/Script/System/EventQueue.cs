@@ -1,4 +1,5 @@
 ﻿using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Messages;
 using System;
 using System.Collections.Concurrent;
@@ -341,6 +342,22 @@ namespace _00.WorkSpace.GIL.Scripts.Messages
         {
             this.rows = rows; this.cols = cols; this.combo = combo; this.destroySprite = sprite;
         }
+    }
+
+    public readonly struct AdventureStageCleared
+    {
+        public readonly MapGoalKind kind;
+        public readonly int finalScore;
+        public AdventureStageCleared(MapGoalKind kind, int finalScore)
+        { this.kind = kind; this.finalScore = finalScore; }
+    }
+
+    public readonly struct AdventureStageFailed
+    {
+        public readonly MapGoalKind kind;
+        public readonly int finalScore;
+        public AdventureStageFailed(MapGoalKind kind, int finalScore)
+        { this.kind = kind; this.finalScore = finalScore; }
     }
 }
 

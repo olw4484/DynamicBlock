@@ -199,11 +199,18 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         {
             CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
+
             SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
             int best = e.isNewBest ? e.score : _lastHighScore;
             SetAll(_goBestTexts, $"{FormatScore(best)}");
 
             SetPanel("Revive", false);
+
+            // 어드벤처면 클래식 결과 패널은 열지 않음
+            if (_00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance?.CurrentMode
+                == GameMode.Adventure)
+                return;
+
             SetPanel("GameOver", !e.isNewBest);
             SetPanel("NewRecord", e.isNewBest);
         }, replaySticky: false);
