@@ -12,6 +12,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         public List<ShapeData> GenerateBasicWave(int count)
         {
+            TBegin("GenerateBasicWave : 시작");
+
             var result = new List<ShapeData>(count);
             var fitsForWave = new List<FitInfo>(count);
             
@@ -229,6 +231,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             // 이력 등록(직전 N-1개만 유지)
             RegisterWaveHistory(wave);
             RecomputeFitsForWave(result);
+            
+            T("GenerateBasicWave : 종료");
+            TDump(); // 디버그 종료, 출력
             
             return result;
         }

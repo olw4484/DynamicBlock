@@ -110,10 +110,13 @@ namespace _00.WorkSpace.GIL.Scripts.Grids
         {
             fruitImage.gameObject.SetActive(isActive);
             fruitImage.sprite = fruitSprite;
+
+            SetOccupied(isActive);
             
             if (isActive && changeIndex && fruitSprite != null)
                 _blockSpriteIndex = ParseCodeFromName(fruitSprite.name);
         }
+        
         public void SetOccupied(bool occupied)
         {
             IsOccupied = occupied;

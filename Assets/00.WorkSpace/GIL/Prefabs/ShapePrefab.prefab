@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 7f30fe0933401ae4fb928402a66fed79, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 2849087ad63a9514494b5cb87ae0a16a, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -89,7 +89,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7b7d75d8f609434999a564c8e7144be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  occupiedImage: {fileID: 7753794863048681719}
+  fruitImage: {fileID: 7753794863048681719}
 --- !u!1 &5672320577132266316
 GameObject:
   m_ObjectHideFlags: 0
@@ -102,7 +102,7 @@ GameObject:
   - component: {fileID: 491165788392196827}
   - component: {fileID: 7753794863048681719}
   m_Layer: 15
-  m_Name: OccupiedImage
+  m_Name: FruitImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -148,15 +148,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0, b: 0, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 20d5e4ce57f23ca49bdc25595f948178, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
