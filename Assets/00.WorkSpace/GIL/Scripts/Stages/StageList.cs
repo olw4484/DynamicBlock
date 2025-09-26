@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using TMPro;
-using Unity.VisualScripting.Dependencies.Sqlite;
-using UnityEditor;
+//using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 [Serializable]
 public struct StageLayout
 {
@@ -222,10 +224,12 @@ public class StageList : MonoBehaviour
         }
     }
 }
-
 /// <summary>
 /// Stage Layout을 재생성하는 Editor의 Tool
 /// </summary>
+#if UNITY_EDITOR
+
+
 [CustomEditor(typeof(StageList))]
 public class StageEditor : Editor
 {
@@ -245,3 +249,4 @@ public class StageEditor : Editor
         GUILayout.EndHorizontal();
     }
 }
+#endif
