@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using System.Collections;
 using _00.WorkSpace.GIL.Scripts.Maps;
-using UnityEditor.Localization.Plugins.XLIFF.V12;
 
 public enum InvokeSfxMode
 {
