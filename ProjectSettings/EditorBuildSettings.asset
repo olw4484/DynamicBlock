@@ -5,10 +5,10 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
+  - enabled: 1
     path: Assets/00.WorkSpace/KMS/KMS_SampleScene 1.unity
     guid: 7c63392f67002ac45893a289526842d3
-  - enabled: 1
+  - enabled: 0
     path: Assets/00.WorkSpace/SJH/SJH_FirestoreTestScene.unity
     guid: 486aec34ef25afb449bb652accffd353
   m_configObjects:
