@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,6 +7,12 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
     public class ShapeSquare : MonoBehaviour
     {
         public Image fruitImage;
+
+        private void OnValidate()
+        {
+            if(fruitImage.gameObject.activeSelf)
+                fruitImage.gameObject.SetActive(false);
+        }
 
         public void SetFruitImage(Sprite sprite)
         {

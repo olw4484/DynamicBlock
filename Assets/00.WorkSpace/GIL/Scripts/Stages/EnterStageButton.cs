@@ -1,6 +1,7 @@
 using System;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using TMPro;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -55,6 +56,7 @@ public class EnterStageButton : MonoBehaviour
         var mM = MapManager.Instance;
         if (mM == null) Debug.LogError("[EnterStage] Error : MapManager Instance is null");
         // MapManager의 EnterStage 함수 호출 -> 이후 작업은 MapManager에서 진행
+        StageManager.Instance.SetCurrentStage(stageNumber);
         mM.EnterStage(stageNumber);
     }
     

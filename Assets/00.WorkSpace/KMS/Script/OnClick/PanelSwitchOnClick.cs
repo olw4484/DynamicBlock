@@ -183,14 +183,18 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         // 어드벤쳐 모드 입장
         else if (enterMode == GameMode.Adventure)
         {
+            map.SetGameMode(GameMode.Adventure);
+
             // 점수제일 경우 MapManager를 통해 데이터를 바꾸기
             if (goalKind == MapGoalKind.Score)
             {
+                map.SetGoalKind(MapGoalKind.Score);
                 map.SetAdvScoreObjects();
             }
             // 과일제일 경우 어딘가 저장된 MapGoal정보를 통해 데이터를 바꾸기
             else if (goalKind == MapGoalKind.Fruit)
             {
+                map.SetGoalKind(MapGoalKind.Fruit);
                 map.SetAdvFruitObjects();
             }
         }
