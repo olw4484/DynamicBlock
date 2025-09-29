@@ -127,6 +127,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             // 안전 정리, 미리 생성하기
             var gm = GridManager.Instance;
+            var mM = MapManager.Instance;
             if (MapManager.Instance != null && gm != null && !gm.HasAnyOccupied())
             {
                 Debug.Log("[Storage] Board empty → build classic starting map first");
@@ -196,16 +197,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _currentBlocksShapeData.Add(shape);
                 _currentBlocksSpriteData.Add(sprite);
                 block.SetSpriteData(sprite);
-
-                var mM = MapManager.Instance;
+                // 어드벤쳐이고, 과일 모드일 때만 하기, 클래식 모드는 미실행 
                 // 기존 과일 오버레이 방식, 개별 블록마다 50% 확률로 적용
-                if (mM?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
+                if (mM.CurrentMode == GameMode.Adventure && mM?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
                 {
                     TryApplyFruitOverlayToBlock(block);
                 }
             }
+            // 어드벤쳐이고, 과일 모드일 때만 하기, 클래식 모드는 미실행 
             // 신규 오버레이 방식, 모든 블록에 적용
-            // if (MapManager.Instance?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
+            // if (mM.CurrentMode == GameMode.Adventure && mM?.CurrentMapData?.goalKind == MapGoalKind.Fruit)
             // {
             //     ApplyFruitWaveAlgorithm(_currentBlocks);
             // }
