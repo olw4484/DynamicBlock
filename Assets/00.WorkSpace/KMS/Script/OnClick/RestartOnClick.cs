@@ -45,7 +45,7 @@ public sealed class RestartOnClick : MonoBehaviour
                     // 3.5) 어드벤처 모드일 경우 어드벤쳐를 리셋하기.
                     if (MapManager.Instance.CurrentMode == GameMode.Adventure)
                     {
-                        MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage() + 1);
+                        MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage());
                         return;
                     }
 

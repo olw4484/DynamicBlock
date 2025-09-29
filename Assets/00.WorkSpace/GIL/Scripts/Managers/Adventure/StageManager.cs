@@ -37,6 +37,13 @@ public class StageManager : MonoBehaviour
         return currentStage;
     }
 
+    public void SetCurrentStage(int value)
+    {
+        var prev = currentStage;
+        currentStage = value;
+        Debug.Log($"[StageManager] Current Stage 변경 {prev} -> {currentStage}");
+    }
+
     private void OnValidate()
     {
         if (generator == null)

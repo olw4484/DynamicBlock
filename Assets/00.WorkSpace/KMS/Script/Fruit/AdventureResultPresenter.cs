@@ -144,6 +144,9 @@ public sealed class AdventureResultPresenter : MonoBehaviour
                 AnalyticsManager.Instance?.RetryLog(false);   // Adventure 재시도
                 ClosePanel();
                 // TODO: 리트라이 메시지/씬 리셋 호출
+                // GIL_Add : 
+                // 현재 스테이지 재시작하기
+                MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage());
             });
         }
 
