@@ -1,6 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
+ï»¿using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public enum FrameOption { Low30 = 0, High60 = 1, Max = 2 }
 
@@ -19,34 +19,93 @@ public static class FrameSettings
 
     public static void Apply(FrameOption option)
     {
-#if UNITY_ANDROID || UNITY_IOS
-        // ¸ð¹ÙÀÏ: vSync´Â ´ë°³ ¹«½ÃµÇ¹Ç·Î ¸í½ÃÀûÀ¸·Î 0
+        // vSync ë„ê³  í”„ë ˆìž„ ë°˜í† ë§‰ ë°©ì§€
         QualitySettings.vSyncCount = 0;
-        Application.targetFrameRate = TargetForMobile(option);
+        OnDemandRendering.renderFrameInterval = 1;
+
+#if UNITY_ANDROID || UNITY_IOS
+        int target = option switch
+        {
+            FrameOption.Low30 => 30,
+            FrameOption.High60 => 60,
+            FrameOption.Max => RequestHighestRefreshRate(allowResolutionChange: false), // í•„ìš”ì‹œ true
+            _ => 60
+        };
+
+        if (target <= 0) target = SafeCurrentHz(); // NaN/ë¯¸í™•ì¸ í´ë°±
+        Application.targetFrameRate = target;
+
+        Debug.Log($"[FrameSettings] Applied: {option}, target={target}, " +
+                  $"current={Screen.currentResolution.width}x{Screen.currentResolution.height}@{SafeCurrentHz()}Hz");
 #else
-        // PC: MAX´Â vSync=1(¸ð´ÏÅÍ ÁÖ»çÀ² µ¿±â), ±× ¿Ü vSync=0
+        // ì—ë””í„°/PC: MAXëŠ” ëª¨ë‹ˆí„° ì£¼ì‚¬ìœ¨(vSync), ê·¸ ì™¸ëŠ” íƒ€ê²Ÿ ê³ ì •
         if (option == FrameOption.Max)
         {
-            QualitySettings.vSyncCount = 1;   // ¸ð´ÏÅÍ ÁÖ»çÀ²¿¡ ¸ÂÃã (60/120/144 µî)
-            Application.targetFrameRate = -1; // vSync ¿ì¼±
+            QualitySettings.vSyncCount = 1;
+            Application.targetFrameRate = -1;
+            Debug.Log($"[FrameSettings] Applied: Max (vSync), monitorâ‰ˆ{SafeCurrentHz()}Hz");
         }
         else
         {
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = option == FrameOption.Low30 ? 30 : 60;
+            Application.targetFrameRate = (option == FrameOption.Low30) ? 30 : 60;
+            Debug.Log($"[FrameSettings] Applied: {option}, target={Application.targetFrameRate}");
         }
 #endif
     }
 
-    static int TargetForMobile(FrameOption option)
+#if UNITY_2021_2_OR_NEWER
+    static int RequestHighestRefreshRate(bool allowResolutionChange)
+    {
+        int curW = Screen.currentResolution.width;
+        int curH = Screen.currentResolution.height;
+
+        var modes = Screen.resolutions;
+        if (modes == null || modes.Length == 0) return SafeCurrentHz();
+
+        // í•´ìƒë„ë¥¼ ë°”ê¾¸ê³  ì‹¶ì§€ ì•Šë‹¤ë©´ ê°™ì€ í•´ìƒë„ë§Œ í›„ë³´
+        var candidates = allowResolutionChange
+            ? modes.AsEnumerable()
+            : modes.Where(r => r.width == curW && r.height == curH);
+
+        var best = candidates
+            .OrderByDescending(r => RoundHz(r.refreshRateRatio))
+            .FirstOrDefault();
+
+        int bestHz = RoundHz(best.refreshRateRatio);
+        if (bestHz <= 0) return SafeCurrentHz();
+
+        // ê°™ì€ í•´ìƒë„ë©´ ì£¼ì‚¬ìœ¨ë§Œ ìš”ì²­, ë‹¤ë¥´ë©´ í•´ìƒë„ ë³€ê²½ê¹Œì§€ ìš”ì²­
+        if (allowResolutionChange && (best.width != curW || best.height != curH))
+            Screen.SetResolution(best.width, best.height, FullScreenMode.FullScreenWindow, best.refreshRateRatio);
+        else
+            Screen.SetResolution(curW, curH, FullScreenMode.FullScreenWindow, best.refreshRateRatio);
+
+        return bestHz;
+    }
+#else
+    static int RequestHighestRefreshRate(bool _) => SafeCurrentHz();
+#endif
+
+    static int SafeCurrentHz()
     {
 #if UNITY_2021_2_OR_NEWER
-        if (option == FrameOption.Max)
-            return (int)Screen.currentResolution.refreshRateRatio.value; // 60/90/120 µî
+        float v = (float)Screen.currentResolution.refreshRateRatio.value;
+        if (float.IsNaN(v) || float.IsInfinity(v) || v <= 0f) return 60;
+        return Mathf.RoundToInt(v);
+#else
+        return Screen.currentResolution.refreshRate > 0 ? Screen.currentResolution.refreshRate : 60;
 #endif
-        return option == FrameOption.Low30 ? 30 : (option == FrameOption.High60 ? 60 : -1);
     }
 
-    // ÀÏºÎ ±â±â¿¡¼­ Æ÷Ä¿½º ÀüÈ¯ ½Ã ÇÁ·¹ÀÓ Á¦ÇÑÀÌ Ç®¸®´Â °æ¿ì ÀçÀû¿ë ¿ëµµ
+#if UNITY_2021_2_OR_NEWER
+    static int RoundHz(RefreshRate rr)
+    {
+        float v = (float)rr.value;
+        if (float.IsNaN(v) || float.IsInfinity(v) || v <= 0f) return 0;
+        return Mathf.RoundToInt(v);
+    }
+#endif
+
     public static void Reapply() => Apply(Current);
 }

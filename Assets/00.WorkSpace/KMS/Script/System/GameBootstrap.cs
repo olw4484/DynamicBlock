@@ -65,6 +65,9 @@ public class GameBootstrap : MonoBehaviour
         if (input != null) input.SetDependencies(bus);
         bgm.SetDependencies(bus, audio);
 
+        // 광고
+        AdsInitGate.EnsureInit();
+
         // 등록 (Order로 정렬되므로 순서는 크게 무관)
         group.Register(bus);
         group.Register(game);

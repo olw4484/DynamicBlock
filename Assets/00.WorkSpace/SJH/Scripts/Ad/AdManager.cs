@@ -43,26 +43,32 @@ public class AdManager : MonoBehaviour, IAdService
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // (옵션) GMA 이벤트를 메인 스레드로 올림 - 리플렉션으로 안전 적용
+        // 메인스레드 이벤트
         try
         {
             var prop = typeof(MobileAds).GetProperty("RaiseAdEventsOnUnityMainThread",
                 BindingFlags.Public | BindingFlags.Static);
             if (prop != null && prop.CanWrite) prop.SetValue(null, true, null);
         }
-        catch { /* 무시 */ }
+        catch { }
 
-        MobileAds.Initialize(_ =>
+        // MobileAds.Initialize는 여기서 직접 호출하지 않고 Gate를 사용
+        AdsInitGate.EnsureInit();
+        AdsInitGate.WhenReady(() =>
         {
-            Debug.Log("[Ads] MobileAds.Initialize success");
+            Debug.Log("[Ads] MobileAds initialized (via gate)");
 
-            // 컨트롤러 선로딩
+            // 컨트롤러 생성 & 초기화
             Interstitial = new InterstitialAdController(); Interstitial.Init();
-            Banner = new BannerAdController(); Banner.Init();
+            Banner = new BannerAdController(); Banner.InitAdaptive(); // ← Adaptive로!
             Reward = new RewardAdController(); Reward.Init();
 
             WireAdGuards(Interstitial, Reward);
             _adsReady = true;
+
+            // 필요 시 바로 노출할 건 여기서 Show
+            // Banner.ShowAd();  // 전역 상시 노출이면 켜고,
+            // 특정 화면에서만 노출이면 꺼둔 채 ToggleBanner로 제어
         });
     }
 
