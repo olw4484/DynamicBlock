@@ -109,6 +109,25 @@ public sealed class AdventureResultPresenter : MonoBehaviour
                 AnalyticsManager.Instance?.LogEvent("Clear_Confirm");
                 ClosePanel();
                 // TODO: 다음 스테이지 진입 메시지/씬 전환 호출
+
+                // RestartOnClick.cs에서 들고옴
+                var sm = MapManager.Instance?.saveManager;
+
+                var bus = Game.Bus;
+
+                // 1) 저장 상태 확실히 삭제 + 스냅샷 억제
+                sm?.ClearRunState(save: true);
+                sm?.SkipNextSnapshot("Restart");
+                sm?.SuppressSnapshotsFor(1.0f);
+
+                // 2) 리셋 이벤트 (BlockStorage.ResetRuntime 등)
+                bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
+
+                string[] closeList = {"Adventure_Result"};
+
+                // 3) UI 정리/전환
+                RestartFlow.SoftReset("Game", closeList);
+                
                 StageManager.Instance.SetCurrentStage(StageManager.Instance.GetCurrentStage() + 1);
                 MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage());
             });
