@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using UnityEngine.SocialPlatforms.Impl;
 using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
@@ -20,7 +21,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [Header("Save Tutorial")]
         public SaveManager saveManager;
-        public GameMode CurrentMode { get; private set; } = GameMode.Tutorial;
+        public GameMode CurrentMode = GameMode.Tutorial;
+        public MapGoalKind CurrentGoalKind = MapGoalKind.Score;
 
         [Header("Map Runtime")]
         [SerializeField] private int defaultMapIndex = 0;
@@ -189,6 +191,15 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             Debug.Log($"[MapManager] 게임 모드 변경 : {prev} -> {CurrentMode}");
         }
+
+        public void SetGoalKind(MapGoalKind kind)
+        {
+            var prev = CurrentGoalKind;
+            CurrentGoalKind = kind;
+
+            Debug.Log($"[MapManager] 어드벤쳐 입장 모드 변경 : {prev} -> {CurrentGoalKind}");
+        }
+
 
         // 튜토리얼 종료시 호출 지점에서:
         public void OnTutorialCompleted()

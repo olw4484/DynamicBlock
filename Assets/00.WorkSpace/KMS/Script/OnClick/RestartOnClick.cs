@@ -28,6 +28,7 @@ public sealed class RestartOnClick : MonoBehaviour
             case RestartMode.SoftReset:
                 {
                     var sm = MapManager.Instance?.saveManager;
+
                     var bus = Game.Bus;
 
                     // 1) 저장 상태 확실히 삭제 + 스냅샷 억제
@@ -40,6 +41,13 @@ public sealed class RestartOnClick : MonoBehaviour
 
                     // 3) UI 정리/전환
                     RestartFlow.SoftReset(openPanelAfter, closePanels);
+
+                    // 3.5) 어드벤처 모드일 경우 어드벤쳐를 리셋하기.
+                    if (MapManager.Instance.CurrentMode == GameMode.Adventure)
+                    {
+                        MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage() + 1);
+                        return;
+                    }
 
                     // 4) 다음 프레임에 ‘클래식 입장’ 실행 (MapManager가 코루틴 host)
                     MapManager.Instance.StartCoroutine(CoEnterClassicNextFrame());

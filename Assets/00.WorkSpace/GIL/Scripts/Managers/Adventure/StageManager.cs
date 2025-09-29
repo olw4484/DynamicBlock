@@ -31,6 +31,12 @@ public class StageManager : MonoBehaviour
 
     [SerializeField] private int currentStage = 0; // 0-based index
     [SerializeField] public bool isAllStagesCleared = false; // 모든 스테이지 클리어 여부
+
+    public int GetCurrentStage()
+    {
+        return currentStage;
+    }
+
     private void OnValidate()
     {
         if (generator == null)
