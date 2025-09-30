@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using TMPro;
 using UnityEngine;
@@ -51,6 +53,17 @@ public class StageManager : MonoBehaviour
             Debug.LogWarning("[StageManager] StageListGenerator is null, Auto Adding");
             generator = FindAnyObjectByType<StageList>();
         }
+    }
+
+    private void OnEnable()
+    {
+        StartCoroutine(SetCurrentActiveStageAfterOneFrame());
+    }
+
+    private IEnumerator SetCurrentActiveStageAfterOneFrame()
+    {
+        yield return null;
+        SetCurrentActiveStage(MapManager.Instance.saveManager.gameData.adventureBestIndex);
     }
 
     private void Awake()
