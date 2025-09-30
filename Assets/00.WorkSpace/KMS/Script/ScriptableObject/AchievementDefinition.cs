@@ -72,7 +72,16 @@ public sealed class AchievementDefinition : ScriptableObject
         return descKey;
     }
 
-    public string GetTitle() => Loc.GetFrom(table, titleKey);
+    public string GetTitle()
+    {
+        var tbl = string.IsNullOrEmpty(table) ? Loc.DefaultTable : table;
+        if (string.IsNullOrEmpty(titleKey))
+        {
+            Debug.LogWarning($"[ACH-DEF] {name} has empty titleKey");
+            return string.Empty;
+        }
+        return Loc.GetFrom(tbl, titleKey);
+    }
 
 #if UNITY_EDITOR
     private void OnValidate()

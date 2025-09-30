@@ -133,6 +133,11 @@ MonoBehaviour:
   normalImage: {fileID: 7723778633993515865}
   hoverImage: {fileID: 7069779846496187526}
   activeImage: {fileID: 1659969014303211287}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1049793726899639660
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -324,6 +329,11 @@ MonoBehaviour:
   normalImage: {fileID: 2866311340916933006}
   hoverImage: {fileID: 5587233918669759569}
   activeImage: {fileID: 52627504451931788}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &6660743886950127359
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -440,6 +450,11 @@ MonoBehaviour:
   normalImage: {fileID: 3875324519171886411}
   hoverImage: {fileID: 1432314899813355640}
   activeImage: {fileID: 2687036940263796958}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &8185042003268837805
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -781,6 +796,11 @@ MonoBehaviour:
   normalImage: {fileID: 1088361303235246735}
   hoverImage: {fileID: 3406265019385853527}
   activeImage: {fileID: 8013162773598294926}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &5518563590561205029
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1056,8 +1076,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 1000000
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: b85b643605a2e4ccaba709195d463393, type: 2}
-  m_sharedMaterial: {fileID: 7801471545875461292, guid: b85b643605a2e4ccaba709195d463393, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1406,6 +1426,11 @@ MonoBehaviour:
   normalImage: {fileID: 6167190764845744616}
   hoverImage: {fileID: 8128856000281205361}
   activeImage: {fileID: 7027172723924058887}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &5555161955505862329
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1522,6 +1547,11 @@ MonoBehaviour:
   normalImage: {fileID: 3803639667545319116}
   hoverImage: {fileID: 6475322373165641455}
   activeImage: {fileID: 6331294107136734669}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &2503048132719891133
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1863,6 +1893,11 @@ MonoBehaviour:
   normalImage: {fileID: 4349073840214742476}
   hoverImage: {fileID: 2202941426144084329}
   activeImage: {fileID: 3033991338350041029}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1755845442629638598
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2429,6 +2464,11 @@ MonoBehaviour:
   normalImage: {fileID: 1401136047802186932}
   hoverImage: {fileID: 952036057142766323}
   activeImage: {fileID: 6036504715386170246}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &157320533686950499
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2620,6 +2660,11 @@ MonoBehaviour:
   normalImage: {fileID: 1689124446694507908}
   hoverImage: {fileID: 2584490688765488463}
   activeImage: {fileID: 3359001402959798099}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &2033345641350376489
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -3261,6 +3306,11 @@ MonoBehaviour:
   normalImage: {fileID: 8147779203328890505}
   hoverImage: {fileID: 4899118083065714866}
   activeImage: {fileID: 5902210210419076464}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &8304660178314766302
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -3452,6 +3502,11 @@ MonoBehaviour:
   normalImage: {fileID: 163542121965753640}
   hoverImage: {fileID: 410684060974976616}
   activeImage: {fileID: 869010224116894173}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &292208666329176244
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -4093,6 +4148,11 @@ MonoBehaviour:
   normalImage: {fileID: 3512676618444392720}
   hoverImage: {fileID: 7374090620625270900}
   activeImage: {fileID: 8319172855529128073}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1371865836214156859
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -4449,6 +4509,11 @@ MonoBehaviour:
   normalImage: {fileID: 1395773249657909741}
   hoverImage: {fileID: 749371884774749286}
   activeImage: {fileID: 931548239703983286}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &2349245536864911929
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -4752,6 +4817,11 @@ MonoBehaviour:
   normalImage: {fileID: 5831551510373757855}
   hoverImage: {fileID: 2866510986878325333}
   activeImage: {fileID: 8671822777035259503}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1454681489219930192
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -5018,6 +5088,11 @@ MonoBehaviour:
   normalImage: {fileID: 8928279035851552647}
   hoverImage: {fileID: 5110373883700536018}
   activeImage: {fileID: 7632819384797636904}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &642802138261148980
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -5134,6 +5209,11 @@ MonoBehaviour:
   normalImage: {fileID: 888549423728219593}
   hoverImage: {fileID: 1371970755494384629}
   activeImage: {fileID: 1543551537993943611}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &6062231871631907085
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -5334,8 +5414,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 100000
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: b85b643605a2e4ccaba709195d463393, type: 2}
-  m_sharedMaterial: {fileID: 7801471545875461292, guid: b85b643605a2e4ccaba709195d463393, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -5609,6 +5689,11 @@ MonoBehaviour:
   normalImage: {fileID: 9062033353257332898}
   hoverImage: {fileID: 7678313838134923723}
   activeImage: {fileID: 6137749289226851224}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &4878875668726515066
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -5875,6 +5960,11 @@ MonoBehaviour:
   normalImage: {fileID: 1213281880260859597}
   hoverImage: {fileID: 434625274292930097}
   activeImage: {fileID: 8117976857106609242}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &24728130191425514
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -6216,6 +6306,11 @@ MonoBehaviour:
   normalImage: {fileID: 2983184085424897021}
   hoverImage: {fileID: 6897158805928779886}
   activeImage: {fileID: 2024234721479259356}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &6693087966459208425
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -6332,6 +6427,11 @@ MonoBehaviour:
   normalImage: {fileID: 2541301481472709027}
   hoverImage: {fileID: 1889549662717881031}
   activeImage: {fileID: 5774634859555166700}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &7018182901765952324
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -6448,6 +6548,11 @@ MonoBehaviour:
   normalImage: {fileID: 7096169438895954403}
   hoverImage: {fileID: 5293413245217098332}
   activeImage: {fileID: 5468695262403055803}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &5693651707996496621
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -6602,6 +6707,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36574aaebe8f8fe498aa5e31b919b590, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  extraTopPx: 0
+  extraBottomPx: 0
+  extraLeftPx: 0
+  extraRightPx: 0
+  useTop: 1
+  useBottom: 1
+  useLeft: 1
+  useRight: 1
 --- !u!1 &2600235709019712617
 GameObject:
   m_ObjectHideFlags: 0
@@ -6660,6 +6773,11 @@ MonoBehaviour:
   normalImage: {fileID: 145205953092789520}
   hoverImage: {fileID: 8805962204923882387}
   activeImage: {fileID: 3859138545490422605}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &954504996125116312
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -6776,6 +6894,11 @@ MonoBehaviour:
   normalImage: {fileID: 8888002327588282799}
   hoverImage: {fileID: 7569220509362385306}
   activeImage: {fileID: 2312123724347072206}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &5560187213230733716
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -7042,6 +7165,11 @@ MonoBehaviour:
   normalImage: {fileID: 3428761698326712613}
   hoverImage: {fileID: 2250691589230469235}
   activeImage: {fileID: 2561615267408936993}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &6367697017591901265
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -7158,6 +7286,11 @@ MonoBehaviour:
   normalImage: {fileID: 7734486497790166794}
   hoverImage: {fileID: 7670221118885053681}
   activeImage: {fileID: 5795051976188859087}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &8786251576445541888
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -7905,6 +8038,11 @@ MonoBehaviour:
   normalImage: {fileID: 1739191406416144383}
   hoverImage: {fileID: 6242718882037697823}
   activeImage: {fileID: 3032317212547087580}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1472877790851860652
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -8321,6 +8459,11 @@ MonoBehaviour:
   normalImage: {fileID: 5243156509369443586}
   hoverImage: {fileID: 5046274685400550525}
   activeImage: {fileID: 917662208433341801}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &3678299863104696194
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -8437,6 +8580,11 @@ MonoBehaviour:
   normalImage: {fileID: 3522479723816557970}
   hoverImage: {fileID: 2346688801078360217}
   activeImage: {fileID: 919954405023009726}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &9147927368228766453
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -8703,6 +8851,11 @@ MonoBehaviour:
   normalImage: {fileID: 2716063206544266595}
   hoverImage: {fileID: 2164455687948819719}
   activeImage: {fileID: 2361907067087126455}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &4774325259743065528
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -9304,6 +9457,11 @@ MonoBehaviour:
   normalImage: {fileID: 3908403401695454406}
   hoverImage: {fileID: 486830398904134325}
   activeImage: {fileID: 131764221074355554}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &7106304710161268413
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -9495,6 +9653,11 @@ MonoBehaviour:
   normalImage: {fileID: 2639865854238314263}
   hoverImage: {fileID: 7820356178170400027}
   activeImage: {fileID: 4260157017553778425}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &3262755591839505356
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -9611,6 +9774,11 @@ MonoBehaviour:
   normalImage: {fileID: 3408752457597712451}
   hoverImage: {fileID: 5836988403770913768}
   activeImage: {fileID: 2293799992216106452}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &3602539108357311141
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -9727,6 +9895,11 @@ MonoBehaviour:
   normalImage: {fileID: 2601828465536554126}
   hoverImage: {fileID: 4614962626399986464}
   activeImage: {fileID: 2560807981029337619}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &7429097558586385732
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -10106,6 +10279,11 @@ MonoBehaviour:
   normalImage: {fileID: 5518451200405358415}
   hoverImage: {fileID: 3737612643507308205}
   activeImage: {fileID: 7059697582033678654}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &714039277415922029
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -10372,6 +10550,11 @@ MonoBehaviour:
   normalImage: {fileID: 7802849297237321257}
   hoverImage: {fileID: 1623051969110805173}
   activeImage: {fileID: 4190820786848942939}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &15216702967262816
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -11013,6 +11196,11 @@ MonoBehaviour:
   normalImage: {fileID: 3541522107372888595}
   hoverImage: {fileID: 4799449891917504933}
   activeImage: {fileID: 4459055644152111675}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &8323315880413617718
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -11129,6 +11317,11 @@ MonoBehaviour:
   normalImage: {fileID: 8618262964355247927}
   hoverImage: {fileID: 8217495362938812403}
   activeImage: {fileID: 4113602762727336049}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1045198786305471762
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -11320,6 +11513,11 @@ MonoBehaviour:
   normalImage: {fileID: 3409821172882545069}
   hoverImage: {fileID: 9056685800885374984}
   activeImage: {fileID: 4022076825441957462}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &630626809622942019
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -11586,6 +11784,11 @@ MonoBehaviour:
   normalImage: {fileID: 4483708596328450325}
   hoverImage: {fileID: 8196858329743781555}
   activeImage: {fileID: 3254996639350976706}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &6601878923708503527
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -12377,6 +12580,11 @@ MonoBehaviour:
   normalImage: {fileID: 7596535103476567079}
   hoverImage: {fileID: 2429192228378900052}
   activeImage: {fileID: 5290355822481236748}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &3687791618044797624
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -12643,6 +12851,11 @@ MonoBehaviour:
   normalImage: {fileID: 7169341370053099520}
   hoverImage: {fileID: 74887142386050873}
   activeImage: {fileID: 1055285907896616068}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &2959478659399944510
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -12909,6 +13122,11 @@ MonoBehaviour:
   normalImage: {fileID: 8815002267890979989}
   hoverImage: {fileID: 4832457332032723199}
   activeImage: {fileID: 7979539728033904869}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &368454254893150281
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -13360,6 +13578,11 @@ MonoBehaviour:
   normalImage: {fileID: 8558190241702595218}
   hoverImage: {fileID: 1242049946234437916}
   activeImage: {fileID: 8722928859396924829}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &5163611809537321320
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -14751,6 +14974,11 @@ MonoBehaviour:
   normalImage: {fileID: 1054886680407805907}
   hoverImage: {fileID: 4030873952784965220}
   activeImage: {fileID: 1811505555813588152}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1790357252526585429
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -15017,6 +15245,11 @@ MonoBehaviour:
   normalImage: {fileID: 7388152875102417757}
   hoverImage: {fileID: 5944307427788026344}
   activeImage: {fileID: 6898331980763578673}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1952631245451369457
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -15133,6 +15366,11 @@ MonoBehaviour:
   normalImage: {fileID: 401743217913897821}
   hoverImage: {fileID: 990247104721840248}
   activeImage: {fileID: 3578811830280475647}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1800830542505323546
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -15774,6 +16012,11 @@ MonoBehaviour:
   normalImage: {fileID: 6049044062473771813}
   hoverImage: {fileID: 1842296456873721932}
   activeImage: {fileID: 5575837408301217082}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1360174798779325373
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -16040,6 +16283,11 @@ MonoBehaviour:
   normalImage: {fileID: 4035897658994167300}
   hoverImage: {fileID: 2878126135491931469}
   activeImage: {fileID: 4426557727677013418}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &2960051760287818798
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -16681,6 +16929,11 @@ MonoBehaviour:
   normalImage: {fileID: 6348818261711245758}
   hoverImage: {fileID: 4369535010590400725}
   activeImage: {fileID: 622642253215896753}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &8493655300579642588
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -16797,6 +17050,11 @@ MonoBehaviour:
   normalImage: {fileID: 7711565840017517507}
   hoverImage: {fileID: 2938848534349704934}
   activeImage: {fileID: 7822428213972174411}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &8466182489383778465
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -17063,6 +17321,11 @@ MonoBehaviour:
   normalImage: {fileID: 4564791404424051450}
   hoverImage: {fileID: 5993970664717377235}
   activeImage: {fileID: 1456563986239778865}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &1366854535949301402
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -17179,6 +17442,11 @@ MonoBehaviour:
   normalImage: {fileID: 5551908579513684986}
   hoverImage: {fileID: 7178001794736879718}
   activeImage: {fileID: 305028684630117831}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &5321643812192867691
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -17512,6 +17780,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scoreText: {fileID: 4517606741714524024}
   comboText: {fileID: 0}
+  baseScroe: 30
 --- !u!1 &6233277842308415867
 GameObject:
   m_ObjectHideFlags: 0
@@ -17570,6 +17839,11 @@ MonoBehaviour:
   normalImage: {fileID: 3898276437327981799}
   hoverImage: {fileID: 102498199865058980}
   activeImage: {fileID: 9151626731346867817}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &6005990990836524810
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -18458,6 +18732,11 @@ MonoBehaviour:
   normalImage: {fileID: 4159591685009571546}
   hoverImage: {fileID: 7171736957654494897}
   activeImage: {fileID: 1188499042498455988}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &956233739235438837
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -18574,6 +18853,11 @@ MonoBehaviour:
   normalImage: {fileID: 6907020117678913224}
   hoverImage: {fileID: 4763122935021638348}
   activeImage: {fileID: 6164989581363461714}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &3352791851973135178
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -19022,6 +19306,11 @@ MonoBehaviour:
   normalImage: {fileID: 8021069698583761247}
   hoverImage: {fileID: 6948184989032061849}
   activeImage: {fileID: 7647971847248581446}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &8853877385627644453
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -19363,6 +19652,11 @@ MonoBehaviour:
   normalImage: {fileID: 9052756541784521854}
   hoverImage: {fileID: 7261633278491236297}
   activeImage: {fileID: 5203788856739690717}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &3080356826685451819
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -19554,6 +19848,11 @@ MonoBehaviour:
   normalImage: {fileID: 5180048305376793542}
   hoverImage: {fileID: 2928674042501747420}
   activeImage: {fileID: 3178795107384371636}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &2225631528638734364
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -20120,6 +20419,11 @@ MonoBehaviour:
   normalImage: {fileID: 299479495880546813}
   hoverImage: {fileID: 7173755210405764871}
   activeImage: {fileID: 5413093929531328171}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &2143761024501267390
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -20311,6 +20615,11 @@ MonoBehaviour:
   normalImage: {fileID: 5009947258715856687}
   hoverImage: {fileID: 1056222932299306958}
   activeImage: {fileID: 1988493605817258183}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &2006807644719528181
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -20567,7 +20876,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37b08c90d480048458603fdd5acc56a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fx: {fileID: 0}
+  gridImageList: 
   rows: 8
   cols: 8
 --- !u!1 &7749089267798124801
@@ -21917,6 +22226,11 @@ MonoBehaviour:
   normalImage: {fileID: 7416986795036147841}
   hoverImage: {fileID: 568069811856691559}
   activeImage: {fileID: 8827353800214871880}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &8506653941367121804
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -22408,6 +22722,11 @@ MonoBehaviour:
   normalImage: {fileID: 6428591969835884352}
   hoverImage: {fileID: 3477513691309063749}
   activeImage: {fileID: 7769611057714387467}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &3565234278833185753
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -22903,6 +23222,11 @@ MonoBehaviour:
   - {fileID: 3189682176204319393}
   shapesPanel: {fileID: 7848507242549799237}
   previewMode: 1
+  fruitFullFillCapPerWave: 0
+  interstitialDelayAfterGameOver: 1
+  reviveWaveCount: 3
+  oneRevivePerRun: 1
+  _tieIsNew: 0
 --- !u!1 &8917571443181543331
 GameObject:
   m_ObjectHideFlags: 0
@@ -23111,6 +23435,11 @@ MonoBehaviour:
   normalImage: {fileID: 3475963318898120977}
   hoverImage: {fileID: 8406946115589675985}
   activeImage: {fileID: 7557487993652538942}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &7026700305596592348
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -23227,6 +23556,11 @@ MonoBehaviour:
   normalImage: {fileID: 2289724593669578446}
   hoverImage: {fileID: 1740351142815673954}
   activeImage: {fileID: 1566436512044976719}
+  lineClearImage: {fileID: 0}
+  fruitImage: {fileID: 0}
+  IsOccupied: 0
+  state: 0
+  _blockSpriteIndex: 0
 --- !u!61 &4554218729111021460
 BoxCollider2D:
   m_ObjectHideFlags: 0

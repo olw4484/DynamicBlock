@@ -231,9 +231,17 @@ PrefabInstance:
       value: 60
       objectReference: {fileID: 0}
     - target: {fileID: 1965771595364356813, guid: 71932ae9a4ad449bd835b73721606d70, type: 3}
+      propertyPath: m_fontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+    - target: {fileID: 1965771595364356813, guid: 71932ae9a4ad449bd835b73721606d70, type: 3}
       propertyPath: m_fontSizeBase
       value: 60
       objectReference: {fileID: 0}
+    - target: {fileID: 1965771595364356813, guid: 71932ae9a4ad449bd835b73721606d70, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
     - target: {fileID: 9083912534086931236, guid: 71932ae9a4ad449bd835b73721606d70, type: 3}
       propertyPath: m_Name
       value: Title - TMP_Text
@@ -345,9 +353,17 @@ PrefabInstance:
       value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6131779206422511767, guid: 4204b4ccc5f764b4da44a6f1ad2bd233, type: 3}
+      propertyPath: m_fontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+    - target: {fileID: 6131779206422511767, guid: 4204b4ccc5f764b4da44a6f1ad2bd233, type: 3}
       propertyPath: m_fontSizeBase
       value: 50
       objectReference: {fileID: 0}
+    - target: {fileID: 6131779206422511767, guid: 4204b4ccc5f764b4da44a6f1ad2bd233, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
     - target: {fileID: 7509418577015717626, guid: 4204b4ccc5f764b4da44a6f1ad2bd233, type: 3}
       propertyPath: m_Name
       value: ScoreProgressBar - Slider

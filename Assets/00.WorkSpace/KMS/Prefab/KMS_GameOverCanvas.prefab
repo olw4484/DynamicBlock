@@ -400,6 +400,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36574aaebe8f8fe498aa5e31b919b590, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  extraTopPx: 0
+  extraBottomPx: 0
+  extraLeftPx: 0
+  extraRightPx: 0
+  useTop: 1
+  useBottom: 1
+  useLeft: 1
+  useRight: 1
 --- !u!1 &1702709864790247118
 GameObject:
   m_ObjectHideFlags: 0
@@ -1397,6 +1405,7 @@ MonoBehaviour:
   openPanelAfter: Game
   gameplayScene: Gameplay
   cooldown: 0.12
+  clearRunStateOnSoftReset: 0
 --- !u!1 &4186797009255308068
 GameObject:
   m_ObjectHideFlags: 0
@@ -1464,8 +1473,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Home
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: b413c156577d44058b0b2b67d3455c41, type: 2}
-  m_sharedMaterial: {fileID: -2057558509806727645, guid: b413c156577d44058b0b2b67d3455c41, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1753,8 +1762,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 'TotalScore : '
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: c22d0ad17a38a440f933ea538cc7e7d0, type: 2}
-  m_sharedMaterial: {fileID: -2057558509806727645, guid: c22d0ad17a38a440f933ea538cc7e7d0, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1975,7 +1984,12 @@ MonoBehaviour:
   closeModalFirst: 1
   modalsToClose:
   - GameOver
+  clearRunStateOnClick: 0
+  sfxMode: 1
+  customId: 1001
   cooldown: 0.12
+  enterMode: 1
+  goalKind: 1
 --- !u!1 &5798556073091604930
 GameObject:
   m_ObjectHideFlags: 0
@@ -2043,8 +2057,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2587,8 +2601,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: GameOver....
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: b85b643605a2e4ccaba709195d463393, type: 2}
-  m_sharedMaterial: {fileID: 7801471545875461292, guid: b85b643605a2e4ccaba709195d463393, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2723,8 +2737,8 @@ MonoBehaviour:
 
 '
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 3404d2a722e3748b184db4bb9ce70cba, type: 2}
-  m_sharedMaterial: {fileID: -2057558509806727645, guid: 3404d2a722e3748b184db4bb9ce70cba, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

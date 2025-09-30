@@ -665,6 +665,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3850581913704226040, guid: 76de250604bd10649b1e21a91ebc6d2b, type: 3}
+      propertyPath: m_fontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+    - target: {fileID: 3850581913704226040, guid: 76de250604bd10649b1e21a91ebc6d2b, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
     - target: {fileID: 5193191221294368862, guid: 76de250604bd10649b1e21a91ebc6d2b, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -685,6 +693,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: ScoreProgress
       objectReference: {fileID: 0}
+    - target: {fileID: 8067551054861835128, guid: 76de250604bd10649b1e21a91ebc6d2b, type: 3}
+      propertyPath: m_fontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+    - target: {fileID: 8067551054861835128, guid: 76de250604bd10649b1e21a91ebc6d2b, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

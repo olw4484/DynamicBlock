@@ -734,8 +734,36 @@ MonoBehaviour:
     highScore: 0
     lastScore: 0
     playCount: 0
+    bestCombo: 0
+    loginDays: 0
+    lastLoginYmd: 0
+    adventureStageClears: 0
+    adventureWinStreak: 0
+    adventureBestWinStreak: 0
+    totalBlocksRemoved: 0
+    specialBlocksRemoved: 0
+    fruitCollected: 0
+    adventureBestIndex: 0
     stageCleared: 
     stageScores: 
+    combo5PlusRuns: 0
+    combo10PlusRuns: 0
+    isTutorialPlayed: 0
+    gameMode: 0
+    isClassicModePlaying: 0
+    currentBlockSlots: 
+    currentMapLayout: 
+    currentShapeNames: []
+    currentSpriteNames: []
+    currentScore: 0
+    currentCombo: 0
+    classicDownedPending: 0
+    classicDownedScore: 0
+    classicDownedUtc: 0
+    unlocked: []
+    achievementTierStamps: []
+  _snapshotDebounce: 0.25
+  _snapshotMinInterval: 1
 --- !u!114 &1292946899 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2615846437208021283, guid: 1365ed1bab3644c438efc0f2e1a30a5f, type: 3}
@@ -959,10 +987,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _scoreText: {fileID: 0}
-  _comboText: {fileID: 0}
   _hudBestText: {fileID: 0}
-  _gameOverTotalText: {fileID: 0}
-  _gameOverBestText: {fileID: 0}
+  _goTotalTexts: []
+  _goBestTexts: []
   _panels:
   - key: Game
     root: {fileID: 0}
@@ -1004,6 +1031,17 @@ MonoBehaviour:
     closeOnEscape: 0
     baseSorting: 1100
     fallbackKey: 
+  mainGroup: {fileID: 0}
+  dimOverlay: {fileID: 0}
+  _rainbowIcon: {fileID: 0}
+  _comboGroup: {fileID: 0}
+  _comboText: {fileID: 0}
+  _comboHoldTime: 0.8
+  _comboFadeTime: 0.2
+  _comboVisibleThreshold: 2
+  _comboTierStarts: 0000000002000000030000000500000008000000
+  _reviveDelaySec: 1
+  _preReviveBlocker: {fileID: 0}
 --- !u!1 &2079112120
 GameObject:
   m_ObjectHideFlags: 0

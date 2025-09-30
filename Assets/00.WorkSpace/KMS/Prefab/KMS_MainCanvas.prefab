@@ -166,8 +166,8 @@ MonoBehaviour:
 
 '
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: b85b643605a2e4ccaba709195d463393, type: 2}
-  m_sharedMaterial: {fileID: 7801471545875461292, guid: b85b643605a2e4ccaba709195d463393, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1609,7 +1609,12 @@ MonoBehaviour:
   modalsToClose:
   - GameOver
   - Option
+  clearRunStateOnClick: 0
+  sfxMode: 1
+  customId: 1001
   cooldown: 0.12
+  enterMode: 1
+  goalKind: 1
 --- !u!1 &1973430676135467657
 GameObject:
   m_ObjectHideFlags: 0
@@ -4766,6 +4771,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36574aaebe8f8fe498aa5e31b919b590, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  extraTopPx: 0
+  extraBottomPx: 0
+  extraLeftPx: 0
+  extraRightPx: 0
+  useTop: 1
+  useBottom: 1
+  useLeft: 1
+  useRight: 1
 --- !u!1 &6804044911883991008
 GameObject:
   m_ObjectHideFlags: 0
@@ -5677,8 +5690,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Sweet Block Cake
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: adc99fdaf62c24dc9930c0f9e669ea16, type: 2}
-  m_sharedMaterial: {fileID: -2057558509806727645, guid: adc99fdaf62c24dc9930c0f9e669ea16, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

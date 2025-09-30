@@ -52,7 +52,9 @@ public sealed class AchievementUIBinder : MonoBehaviour
             saveManager.AfterLoad += OnAfterSaveLoad;
             saveManager.AfterSave += OnAfterSave;
         }
-        RefreshAll(recordUnlocks: false);
+
+        if (LocalizationSettings.InitializationOperation.IsDone)
+            RefreshAll(recordUnlocks: false);
     }
 
     void OnDisable()
@@ -104,6 +106,7 @@ public sealed class AchievementUIBinder : MonoBehaviour
             var def = v ? v.Definition : null;
             var inDb = def && byId.ContainsKey(def.id);
             Debug.Log($"[ACH-BIND] view={v?.name} def={(def ? def.id.ToString() : "NULL")} inDb={inDb}");
+            Debug.Log($"[LOC-TEST] table={def.table} key={def.titleKey} -> '{def.GetTitle()}'");
         }
 
         // 3) 메달 UI 반영
