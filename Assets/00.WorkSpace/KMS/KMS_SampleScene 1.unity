@@ -43624,6 +43624,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1300679033}
   m_CullTransparentMesh: 1
+--- !u!1 &1302573996 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1774775213371906977, guid: 9017ab5e14a7c494cba305b17d0de33d, type: 3}
+  m_PrefabInstance: {fileID: 4664862107620371966}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1305504251
 GameObject:
   m_ObjectHideFlags: 0
@@ -59571,12 +59576,28 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8123601376786657285, guid: 9017ab5e14a7c494cba305b17d0de33d, type: 3}
   m_PrefabInstance: {fileID: 4664862107620371966}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1302573996}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b743370ac3e4ec2a1668f5455a8ef8a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1832924990
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1302573996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68b7f0b38a4acd241a94e041a61f46db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playOnOpen: 1
+  playOnSelect: 1
+  openSfxId: -1
+  selectSfxId: -1
 --- !u!1 &1834662264
 GameObject:
   m_ObjectHideFlags: 0
@@ -71029,6 +71050,7 @@ GameObject:
   - component: {fileID: 8989293918794417140}
   - component: {fileID: 8858649504843559803}
   - component: {fileID: 3692035652247802429}
+  - component: {fileID: 8989293918794417141}
   m_Layer: 0
   m_Name: Dropdown
   m_TagString: Untagged
@@ -107305,6 +107327,7 @@ GameObject:
   - component: {fileID: 4931102651564854912}
   - component: {fileID: 8485018839158449403}
   - component: {fileID: 6315381351417433508}
+  - component: {fileID: 8485018839158449404}
   m_Layer: 0
   m_Name: InGameOptionCanvas_LGDropdown
   m_TagString: Untagged
@@ -108088,7 +108111,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1774775213371906977, guid: 9017ab5e14a7c494cba305b17d0de33d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1832924990}
   m_SourcePrefab: {fileID: 100100000, guid: 9017ab5e14a7c494cba305b17d0de33d, type: 3}
 --- !u!1 &4665535821530588304
 GameObject:
@@ -134607,6 +134633,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 6232019382912525082}
+  playSfx: 1
 --- !u!1 &7916644584484640595
 GameObject:
   m_ObjectHideFlags: 0
@@ -136643,6 +136670,7 @@ GameObject:
   - component: {fileID: 4650299577430169591}
   - component: {fileID: 2292340584107770106}
   - component: {fileID: 3503491197371672134}
+  - component: {fileID: 8207500777740912036}
   m_Layer: 0
   m_Name: FPS_Dropdown
   m_TagString: Untagged
@@ -136650,6 +136678,22 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &8207500777740912036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8207500777740912035}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68b7f0b38a4acd241a94e041a61f46db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playOnOpen: 1
+  playOnSelect: 1
+  openSfxId: -1
+  selectSfxId: -1
 --- !u!114 &8208659397784762112
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -138235,6 +138279,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4591750974520010240}
   m_CullTransparentMesh: 1
+--- !u!114 &8485018839158449404
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4591750974520010240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68b7f0b38a4acd241a94e041a61f46db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playOnOpen: 1
+  playOnSelect: 1
+  openSfxId: -1
+  selectSfxId: -1
 --- !u!222 &8486736420202178463
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -141324,6 +141384,22 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 40}
   m_SizeDelta: {x: 0, y: 160}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &8989293918794417141
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 461269031785076959}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68b7f0b38a4acd241a94e041a61f46db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playOnOpen: 1
+  playOnSelect: 1
+  openSfxId: -1
+  selectSfxId: -1
 --- !u!222 &8999624542231703533
 CanvasRenderer:
   m_ObjectHideFlags: 0

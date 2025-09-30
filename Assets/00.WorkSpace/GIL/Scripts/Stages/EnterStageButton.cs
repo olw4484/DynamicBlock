@@ -1,9 +1,7 @@
 using System;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using TMPro;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [Serializable]
