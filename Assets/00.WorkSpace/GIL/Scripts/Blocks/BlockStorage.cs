@@ -885,6 +885,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _currentBlocks.Clear();
             _currentBlocksShapeData.Clear();
             _currentBlocksSpriteData.Clear();
+
+            // 실험
+            // 블럭 생성이 _paused로 인해 조기 종료되서 생성이 되지 않았는 것으로 추정
+            _paused = false;
         }
 
         private void OnGridReady(GridReady e)
