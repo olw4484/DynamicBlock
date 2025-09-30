@@ -11,7 +11,7 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         private void OnValidate()
         {
             if(fruitImage.gameObject.activeSelf)
-                fruitImage.gameObject.SetActive(false);
+                ResetFruitImage();
         }
 
         public void SetFruitImage(Sprite sprite)
@@ -21,9 +21,7 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
             if (sprite == null)
             {
                 // 스프라이트 제거 + 렌더만 끄기
-                fruitImage.sprite = null;
-                fruitImage.gameObject.SetActive(false);
-                fruitImage.enabled = false;
+                ResetFruitImage();
                 return;
             }
 
@@ -33,8 +31,15 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
             fruitImage.enabled = true;
         }
 
+        private void ResetFruitImage()
+        {
+            fruitImage.sprite = null;
+            fruitImage.gameObject.SetActive(false);
+            fruitImage.enabled = false;
+        }
+
         // 과일 여부 확인하기
-        public bool HasFruit => fruitImage != null && fruitImage.gameObject.activeSelf &&
+        public bool HasFruit => fruitImage != null && fruitImage.gameObject.activeInHierarchy &&
                                 fruitImage.enabled && fruitImage.sprite != null;
         // 과일 스프라이트 가져오기
         public Sprite FruitSprite => fruitImage ? fruitImage.sprite : null;
