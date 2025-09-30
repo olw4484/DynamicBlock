@@ -64,6 +64,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private bool _initialized;
         bool _handRestoredTried = false;
         private bool _subscribed;
+        private bool _downedPending; // PlayerDowned 이후 Revive 선택 대기 상태
+        bool _skipRestoreThisBoot;
         #endregion
 
         #region Block Image Load
@@ -610,17 +612,15 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void CheckGameOver()
         {
-            if (_currentBlocks == null || _currentBlocks.Count == 0)
-                return;
+            if (_downedPending) { Debug.Log("[GO-CHECK] skip because downedPending"); return; }
+            if (_downedPending) return; // Revive/포기 선택 대기 중이면 재검사 금지
+            if (_currentBlocks == null || _currentBlocks.Count == 0) return;
 
             foreach (var block in _currentBlocks)
-            {
                 if (BlockSpawnManager.Instance.CanPlaceShapeData(block.GetShapeData()))
                     return;
-            }
 
             Debug.Log("===== GAME OVER! 더 이상 배치할 수 있는 블록이 없습니다. =====");
-
             ActivateGameOver();
         }
 
@@ -634,23 +634,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             if (_gameOverFired) { Debug.Log("[Downed] blocked by guard"); return; }
 
-            // 1회 부활 제한 체크
-            if (oneRevivePerRun && _reviveUsed)
-            {
-                ConfirmGameOverImmediate(reason);
-                return;
-            }
+            if (oneRevivePerRun && _reviveUsed) { ConfirmGameOverImmediate(reason); return; }
 
             _gameOverFired = true;
+            _downedPending = true;
 
-            _lastScore = ScoreManager.Instance ? ScoreManager.Instance.Score
-                       : (Game.GM != null ? Game.GM.Score : 0);
+            _lastScore = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
             _lastReason = reason;
-
-            // Revive 열지 말고 이벤트만 발행 => UIManager가 1초 후 오픈
             Game.Bus.PublishImmediate(new PlayerDowned(_lastScore, _lastReason));
-
-            // 전면광고 큐잉은 유지하되, 실제 표시는 ReviveScreen에서
             TryQueueInterstitialAfterGameOver();
         }
         void TryQueueInterstitialAfterGameOver()
@@ -879,6 +870,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             _handSpawnedOnce = false;
             _handRestoredTried = false;
+            _downedPending = false;
 
             for (int i = 0; i < _currentBlocks.Count; i++)
                 if (_currentBlocks[i]) Destroy(_currentBlocks[i].gameObject);
@@ -911,6 +903,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             Debug.Log($"[GO] final={final}, cachedHigh={_persistedHigh}, isNewBest={isNewBest}");
 
+            _downedPending = false;
             Game.Bus.PublishImmediate(new GameOverConfirmed(final, isNewBest, reason));
         }
 
@@ -1102,12 +1095,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (!_handRestoredTried)
             {
                 _handRestoredTried = true;
-
                 var sm = MapManager.Instance?.saveManager;
-                int nameCnt = sm?.Data?.currentShapeNames?.Count ?? 0;
-                Debug.Log($"[Hand] Try restore before generate. names={nameCnt}");
 
-                if (sm != null && sm.TryRestoreBlocksToStorage(this))
+                if (!_skipRestoreThisBoot && sm != null && sm.TryRestoreBlocksToStorage(this))
                 {
                     Debug.Log("[Hand] Restored from save → skip generation");
                     return;
@@ -1121,23 +1111,28 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             _gameOverFired = false;
             Time.timeScale = 1f;
+            _downedPending = false;
         }
+
 
         private void OnGameResetRequest(GameResetRequest e)
         {
-            Debug.Log("[Storage] ResetRuntime (scene-only) — no SaveManager clear");
             ResetRuntime();
+            _skipRestoreThisBoot = true;
+            StartCoroutine(CoRefillNextFrame());
         }
 
         private void OnReviveRequest(ReviveRequest _)
         {
+            Debug.Log("[Revive] ReviveRequest received");
+            _downedPending = false;
             if (!GenerateAdRewardWave()) ConfirmGameOver();
         }
 
-       //private void OnGiveUpRequest(GiveUpRequest _)
-       //{
-       //    ConfirmGameOver();
-       //}
+        //private void OnGiveUpRequest(GiveUpRequest _)
+        //{
+        //    ConfirmGameOver();
+        //}
 
         private void OnGameDataChanged(GameDataChanged e)
         {
@@ -1158,9 +1153,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 GenerateAllBlocks();
             }
         }
+        IEnumerator CoRefillNextFrame()
+        {
+            yield return null;
+            RefillHand();
+            yield return null;
+            CheckGameOver();
+        }
 
-#region Tracker (FruitWave)
-        #if UNITY_EDITOR
+        #region Tracker (FruitWave)
+#if UNITY_EDITOR
         private void T(string msg) => UnityEngine.Debug.Log(msg);
         private void TDO(string title, System.Action body)
         {

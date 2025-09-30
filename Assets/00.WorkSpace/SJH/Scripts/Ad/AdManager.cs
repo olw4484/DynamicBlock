@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Reflection;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class AdManager : MonoBehaviour, IAdService
@@ -129,25 +130,71 @@ public class AdManager : MonoBehaviour, IAdService
     public void ShowRewarded(Action onReward, Action onClosed = null, Action onFailed = null)
     {
         if (_rewardInProgress) { onFailed?.Invoke(); return; }
+        if (Reward == null || !Reward.IsReady) { Debug.LogWarning("[Ads] Reward not ready → Refresh only"); Refresh(); onFailed?.Invoke(); return; }
+        if (!Application.isFocused) { Debug.LogWarning("[Ads] deny show: app not focused"); onFailed?.Invoke(); return; }
 
-        // 준비 안 되었으면 바로 실패로 끝내지 말고 Refresh만 하고 실패 콜백
-        if (Reward == null || !Reward.IsReady)
+        // === 이벤트 구독 & 정리 루틴 ===
+        void Cleanup()
         {
-            Debug.LogWarning("[Ads] Reward not ready → Refresh only");
+            if (Reward != null)
+            {
+                Reward.Opened -= OnOpened;
+                Reward.Closed -= OnClosedInternal;
+                Reward.Failed -= OnFailedInternal;
+                Reward.Rewarded -= OnRewardedInternal;
+            }
+            _rewardInProgress = false;
+            if (_rewardWatchdog != null) { StopCoroutine(_rewardWatchdog); _rewardWatchdog = null; }
+        }
+
+        void OnOpened()
+        {
+            _rewardInProgress = true;
+            AnalyticsManager.Instance?.RewardLog();
+        }
+
+        void OnRewardedInternal()
+        {
+            // 실제 보상 부여는 Revive 버튼 쪽 콜백에서 처리하더라도,
+            // 안전하게 한 번 더 호출해도 무방(멱등)하게 설계했으면 여기서도 onReward 보조 호출 가능
+            try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
+        }
+
+        void OnClosedInternal()
+        {
+            Cleanup();
+            try { onClosed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
+            if (RewardTime > 0) NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
             Refresh();
-            onFailed?.Invoke();
-            return;
         }
 
-        // 포그라운드가 아니면 여기서도 컷
-        if (!Application.isFocused)
+        void OnFailedInternal()
         {
-            Debug.LogWarning("[Ads] deny show: app not focused");
-            onFailed?.Invoke();
+            Cleanup();
+            try { onFailed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
+            Refresh();
+        }
+
+        // === 실제 구독 ===
+        Reward.Opened += OnOpened;
+        Reward.Closed += OnClosedInternal;
+        Reward.Failed += OnFailedInternal;
+        Reward.Rewarded += OnRewardedInternal;
+
+        Debug.Log("[Ads] ShowRewarded()");
+        _lastRewardShowAt = Time.realtimeSinceStartup;
+
+        // Rewarded 광고 호출 (보상 시 onReward가 호출되도록 그대로 전달)
+        bool ok = Reward.ShowAd(onReward);
+        if (!ok)
+        {
+            // 즉시 실패 처리
+            OnFailedInternal();
             return;
         }
 
-        StartCoroutine(Co_ShowRewardedSafely(onReward, onClosed, onFailed));
+        // 워치독 시작 (닫힘 콜백 누락 대비)
+        _rewardWatchdog = StartCoroutine(Co_Watchdog(isReward: true, timeout: WATCHDOG_SEC));
     }
 
     public void ShowInterstitial(Action onClosed = null)
@@ -293,86 +340,66 @@ public class AdManager : MonoBehaviour, IAdService
         }
     }
 
-    IEnumerator Co_ShowRewardedSafely(Action onReward, Action onClosed, Action onFailed)
+    private IEnumerator Co_ShowRewardedSafely(Action onReward, Action onClosed, Action onFailed)
     {
+        var rc = Reward;
+        const float TIMEOUT = 12f;
+        float deadline = Time.realtimeSinceStartup + TIMEOUT;
+
         // 1) 포그라운드 보장
         yield return WaitUntilForeground(1.0f);
-        if (!Application.isFocused || !AndroidHasWindowFocus())
-        {
-            Debug.LogWarning("[Ads] Still not foreground → cancel show");
-            onFailed?.Invoke();
-            yield break;
-        }
 
-        // 2) 준비 안됐으면 "짧은 대기 후 1회 재시도"
-        const float QUICK_WAIT = 2.5f; // 2~3초 권장
-        if (Reward == null || !Reward.IsReady)
-        {
-            Debug.LogWarning("[Ads] Reward not ready at safe point → quick wait & retry");
-            Refresh();                                  // 로딩 트리거
-            yield return WaitUntilRewardReady(QUICK_WAIT);
-        }
+        // 2) 준비 대기 (필요 시 로드)
+        if (rc == null) { onFailed?.Invoke(); yield break; }
+        if (!rc.IsReady && !rc.IsLoading) rc.Init();
+        while (!rc.IsReady && Time.realtimeSinceStartup < deadline) yield return null;
+        if (!rc.IsReady) { onFailed?.Invoke(); yield break; }
 
-        // 3) 그래도 준비 안됐으면 실패
-        if (Reward == null || !Reward.IsReady)
+        // 3) 이벤트 릴레이 준비
+        void Cleanup()
         {
-            Debug.LogWarning("[Ads] Reward still not ready → fail");
-            onFailed?.Invoke();
-            yield break;
-        }
-
-        // 4) 이벤트 구독 및 Show (쿨다운 무시)
-        bool opened = false;
-        void CleanupLocal()
-        {
-            if (Reward != null)
-            {
-                Reward.Opened -= OnOpenedEvt;
-                Reward.Closed -= OnClosedEvt;
-                Reward.Failed -= OnFailedEvt;
-                Reward.Rewarded -= OnRewardedEvt;
-            }
+            rc.Opened -= OnOpened;
+            rc.Closed -= OnClosedInternal;
+            rc.Failed -= OnFailedInternal;
             _rewardInProgress = false;
             if (_rewardWatchdog != null) { StopCoroutine(_rewardWatchdog); _rewardWatchdog = null; }
         }
-        void OnOpenedEvt()
+        void OnOpened()
         {
-            opened = true;
             _rewardInProgress = true;
-            AnalyticsManager.Instance?.RewardLog();
+            AnalyticsManager.Instance?.RewardLog(); // 원하면
         }
-        void OnClosedEvt() { CleanupLocal(); try { onClosed?.Invoke(); } catch (Exception e) { Debug.LogException(e); } Refresh(); }
-        void OnFailedEvt() { CleanupLocal(); try { onFailed?.Invoke(); } catch (Exception e) { Debug.LogException(e); } Refresh(); }
-        void OnRewardedEvt() { try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); } }
+        void OnClosedInternal()
+        {
+            Cleanup();
+            try { onClosed?.Invoke(); } catch { }
+            if (RewardTime > 0) NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
+            Refresh(); // 다음 로드 큐
+        }
+        void OnFailedInternal()
+        {
+            Cleanup();
+            try { onFailed?.Invoke(); } catch { }
+            Refresh(); // 다음 로드 큐
+        }
 
-        CleanupLocal();
-        Reward.Opened += OnOpenedEvt;
-        Reward.Closed += OnClosedEvt;
-        Reward.Failed += OnFailedEvt;
-        Reward.Rewarded += OnRewardedEvt;
+        rc.Opened += OnOpened;
+        rc.Closed += OnClosedInternal;
+        rc.Failed += OnFailedInternal;
 
-        Debug.Log("[Ads] ShowRewarded(safe)");
+        // 4) 실제 노출 (보상 콜백은 rc.ShowAd의 reward 콜백/Rewarded 이벤트에서 발생)
         _lastRewardShowAt = Time.realtimeSinceStartup;
-
-        if (!Reward.ShowAd(onReward: null, ignoreCooldown: true))
-        {
-            CleanupLocal();
-            onFailed?.Invoke();
-            yield break;
-        }
-
         _rewardWatchdog = StartCoroutine(Co_Watchdog(isReward: true, timeout: WATCHDOG_SEC));
-    }
 
-    IEnumerator WaitUntilRewardReady(float maxWaitSec)
-    {
-        float end = Time.realtimeSinceStartup + maxWaitSec;
-        while (Time.realtimeSinceStartup < end)
+        bool ok = rc.ShowAd(onReward);
+        if (!ok)
         {
-            if (Reward != null && Reward.IsReady) yield break;
-            yield return null;
+            // CanShowAd()가 순간 false였던 케이스 등
+            OnFailedInternal();
         }
     }
+
+
 
     // (필요하면) 생명주기용 훅
     public void PreInit() { }

@@ -2,39 +2,26 @@ using UnityEngine;
 
 public sealed class ReviveOnClickBridge : MonoBehaviour
 {
-    // 디버그 때만 무료 리바이브 허용하고, 실제 빌드에선 강제로 끕니다.
     [SerializeField] bool freeReviveWhenAdsUnavailable = true;
-
     bool _rewardFired;
     bool _waitingAd;
 
 #if !UNITY_EDITOR && !DEVELOPMENT_BUILD
-    void Awake()
-    {
-        // 릴리즈 빌드에선 안전하게 무료 리바이브 차단
-        freeReviveWhenAdsUnavailable = false;
-    }
+    void Awake() => freeReviveWhenAdsUnavailable = false;
 #endif
 
     public void OnClickRevive()
     {
-        if (_waitingAd) return; // 중복 클릭 방지
+        if (_waitingAd) return;
         Game.Audio.PlayButtonClick();
 
-        // AdManager(IAdService) 확보
-        var ads = Game.Ads; // 또는 AdManager.Instance
-        if (ads == null)
-        {
-            FallbackOrGiveUp("[ReviveBridge] Ads service missing");
-            return;
-        }
+        var ads = Game.Ads;
+        if (ads == null) { FallbackOrGiveUp("[ReviveBridge] Ads service missing"); return; }
 
-        // 준비 체크
         if (!ads.IsRewardedReady())
         {
-            Debug.LogWarning("[ReviveBridge] Reward not ready");
-            ads.Refresh(); // 다음 로드 유도
-
+            Debug.LogWarning("[ReviveBridge] Reward not ready → refresh & bail");
+            ads.Refresh();
             if (freeReviveWhenAdsUnavailable)
             {
                 Debug.LogWarning("[ReviveBridge] FREE REVIVE (dev, not ready)");
@@ -43,26 +30,32 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
             return;
         }
 
-        // 광고 시도
         _waitingAd = true;
         _rewardFired = false;
 
         ads.ShowRewarded(
             onReward: () =>
             {
+                // 즉시 Revive 금지 - 플래그만
                 _rewardFired = true;
-                // 보상 즉시 지급 (닫힘 콜백 기다릴 필요 없음)
-                PublishRevive();
+                Debug.Log("[ReviveBridge] Reward granted (flag set). Will revive on Closed.");
             },
             onClosed: () =>
             {
-                // 광고 닫힘. 일부 SDK/단말에서 보상 콜백이 안 올 수도 있으니 개발 중엔 우회 허용
-                if (!_rewardFired && freeReviveWhenAdsUnavailable)
+                try
                 {
-                    Debug.LogWarning("[ReviveBridge] Closed without reward → FREE REVIVE (dev)");
-                    PublishRevive();
+                    if (_rewardFired)
+                    {
+                        Debug.Log("[ReviveBridge] Closed with reward → PublishRevive()");
+                        PublishRevive();
+                    }
+                    else if (freeReviveWhenAdsUnavailable)
+                    {
+                        Debug.LogWarning("[ReviveBridge] Closed without reward → FREE REVIVE (dev)");
+                        PublishRevive();
+                    }
                 }
-                _waitingAd = false;
+                finally { _waitingAd = false; }
             },
             onFailed: () =>
             {
@@ -80,20 +73,11 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
             Debug.LogWarning($"{reasonLog} → FREE REVIVE (dev)");
             PublishRevive();
         }
-        else
-        {
-            if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest());
-        }
+        else if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest());
     }
 
     void PublishRevive()
     {
         if (Game.IsBound) Game.Bus.PublishImmediate(new ReviveRequest());
-    }
-
-    public void OnClickGiveUp()
-    {
-        Game.Audio.PlayButtonClick();
-        if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest());
     }
 }
