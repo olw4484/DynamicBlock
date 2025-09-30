@@ -1,9 +1,7 @@
 ﻿using Firebase;
 using Firebase.Analytics;
 using Firebase.Extensions;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class AnalyticsManager : MonoBehaviour
 {
@@ -110,17 +108,26 @@ public class AnalyticsManager : MonoBehaviour
 	public void GameStartLog(bool isClassic, int stageIndex = 1)
 	{
 		// 클래식, 어드벤처 플레이 시작 횟수
-		LogEvent("GameStart", (isClassic ? "classic" : "adventure"), stageIndex);
+		//LogEvent("GameStart", (isClassic ? "classic_start" : "adventure_start"), (isClassic ? 0 : stageIndex));
+		FirebaseAnalytics.LogEvent(
+			"GameStart",
+			new Parameter("GameMode", isClassic ? "classic" : "adventure"),
+			new Parameter("StageIndex", isClassic ? -1 : stageIndex));
 	}
 
 	/// <summary>
 	/// 다시하기 버튼 클릭시 호출
 	/// </summary>
 	/// <param name="isClassic">클래식 true, 어드벤처 false</param>
-	public void RetryLog(bool isClassic)
+	/// /// <param name="stageIndex">어드벤처 스테이지 난이도</param>
+	public void RetryLog(bool isClassic, int stageIndex = 1)
 	{
 		// 클래식/어드벤처 게임 오버 후에 다시하기를 누른 횟수
-		LogEvent("GameRetry");
+		//LogEvent("GameRetry", (isClassic ? "classic_retry" : "adventure_retry"), (isClassic ? 0 : stageIndex));
+		FirebaseAnalytics.LogEvent(
+			"GameRetry",
+			new Parameter("GameMode", isClassic ? "classic" : "adventure"),
+			new Parameter("StageIndex", isClassic ? -1 : stageIndex));
 	}
 
 	/// <summary>
@@ -130,7 +137,11 @@ public class AnalyticsManager : MonoBehaviour
 	public void ClassicBestLog(int score)
 	{
 		// 클래식 모드 최고 점수 도달 (ex. 5000, 10000, 20000...)
-		LogEvent("BestScoreUpdate", "score", score);
+		//LogEvent("BestScoreUpdate", "classic_best_score", score);
+		FirebaseAnalytics.LogEvent(
+			"BestScoreUpdate",
+			new Parameter("GameMode", "classic"),
+			new Parameter("BestScore", score));
 	}
 
 	/// <summary>
@@ -143,6 +154,11 @@ public class AnalyticsManager : MonoBehaviour
 		// 어드벤처 챕터, 스테이지 클리어 정도(ex.Stage 15)
 		// key = 스테이지 이름
 		// value = 스테이지 난이도
-		LogEvent("BestStageUpdate", stageName, stageIndex);
+		//LogEvent("BestStageUpdate", stageName, stageIndex);
+		FirebaseAnalytics.LogEvent(
+			"BestStageUpdate",
+			new Parameter("GameMode", "adventure"),
+			new Parameter("StageName", stageName),
+			new Parameter("StageIndex", stageIndex));
 	}
 }
