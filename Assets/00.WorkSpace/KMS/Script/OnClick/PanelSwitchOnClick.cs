@@ -78,7 +78,8 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 var reason = ResetReason.ToGame;
                 bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
                 Debug.Log($"입장 모드 : {enterMode}, 어드벤쳐 종류 {goalKind}");
-
+                MapManager.Instance.SetGameMode(GameMode.Adventure);
+                MapManager.Instance.SetGoalKind(goalKind);
                 // 1.5) 입장하는 게임 오브젝트의 종류에 따라 다른 오브젝트 활성화
                 StageManager.Instance.SetObjectsByGameModeNGoalKind(enterMode, goalKind);
 

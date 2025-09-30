@@ -349,8 +349,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             {
                 if (s != null && s.gameObject.activeSelf)
                 {
-                    var img = s.FruitSprite;
-                    if (img != null) return true;
+                    // 셀 자체가 활성 & 오버레이가 실제로 존재할 때만 true
                 }
             }
             return false;
@@ -366,46 +365,60 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             while (usable.Count > 0)
             {
+                // 웨이브별 FullFill 상한
                 if (fruitFullFillCapPerWave > 0 && spawnedBlocks >= fruitFullFillCapPerWave)
                 {
                     T($"[FruitWave] z) FullFill 캡 도달 → 종료 (spawnedBlocks={spawnedBlocks})");
                     break;
                 }
 
+                // FullFill 대상 블록 선정(이미 과일 있는 블록은 제외)
                 var b = PickTargetBlock(usable);
                 if (b == null)
                 {
+                    // 모든 블록에 과일 존재
                     T("[FruitWave] c) 대상 없음(모두 이미 과일 존재) → 종료");
                     break;
                 }
 
-                int pickCode = WeightedPickFruit(activeCodes, code => ScoreFruitForSelection(code, mm, boardCounts, activeCodes));
-                int pickIdx = pickCode - 201;
-
+                // 블록 내 활성 셀 수 확인(0이면 스킵)
                 int tiles = CountActiveCells(b);
+                if (tiles <= 0)
+                {
+                    T($"[FruitWave] c) 대상 블록 slot={b.SpawnSlotIndex}, tiles={tiles} (활성 셀 없음) → 스킵");
+                    usable.Remove(b);
+                    continue;
+                }
+
+                // 과일 코드 가중치 선택
+                int pickCode = WeightedPickFruit(activeCodes, code => ScoreFruitForSelection(code, mm, boardCounts, activeCodes));
+                int pickIdx  = pickCode - 201;
+
                 TDO($"[FruitWave] c) 대상 블록 slot={b.SpawnSlotIndex}, tiles={tiles}", () =>
                 {
                     T($" - pickCode={pickCode} (idx={pickIdx}) | score={ScoreFruitForSelection(pickCode, mm, boardCounts, activeCodes)}");
                 });
 
+                // 블록의 모든 활성 셀에 과일 오버레이 적용
                 ApplyFruitToBlock_AllCells(b, pickIdx);
                 spawnedBlocks++;
 
-                // 웨이브 한정: 같은 타일은 목록에서 제거(문서 5-1/5-2-c-i)
-                // → 이번 루프에선 같은 code를 다시 뽑지 않도록 보정(선택적)
-                boardCounts[pickCode] += tiles;
+                // 보드 카운트 동기화(이번 블록에 칠한 셀 수만큼 증가)
+                if (tiles > 0)
+                    boardCounts[pickCode] += tiles;
 
-                // 한 블록만 하고 끝(5-2) or 계속(5-1)
+                // 한 블록만 하고 종료(5-2) vs 가능한 동안 반복(5-1)
                 if (!repeatWhileAvailable)
                 {
+                    // FullFill 1개 완료 후 종료
                     T($"[FruitWave] d) FullFill 완료(1개) → 종료");
                     break;
                 }
 
-                // 다음 대상 탐색
+                // 다음 대상 탐색(현재 블록은 제외)
                 usable.Remove(b);
             }
-            
+
             T($"[FruitWave] z) FullFill 총 {spawnedBlocks}개 블록");
         }
 
@@ -565,8 +578,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             // 활성 과일 후보 수집(0..4)
             var candidates = new List<int>(5);
             for (int i = 0; i < 5; i++)
-                if (mm.IsFruitEnabled(i))
-                    candidates.Add(i);
+            {
+                if (!mm.IsFruitEnabled(i)) continue;
+                int code = 201 + i;
+                int remain = mm.GetFruitRemainingByCode(code);
+                if (remain > 0) candidates.Add(i);
+            }
 
             if (candidates.Count == 0)
             {
@@ -877,6 +894,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _currentBlocks.Clear();
             _currentBlocksShapeData.Clear();
             _currentBlocksSpriteData.Clear();
+
+            // 실험
+            // 블럭 생성이 _paused로 인해 조기 종료되서 생성이 되지 않았는 것으로 추정
+            _paused = false;
         }
 
         private void OnGridReady(GridReady e)
