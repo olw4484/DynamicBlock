@@ -1,13 +1,14 @@
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Messages;
-using UnityEngine;
 using System.Collections;
+using UnityEngine;
 
 public sealed class GameOverResultRouter : MonoBehaviour
 {
     [Header("Refs")]
     [SerializeField] private GameObject classicGameOverRoot;        // Classic_Game_Over 루트
+    [SerializeField] private GameObject classicNewBestRoot;
     [SerializeField] private AdventureResultPresenter adventurePresenter; // ADResult_Canvas가 붙은 프리팹
 
     [Header("Options")]
@@ -28,7 +29,7 @@ public sealed class GameOverResultRouter : MonoBehaviour
         {
             _bus = Game.Bus;
             // 최종 확정 신호
-            _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: false);
+            _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: true);
 
             _bus.Subscribe<AdventureStageCleared>(OnAdventureCleared, replaySticky: true);
             _bus.Subscribe<AdventureStageFailed>(OnAdventureFailed, replaySticky: true);
@@ -70,7 +71,7 @@ public sealed class GameOverResultRouter : MonoBehaviour
         var mm = MapManager.Instance;
         var sm = Game.Save;
         var mode = mm?.CurrentMode ?? GameMode.Classic;
-        Debug.Log($"[ResultRouter] GOC: mode={mode}, score={e.score}, reason={e.reason}");
+        Debug.Log($"[ResultRouter] GOC: mode={mode}, score={e.score}, reason={e.reason}, newBest={e.isNewBest}");
 
         if (mode == GameMode.Adventure)
         {
@@ -104,6 +105,26 @@ public sealed class GameOverResultRouter : MonoBehaviour
         // ===== Classic =====
         sm?.UpdateClassicScore(e.score);
         sm?.ClearRunState(true);
+        // 1) UI 분기
+        if (classicNewBestRoot != null)
+        {
+            classicNewBestRoot.SetActive(e.isNewBest);
+            if (classicGameOverRoot) classicGameOverRoot.SetActive(!e.isNewBest);
+        }
+        else
+        {
+            // 신기록 루트가 없다면 기존 게임오버 루트만 ON (프로젝트 상황에 맞게 프리젠터 호출로 바꿔도 OK)
+            if (classicGameOverRoot) classicGameOverRoot.SetActive(true);
+        }
+
+        // 2) 사운드도 분기
+        if (e.isNewBest) Sfx.NewRecord();
+        else Sfx.GameOver();
+
+        // 3) 저장/런상태 정리 (UI 켠 뒤에 해도 무방)
+        sm?.UpdateClassicScore(e.score);
+        sm?.ClearRunState(true);
+
         Sfx.GameOver();
     }
 

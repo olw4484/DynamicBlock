@@ -46718,6 +46718,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   classicGameOverRoot: {fileID: 7098664708201607511}
+  classicNewBestRoot: {fileID: 1534514332294866935}
   adventurePresenter: {fileID: 68308983}
   hideAllOnEnable: 1
 --- !u!1 &1420170520
