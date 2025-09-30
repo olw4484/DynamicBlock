@@ -34,7 +34,7 @@ namespace _00.WorkSpace.GIL.Scripts.Shapes
         }
 
         // 과일 여부 확인하기
-        public bool HasFruit => fruitImage != null && fruitImage.gameObject.activeInHierarchy &&
+        public bool HasFruit => fruitImage != null && fruitImage.gameObject.activeSelf &&
                                 fruitImage.enabled && fruitImage.sprite != null;
         // 과일 스프라이트 가져오기
         public Sprite FruitSprite => fruitImage ? fruitImage.sprite : null;
