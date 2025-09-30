@@ -135,6 +135,8 @@ public sealed class AchievementUIBinder : MonoBehaviour
 
     public void ShowPopupFor(AchievementDefinition def)
     {
+        Sfx.Button();
+
         Game.UI.SetPanel("Achievement_Popup", true);
 
         var prog = _svc.Evaluate(def);

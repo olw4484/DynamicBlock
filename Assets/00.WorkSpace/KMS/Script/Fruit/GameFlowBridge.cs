@@ -22,8 +22,12 @@ public sealed class GameFlowBridge : MonoBehaviour
 
     void OnGiveUp(GiveUpRequest _)
     {
-        int final = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
-        Game.Bus.PublishImmediate(new GameOverConfirmed(final, false, "AdventureGiveUp"));
+        int score = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
+        int prevHi = Game.Save?.Data?.highScore ?? 0;
+        bool tieIsNew = false;
+        bool isNewBest = tieIsNew ? (score >= prevHi) : (score > prevHi);
+
+        Game.Bus.PublishImmediate(new GameOverConfirmed(score, isNewBest, "AdventureGiveUp"));
     }
 }
 

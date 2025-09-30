@@ -127,7 +127,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int bonus = CalcBonus(baseScore, comboAtStart, clearedLines);
 
             AddScore(blockUnits + bonus);
-            SetCombo(comboAtStart + 1);
+            SetCombo(comboAtStart + clearedLines);
 
             // GIL_ADD - 어드벤쳐 모드일 경우 점수 체크까지 하기
             if (MapManager.Instance.CurrentMode == GameMode.Adventure)

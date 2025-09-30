@@ -52,25 +52,23 @@ public class RewardAdController
         IsReady = false;
         IsLoading = true;
 
-        Debug.Log("[Rewarded] Loading.");
+        Debug.Log("[Rewarded] Loading start. isFocused=" + Application.isFocused);
         RewardedAd.Load(RewardId, new AdRequest(), (ad, error) =>
         {
             IsLoading = false;
-
             if (error != null || ad == null)
             {
-                Debug.LogError($"[Rewarded] Load failed: {error}");
+                Debug.LogError($"[Rewarded] Load failed: {(error == null ? "null" : error)}");
+                // 네트워크/단말/광고계정 이슈: 여기로 들어오면 '초기화/로드 실패'
                 IsReady = false;
-
-                // 5~15초 백오프 재시도 (포커스일 때만)
+                // 백오프 재시도는 유지
                 if (Application.isFocused && AdManager.Instance != null)
                     AdManager.Instance.StartCoroutine(RetryAfter(10f));
                 return;
             }
-
+            Debug.Log("[Rewarded] Load success"); // ← 이게 찍히면 ‘초기화 성공 & 준비 완료’
             _ad = ad;
             IsReady = true;
-            Debug.Log("[Rewarded] Load success");
             HookEvents(_ad);
         });
     }
@@ -125,27 +123,27 @@ public class RewardAdController
         ad.OnAdFullScreenContentOpened += () =>
         {
             Debug.Log("[Rewarded] Opened");
-            Opened?.Invoke();
+            try { Opened?.Invoke(); } catch { }
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
         };
 
         ad.OnAdFullScreenContentClosed += () =>
         {
             Debug.Log("[Rewarded] Closed");
-            Closed?.Invoke();
+            try { Closed?.Invoke(); } catch { }
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
 
-            EventSystemRescue.EnsureAlive();
-            Game.UI?.ForceMainUIClean();
+            // Game.UI?.ForceMainUIClean();
 
             _externalOnReward = null;
             IsReady = false;
-            Init();
+            Init(); // 다음 로드
         };
 
         ad.OnAdFullScreenContentFailed += (AdError e) =>
         {
             Debug.LogError($"[Rewarded] Show error: {e}");
-            Failed?.Invoke();
+            try { Failed?.Invoke(); } catch { }
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
 
             _externalOnReward = null;

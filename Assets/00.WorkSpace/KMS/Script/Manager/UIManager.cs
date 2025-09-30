@@ -1,3 +1,4 @@
+using _00.WorkSpace.GIL.Scripts.Managers;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -70,7 +71,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     int _pendingDownedScore;
 
     private int _lastLoggedClassicBest = -1;
-
+    private int _bestShown = -1;
     private EventQueue _bus;
     private GameManager _game;
 
@@ -152,6 +153,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<ScoreChanged>(e =>
         {
             if (_scoreText) _scoreText.text = FormatScore(e.value);
+            UpdateBestHUD();
         }, replaySticky: true);
 
         _bus.Subscribe<ComboChanged>(e =>
@@ -174,9 +176,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<GameDataChanged>(e =>
         {
             _lastHighScore = e.data.highScore;
-            if (_hudBestText) _hudBestText.text = $"{_lastHighScore:#,0}";
-            // 필요 시 GO 화면의 Best도 최신으로 동기화
-            SetAll(_goBestTexts, $"{FormatScore(_lastHighScore)}");
+            UpdateBestHUD();
             Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
         }, replaySticky: true);
 
@@ -254,18 +254,27 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
 
-        var svc = Game.Save as ISaveService;
-        var data = svc?.Data;
+        var data = (Game.Save as ISaveService)?.Data;
         if (data != null)
         {
             _lastHighScore = data.highScore;
-            if (_hudBestText) _hudBestText.text = $"{_lastHighScore:#,0}";
-            SetAll(_goBestTexts, $"{_lastHighScore:#,0}");
+            UpdateBestHUD();
             Debug.Log($"[UI] Seed Best from Save: {_lastHighScore}");
         }
     }
 
     private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);
+
+    private void UpdateBestHUD()
+    {
+        int cur = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
+        int display = Mathf.Max(_lastHighScore, cur);
+        if (display == _bestShown) return;   // 불필요한 갱신 방지
+        _bestShown = display;
+
+        if (_hudBestText) _hudBestText.text = $"{display:#,0}";
+        SetAll(_goBestTexts, $"{FormatScore(display)}"); // 결과 패널도 동기화
+    }
 
     // === 외부 API ===
     public void SetPanel(string key, bool on)
