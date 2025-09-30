@@ -35,7 +35,7 @@ public sealed class MedalItemView : MonoBehaviour
     {
         if (!def || !icon || !label) return;
 
-        label.text = Loc.Get(def.titleKey);
+        label.text = def.GetTitle();
 
         var sprites = def.tierSprites;
         if (p.tier <= 0)

@@ -38,6 +38,7 @@ public sealed class AchievementDefinition : ScriptableObject
     public ModeFilter mode = ModeFilter.Any;
 
     [Header("Localization Keys")]
+    public string table = "LanguageTable";
     public string titleKey;     // ex) "1042" or "ach.score_champion.title"
     public string descKey;      // (폴백) 공통 설명 키
 
@@ -59,7 +60,7 @@ public sealed class AchievementDefinition : ScriptableObject
 
     public int ClampTierIndex(int tier) => Mathf.Clamp(tier - 1, 0, Mathf.Max(0, (tierSprites?.Length ?? 1) - 1));
 
-    // ★ 티어별 설명 키 선택 (없으면 descKey 반환)
+    // 티어별 설명 키 선택 (없으면 descKey 반환)
     public string GetDescKeyForTier(int tier)
     {
         if (descTierKeys != null && tier >= 1)
@@ -68,8 +69,10 @@ public sealed class AchievementDefinition : ScriptableObject
             if (idx >= 0 && idx < descTierKeys.Length && !string.IsNullOrEmpty(descTierKeys[idx]))
                 return descTierKeys[idx];
         }
-        return descKey; // 폴백
+        return descKey;
     }
+
+    public string GetTitle() => Loc.GetFrom(table, titleKey);
 
 #if UNITY_EDITOR
     private void OnValidate()
