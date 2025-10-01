@@ -18,15 +18,14 @@ public sealed class FruitBadgeLayoutRows : MonoBehaviour
     [SerializeField] private FruitBadge badgePrefab;
 
     [Header("Layout")]
-    [SerializeField, Min(0f)] private float rowSpacingY = 160f;   // 두 줄 간 Y 간격
-    [SerializeField, Min(0f)] private float itemSpacingX = 250f;  // 가로 간격(두 줄 동일 권장)
-    [SerializeField, Min(0)] private int trapezoidInset = 125;   // 윗줄 좌우 패딩(사다리꼴 강도)
+    [SerializeField, Min(0f)] private float rowSpacingY = 160f;   // 두 줄 간 Y 간격(캔버스 스케일러로 보정됨)
+    [SerializeField, Min(0f)] private float itemSpacingX = 250f;  // 가로 간격
+    [SerializeField, Range(0f, 0.45f)] private float trapezoidInsetPercent = 0.125f; // 윗줄 좌우 인셋(비율)
     [SerializeField] private bool enableTrapezoid = true;
 
     [Header("Row Offsets (center anchor 기준)")]
-    [SerializeField] private float topRowYOffset = 100f;   // 위로 +100
+    [SerializeField] private float topRowYOffset = 100f;     // 위로 +100
     [SerializeField] private float bottomRowYOffset = -100f; // 아래로 -100
-    [SerializeField] private float bottomRowXOffset = 250f;
 
     private readonly List<FruitBadge> pool = new();
 
@@ -61,23 +60,14 @@ public sealed class FruitBadgeLayoutRows : MonoBehaviour
 
         bottomRow.gameObject.SetActive(bottomCount > 0);
 
-        // 줄 위치: 탑은 +100, 바텀은 -100 (한 줄만 있으면 가운데 유지)
         var tp = topRow.anchoredPosition;
         tp.x = 0f;
         tp.y = (bottomCount > 0) ? topRowYOffset : 0f;
         topRow.anchoredPosition = tp;
 
         var bp = bottomRow.anchoredPosition;
-        if (bottomCount > 0)
-        {
-            bp.x = bottomRowXOffset;
-            bp.y = bottomRowYOffset;
-        }
-        else
-        {
-            bp.x = 0f;
-            bp.y = 0f;
-        }
+        bp.x = 0f;
+        bp.y = (bottomCount > 0) ? bottomRowYOffset : 0f;
         bottomRow.anchoredPosition = bp;
 
         ApplyTrapezoid(topCount, bottomCount);
@@ -106,13 +96,14 @@ public sealed class FruitBadgeLayoutRows : MonoBehaviour
         var topHLG = topRow.GetComponent<HorizontalLayoutGroup>() ?? topRow.gameObject.AddComponent<HorizontalLayoutGroup>();
         var botHLG = bottomRow.GetComponent<HorizontalLayoutGroup>() ?? bottomRow.gameObject.AddComponent<HorizontalLayoutGroup>();
 
-        // 공통 설정: 가운데 정렬 + 고정 폭/높이
         ConfigureHLG(topHLG);
         ConfigureHLG(botHLG);
 
-        // spacing 적용
         topHLG.spacing = itemSpacingX;
         botHLG.spacing = itemSpacingX;
+
+        SetRowRectDefaults(topRow);
+        SetRowRectDefaults(bottomRow);
     }
 
     private static void ConfigureHLG(HorizontalLayoutGroup h)
@@ -120,25 +111,51 @@ public sealed class FruitBadgeLayoutRows : MonoBehaviour
         h.childAlignment = TextAnchor.MiddleCenter;
         h.childControlWidth = h.childControlHeight = false;
         h.childForceExpandWidth = h.childForceExpandHeight = false;
+        h.padding = new RectOffset(0, 0, 0, 0);
+    }
+
+    private static void SetRowRectDefaults(RectTransform rt)
+    {
+        // 가로 스트레치(부모 폭 비율), 중앙 Pivot
+        rt.anchorMin = new Vector2(0f, rt.anchorMin.y);
+        rt.anchorMax = new Vector2(1f, rt.anchorMax.y);
+        rt.pivot = new Vector2(0.5f, rt.pivot.y);
+        // 좌우 크기/위치는 앵커가 담당하므로 sizeDelta.x는 0 유지
+        var sd = rt.sizeDelta;
+        sd.x = 0f;
+        rt.sizeDelta = sd;
     }
 
     private void ApplyTrapezoid(int topCount, int bottomCount)
     {
-        var topHLG = topRow.GetComponent<HorizontalLayoutGroup>();
-        var botHLG = bottomRow.GetComponent<HorizontalLayoutGroup>();
-        if (!topHLG || !botHLG) return;
-
         if (enableTrapezoid && bottomCount > 0)
         {
-            // 윗변을 좁히기: 좌/우 패딩 동일하게 부여
-            topHLG.padding = new RectOffset(trapezoidInset, trapezoidInset, topHLG.padding.top, topHLG.padding.bottom);
-            // 아랫변은 넓게
-            botHLG.padding = new RectOffset(0, 0, botHLG.padding.top, botHLG.padding.bottom);
+            float inset = Mathf.Clamp01(trapezoidInsetPercent); // 0~0.45 권장
+            // 윗줄만 좌우 인셋
+            topRow.anchorMin = new Vector2(inset, topRow.anchorMin.y);
+            topRow.anchorMax = new Vector2(1f - inset, topRow.anchorMax.y);
         }
         else
         {
-            topHLG.padding = new RectOffset(0, 0, topHLG.padding.top, topHLG.padding.bottom);
-            botHLG.padding = new RectOffset(0, 0, botHLG.padding.top, botHLG.padding.bottom);
+            // 두 줄 모두 전체 폭 사용
+            topRow.anchorMin = new Vector2(0f, topRow.anchorMin.y);
+            topRow.anchorMax = new Vector2(1f, topRow.anchorMax.y);
         }
+
+        // 아랫줄은 언제나 전체 폭 사용(사다리꼴 밑변)
+        bottomRow.anchorMin = new Vector2(0f, bottomRow.anchorMin.y);
+        bottomRow.anchorMax = new Vector2(1f, bottomRow.anchorMax.y);
+    }
+
+    private void OnRectTransformDimensionsChange()
+    {
+        // 현재 활성 상태 기준으로 다시 적용
+        int topCount = 0, bottomCount = 0;
+        foreach (Transform t in topRow) if (t.gameObject.activeSelf) topCount++;
+        foreach (Transform t in bottomRow) if (t.gameObject.activeSelf) bottomCount++;
+
+        ApplyTrapezoid(topCount, bottomCount);
+        LayoutRebuilder.ForceRebuildLayoutImmediate(topRow);
+        if (bottomCount > 0) LayoutRebuilder.ForceRebuildLayoutImmediate(bottomRow);
     }
 }
