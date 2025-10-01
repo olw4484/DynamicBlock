@@ -27,20 +27,20 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     [SerializeField] private TMP_Text Fail_ResultScore;
     [SerializeField] private GameObject Fail_Button;
 
-    // ¡å¡å Ãß°¡: ¸ðµå º° UI ±×·ì + Á¡¼ö ½½¶óÀÌ´õ/¶óº§ + °úÀÏ ÇÕ°è¶óº§
+    // ï¿½ï¿½ï¿½ ï¿½ß°ï¿½: ï¿½ï¿½ï¿½ ï¿½ï¿½ UI ï¿½×·ï¿½ + ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½/ï¿½ï¿½ + ï¿½ï¿½ï¿½ï¿½ ï¿½Õ°ï¿½ï¿½
     [Header("Mode Groups")]
-    [SerializeField] private GameObject scoreGroup;      // Á¡¼ö ¸ðµå¿ë ±×·ì
-    [SerializeField] private GameObject fruitGroup;      // °úÀÏ ¸ðµå¿ë ±×·ì
+    [SerializeField] private GameObject scoreGroup;      // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½×·ï¿½
+    [SerializeField] private GameObject fruitGroup;      // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½×·ï¿½
 
     [Header("Score Group UI")]
-    [SerializeField] private Slider scoreProgress;       // °¡¿îµ¥ ½½¶óÀÌ´õ
-    [SerializeField] private TMP_Text scoreProgressText; // "ÇöÀç/¸ñÇ¥"
+    [SerializeField] private Slider scoreProgress;       // ï¿½ï¿½ï¿½îµ¥ ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½
+    [SerializeField] private TMP_Text scoreProgressText; // "ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½Ç¥"
 
     [Header("Fruit Group UI")]
-    [SerializeField] private TMP_Text fruitTotalText;    // "¼öÁý/¸ñÇ¥" ÃÑÇÕ (°³º° ¹îÁö´Â ÇÁ·ÎÁ§Æ® ÄÄÆ÷³ÍÆ®¿¡ ¿¬°á)
+    [SerializeField] private TMP_Text fruitTotalText;    // "ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½Ç¥" ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
 
     [Header("Fruit Layout")]
-    [SerializeField] private FruitBadgeLayoutRows fruitLayout; // °úÀÏ ¹îÁö 2¿­ ¹èÄ¡
+    [SerializeField] private FruitBadgeLayoutRows fruitLayout; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 2ï¿½ï¿½ ï¿½ï¿½Ä¡
 
     private EventQueue _bus;
     private Coroutine _scoreTween;
@@ -65,7 +65,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
 
     private void OpenPanel()
     {
-        // UIManager°¡ ¹Þ¾Æ¼­ SetPanel("Adventure_Result", true) ¼öÇà
+        // UIManagerï¿½ï¿½ ï¿½Þ¾Æ¼ï¿½ SetPanel("Adventure_Result", true) ï¿½ï¿½ï¿½ï¿½
         _bus?.PublishImmediate(new PanelToggle("Adventure_Result", true));
     }
     private void ClosePanel()
@@ -73,11 +73,11 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         _bus?.PublishImmediate(new PanelToggle("Adventure_Result", false));
     }
 
-    // ÀÌº¥Æ®¿¡¼­ kind/score µÑ ´Ù ¹Þµµ·Ï º¯°æ
+    // ï¿½Ìºï¿½Æ®ï¿½ï¿½ï¿½ï¿½ kind/score ï¿½ï¿½ ï¿½ï¿½ ï¿½Þµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     private void OnCleared(AdventureStageCleared e) => ShowClear(e.kind, e.finalScore);
     private void OnFailed(AdventureStageFailed e) => ShowFail(e.kind, e.finalScore);
 
-    // ¿ÜºÎ¿¡¼­ Á÷Á¢ È£ÃâÇÒ ¼ö ÀÖµµ·Ï ¿À¹ö·Îµåµµ º¯°æ
+    // ï¿½ÜºÎ¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ È£ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Öµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Îµåµµ ï¿½ï¿½ï¿½ï¿½
     public void ShowClearPublic(MapGoalKind kind, int score) => ShowClear(kind, score);
     public void ShowFailPublic(MapGoalKind kind, int score) => ShowFail(kind, score);
     public void HideAllPublic() => HideAll();
@@ -96,10 +96,10 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (ADResult_ClearPanel) ADResult_ClearPanel.SetActive(true);
         if (Clear_ResultScore) Clear_ResultScore.text = score.ToString("N0");
 
-        // °á°ú ³ëÃâ ·Î±ë(¼±ÅÃ)
+        // ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Î±ï¿½(ï¿½ï¿½ï¿½ï¿½)
         AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "clear");
 
-        // ¹öÆ° ¸®½º³Ê ¹ÙÀÎµù(Áßº¹ ¹æÁö)
+        // ï¿½ï¿½Æ° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½(ï¿½ßºï¿½ ï¿½ï¿½ï¿½ï¿½)
         var btn = Clear_Button ? Clear_Button.GetComponent<Button>() : null;
         if (btn)
         {
@@ -108,27 +108,27 @@ public sealed class AdventureResultPresenter : MonoBehaviour
             {
                 AnalyticsManager.Instance?.LogEvent("Clear_Confirm");
                 ClosePanel();
-                // TODO: ´ÙÀ½ ½ºÅ×ÀÌÁö ÁøÀÔ ¸Þ½ÃÁö/¾À ÀüÈ¯ È£Ãâ
+                // TODO: ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½/ï¿½ï¿½ ï¿½ï¿½È¯ È£ï¿½ï¿½
 
-                // RestartOnClick.cs¿¡¼­ µé°í¿È
+                // RestartOnClick.csï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
                 var sm = MapManager.Instance?.saveManager;
 
                 var bus = Game.Bus;
 
-                // 1) ÀúÀå »óÅÂ È®½ÇÈ÷ »èÁ¦ + ½º³À¼¦ ¾ïÁ¦
+                // 1) ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ + ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
                 sm?.ClearRunState(save: true);
                 sm?.SkipNextSnapshot("Restart");
                 sm?.SuppressSnapshotsFor(1.0f);
 
-                // 2) ¸®¼Â ÀÌº¥Æ® (BlockStorage.ResetRuntime µî)
+                // 2) ï¿½ï¿½ï¿½ï¿½ ï¿½Ìºï¿½Æ® (BlockStorage.ResetRuntime ï¿½ï¿½)
                 bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
 
                 string[] closeList = {"Adventure_Result"};
 
-                // 3) UI Á¤¸®/ÀüÈ¯
+                // 3) UI ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½È¯
                 RestartFlow.SoftReset("Game", closeList);
                 
-                StageManager.Instance.SetCurrentStage(StageManager.Instance.GetCurrentStage() + 1);
+                StageManager.Instance.SetCurrentStage(StageManager.Instance.GetCurrentStage());
                 MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage());
             });
         }
@@ -152,41 +152,42 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (ADResult_FailPanel) ADResult_FailPanel.SetActive(true);
         if (Fail_ResultScore) Fail_ResultScore.text = score.ToString("N0");
 
-        // °á°ú ³ëÃâ ·Î±ë
+        // ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Î±ï¿½
         AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "fail");
 
-        // ¹öÆ° ¸®½º³Ê ¹ÙÀÎµù(Áßº¹ ¹æÁö)
+        // ï¿½ï¿½Æ° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½(ï¿½ßºï¿½ ï¿½ï¿½ï¿½ï¿½)
         var btn = Fail_Button ? Fail_Button.GetComponent<Button>() : null;
         if (btn)
         {
             btn.onClick.RemoveAllListeners();
             btn.onClick.AddListener(() =>
             {
-                AnalyticsManager.Instance?.RetryLog(false);   // Adventure Àç½Ãµµ
+                AnalyticsManager.Instance?.RetryLog(false);   // Adventure ï¿½ï¿½Ãµï¿½
                 ClosePanel();
-                // TODO: ¸®Æ®¶óÀÌ ¸Þ½ÃÁö/¾À ¸®¼Â È£Ãâ
+                // TODO: ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½/ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ È£ï¿½ï¿½
                 // GIL_Add : 
-                // ÇöÀç ½ºÅ×ÀÌÁö Àç½ÃÀÛÇÏ±â
-                // RestartOnClick.cs¿¡¼­ µé°í¿È
+                // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï±ï¿½
+                // RestartOnClick.csï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
                 var sm = MapManager.Instance?.saveManager;
 
                 var bus = Game.Bus;
 
-                // 1) ÀúÀå »óÅÂ È®½ÇÈ÷ »èÁ¦ + ½º³À¼¦ ¾ïÁ¦
+                // 1) ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ + ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
                 sm?.ClearRunState(save: true);
                 sm?.SkipNextSnapshot("Restart");
                 sm?.SuppressSnapshotsFor(1.0f);
 
-                // 2) ¸®¼Â ÀÌº¥Æ® (BlockStorage.ResetRuntime µî)
+                // 2) ï¿½ï¿½ï¿½ï¿½ ï¿½Ìºï¿½Æ® (BlockStorage.ResetRuntime ï¿½ï¿½)
                 bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
 
                 string[] closeList = {"Adventure_Result"};
 
-                // 3) UI Á¤¸®/ÀüÈ¯
+                // 3) UI ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½È¯
                 RestartFlow.SoftReset("Game", closeList);
 
-                // end) ÇöÀç ½ºÅ×ÀÌÁö Àç ÀÔÀåÇÏ±â
-                MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage());
+                // end) ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï±ï¿½
+                var curStage = StageManager.Instance.GetCurrentStage();
+                MapManager.Instance.EnterStage(curStage + 1);
             });
         }
 
@@ -209,7 +210,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (fruitGroup) fruitGroup.SetActive(false);
     }
 
-    // ÇÙ½É: ¸ðµåº° UI ¼¼ÆÃ & ½½¶óÀÌ´õ/¶óº§ Ã¤¿ì±â
+    // ï¿½Ù½ï¿½: ï¿½ï¿½åº° UI ï¿½ï¿½ï¿½ï¿½ & ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½/ï¿½ï¿½ Ã¤ï¿½ï¿½ï¿½
     private void ApplyModeUI(MapGoalKind kind, int finalScore)
     {
         bool isScore = (kind == MapGoalKind.Score);
@@ -231,7 +232,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     {
         if (!scoreProgress) return;
 
-        // 0..1 Á¤±ÔÈ­¸¸ »ç¿ë
+        // 0..1 ï¿½ï¿½ï¿½ï¿½È­ï¿½ï¿½ ï¿½ï¿½ï¿½
         scoreProgress.wholeNumbers = false;
         scoreProgress.minValue = 0f;
         scoreProgress.maxValue = 1f;
@@ -257,7 +258,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         s.value = to;
     }
 
-    // °úÀÏ ¸ðµå¿¡¼­ ÃÑÇÕ "¼öÁý/¸ñÇ¥" °»½Å
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½å¿¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ "ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½Ç¥" ï¿½ï¿½ï¿½ï¿½
     private void UpdateFruitProgressText()
     {
         var mm = MapManager.Instance;
@@ -294,10 +295,10 @@ public sealed class AdventureResultPresenter : MonoBehaviour
             bool done = current >= target;
             Sprite icon = mm.GetFruitIconByCode(code);
 
-            // 1) "¸ðÀº °³¼ö"¸¦ º¸¿©ÁÖ°í ½ÍÀ¸¸é current »ç¿ë
+            // 1) "ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½"ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ö°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ current ï¿½ï¿½ï¿½
             //list.Add(new FruitReq { sprite = icon, count = current, achieved = done });
 
-            // 2) "³²Àº °³¼ö"¸¦ º¸¿©ÁÖ°í ½ÍÀ¸¸é À§ ÇÑ ÁÙ ´ë½Å ¾Æ·¡ »ç¿ë
+            // 2) "ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½"ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ö°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Æ·ï¿½ ï¿½ï¿½ï¿½
             int remain = mm.GetFruitRemainingByCode(code);
             list.Add(new FruitReq { sprite = icon, count = remain, achieved = done });
         }
