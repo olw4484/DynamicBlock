@@ -54,13 +54,13 @@ public class EnterStageButton : MonoBehaviour
         var mM = MapManager.Instance;
         if (mM == null) Debug.LogError("[EnterStage] Error : MapManager Instance is null");
         // MapManager의 EnterStage 함수 호출 -> 이후 작업은 MapManager에서 진행
-        StageManager.Instance.SetCurrentStage(stageNumber);
-        mM.EnterStage(stageNumber);
+        // StageManager.Instance.SetCurrentStage(stageNumber);
+        mM.EnterStage(StageManager.Instance.GetCurrentStage() + 1);
     }
     
     /// <summary>
     /// 현재 버튼의 상태를 변경, 버튼의 상태에 따라 해당하는 이미지 적용
-    /// Cleared : 클리어함 Playable : 플레이 가능 Locked : 잠김
+    /// Cleared : 클리어함 Playable : 플레가능 Locked : 잠김
     /// </summary>
     /// <param name="state">버튼 상태</param>
     public void SetButtonState(ButtonState state)
