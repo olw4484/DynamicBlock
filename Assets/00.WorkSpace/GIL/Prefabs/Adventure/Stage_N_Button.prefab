@@ -285,6 +285,7 @@ MonoBehaviour:
   stageButtonImage: {fileID: 2369435605088257752}
   button: {fileID: 8778948114370188760}
   buttonText: {fileID: 5206756636522517261}
+  panelSwitch: {fileID: 3735727100625425493}
   normalSprite: {fileID: 21300000, guid: a3e78e8e524040741afd3634bc3ebfe3, type: 3}
   activeSprite: {fileID: 21300000, guid: d3825727bc72c7c4d81a5cfa788493a9, type: 3}
   clearSprite: {fileID: 0}
@@ -316,7 +317,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8248359133486922377}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 68ef6b8dfc9409c4293251e938943853, type: 3}
   m_Name: 

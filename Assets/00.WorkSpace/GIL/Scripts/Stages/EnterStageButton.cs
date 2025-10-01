@@ -83,14 +83,17 @@ public class EnterStageButton : MonoBehaviour
         {
             case ButtonState.Cleared:
                 stageButtonImage.sprite = clearSprite;
+                GetComponent<PanelSwitchOnClick>().enabled = false;
                 buttonText.enabled = false;
                 break;
             case ButtonState.Playable:
                 stageButtonImage.sprite = activeSprite;
+                GetComponent<PanelSwitchOnClick>().enabled = true;
                 buttonText.enabled = false;
                 break;
             case ButtonState.Locked:
                 stageButtonImage.sprite = normalSprite;
+                GetComponent<PanelSwitchOnClick>().enabled = false;
                 buttonText.enabled = true;
                 break;
         }
