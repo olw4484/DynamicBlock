@@ -95,11 +95,6 @@ public class GameBootstrap : MonoBehaviour
         group.Initialize();
         var report = Game.Bind(group);
 
-        var managers = ManagerGroup.Instance.Managers.OrderBy(m => m.Order).ToList();
-        foreach (var m in managers) m.PreInit();
-        foreach (var m in managers) m.Init();
-        foreach (var m in managers) m.PostInit();
-
         // 씬 파사드/레인 확보 & 바인딩
         if (!audioFx) audioFx = FindFirstObjectByType<AudioFxFacade>();
         if (!blockFx) blockFx = FindFirstObjectByType<BlockFxFacade>();
