@@ -61,90 +61,63 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
     public void Invoke()
     {
         Debug.Log($"[Home] Invoke clicked. clear={clearRunStateOnClick} target={targetPanel} cool={_cool} bound={Game.IsBound}");
-        if (_invoking) return;
-        if (_cool > 0f || !Game.IsBound) return;
+        if (_invoking || _cool > 0f || !Game.IsBound) return;
 
         _invoking = true;
         _cool = cooldown;
-
         try
         {
             PlayInvokeSfx();
-            var bus = Game.Bus;
 
-            if (targetPanel == "Game")
+            switch (targetPanel)
             {
-                // 1) UI 리셋/전환을 먼저 요청
-                var reason = ResetReason.ToGame;
-                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
-                Debug.Log($"입장 모드 : {enterMode}, 어드벤쳐 종류 {goalKind}");
-                MapManager.Instance.SetGameMode(GameMode.Adventure);
-                MapManager.Instance.SetGoalKind(goalKind);
-                // 1.5) 입장하는 게임 오브젝트의 종류에 따라 다른 오브젝트 활성화
-                StageManager.Instance.SetObjectsByGameModeNGoalKind(enterMode, goalKind);
+                case "Game":
+                case "Score":
+                case "Fruit":
+                    {
+                        // 공통: 게임 화면으로 전환
+                        Game.Bus.PublishImmediate(new GameResetRequest(targetPanel, ResetReason.ToGame));
+                        StartCoroutine(EnterGameNextFrame());
+                        break;
+                    }
 
-                // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
-                StartCoroutine(EnterGameNextFrame());
+                case "Main":
+                    {
+                        if (!clearRunStateOnClick)
+                            MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true, src: SaveManager.SnapshotSource.Manual);
+                        else
+                        {
+                            MapManager.Instance?.saveManager?.ClearRunState(true);
+                            GridManager.Instance?.ResetBoardToEmpty();
+                            ScoreManager.Instance?.ResetRuntime();
+                            UnityEngine.Object.FindFirstObjectByType<BlockStorage>()?.ClearHand();
+                        }
 
-            }
-            else if (targetPanel == "Main")
-            {
-                // 이어하기를 원하면 Inspector에서 clearRunStateOnClick = false 유지!
-                if (!clearRunStateOnClick)
-                {
-                    MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true, src: SaveManager.SnapshotSource.Manual);
-                }
-                else
-                {
-                    MapManager.Instance?.saveManager?.ClearRunState(true);
-                    GridManager.Instance?.ResetBoardToEmpty();
-                    ScoreManager.Instance?.ResetRuntime();
-                    var storage = UnityEngine.Object.FindFirstObjectByType<BlockStorage>();
-                    storage?.ClearHand();
-                }
+                        GridManager.Instance?.HealBoardFromStates();
+                        Game.Bus.PublishImmediate(new GameResetRequest(targetPanel, ResetReason.ToMain));
+                        break;
+                    }
 
-                GridManager.Instance?.HealBoardFromStates();
+                case "Stage":
+                    {
+                        Debug.Log("스테이지 선택창 이동");
+                        Game.Bus.PublishImmediate(new PanelToggle(targetPanel, true));
+                        break;
+                    }
 
-                var reason = ResetReason.ToMain;
-                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
-            }
-            // TODO : [PanelSwitchOnClick] swtich문으로 바꿔야 할 것으로 생각됨
-            else if (targetPanel == "Score")
-            {
-                // 1) UI 리셋/전환을 먼저 요청
-                var reason = ResetReason.ToGame;
-                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
-
-                // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
-                StartCoroutine(EnterGameNextFrame());
-            }
-            else if (targetPanel == "Fruit")
-            {
-                // 1) UI 리셋/전환을 먼저 요청
-                var reason = ResetReason.ToGame;
-                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
-
-                // 2) 다음 프레임에 입장 로직 적용 (리셋 완료 후)
-                StartCoroutine(EnterGameNextFrame());
-            }
-            else if (targetPanel == "Stage")
-            {
-                Debug.Log("스테이지 선택창 이동");
-                bus.PublishImmediate(new PanelToggle(targetPanel, true));
-            }
-            else
-            {
-                var reason = ResetReason.None;
-                bus.PublishImmediate(new GameResetRequest(targetPanel, reason));
+                default:
+                    {
+                        Game.Bus.PublishImmediate(new GameResetRequest(targetPanel, ResetReason.None));
+                        break;
+                    }
             }
 
-            // 2) 모달 정리 (기존 유지)
+            // 모달 정리(공통)
             if (closeModalFirst && modalsToClose != null)
             {
                 var bus2 = Game.Bus;
-                for (int i = 0; i < modalsToClose.Length; i++)
+                foreach (var k in modalsToClose)
                 {
-                    var k = modalsToClose[i];
                     if (string.IsNullOrEmpty(k)) continue;
                     var off = new PanelToggle(k, false);
                     bus2.PublishSticky(off, alsoEnqueue: false);
@@ -153,51 +126,67 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 }
             }
         }
-        finally
-        {
-            _invoking = false;
-        }
+        finally { _invoking = false; }
     }
+
 
     private IEnumerator EnterGameNextFrame()
     {
         yield return null;
 
         var map = MapManager.Instance;
+        var stage = StageManager.Instance;
         if (!map) { Debug.LogError("[Home] MapManager missing on EnterGameNextFrame"); yield break; }
 
-        var bus = Game.Bus;
-        // 튜토리얼 입장
-        if (enterMode == GameMode.Tutorial)
+        switch (enterMode)
         {
-            map.SetGameMode(GameMode.Tutorial);
-            map.RequestTutorialApply();
-            Debug.Log("[Home] Tutorial apply (after reset)");
-        }
-        // 클래식 모드 입장
-        else if (enterMode == GameMode.Classic)
-        {
-            map.SetGameMode(GameMode.Classic);
-            map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
-            Debug.Log("[BTN] EnterGameNextFrame: mode=Classic policy=ForceLoadSave");
-        }
-        // 어드벤쳐 모드 입장
-        else if (enterMode == GameMode.Adventure)
-        {
-            map.SetGameMode(GameMode.Adventure);
+            case GameMode.Tutorial:
+                {
+                    // 클래식/튜토리얼 진입: 어드벤처 잔재 정리
+                    map.ClearAdventureListeners();
+                    map.DisableAdventureObjects();
 
-            // 점수제일 경우 MapManager를 통해 데이터를 바꾸기
-            if (goalKind == MapGoalKind.Score)
-            {
-                map.SetGoalKind(MapGoalKind.Score);
-                map.SetAdvScoreObjects();
-            }
-            // 과일제일 경우 어딘가 저장된 MapGoal정보를 통해 데이터를 바꾸기
-            else if (goalKind == MapGoalKind.Fruit)
-            {
-                map.SetGoalKind(MapGoalKind.Fruit);
-                map.SetAdvFruitObjects();
-            }
+                    map.SetGameMode(GameMode.Tutorial);
+                    map.SetGoalKind(MapGoalKind.None);
+                    stage?.SetObjectsByGameModeNGoalKind(GameMode.Tutorial, MapGoalKind.None);
+                    map.RequestTutorialApply();
+                    break;
+                }
+
+            case GameMode.Classic:
+                {
+                    // 클래식 진입: 어드벤처 잔재 정리 (가장 중요)
+                    map.ClearAdventureListeners();
+                    map.DisableAdventureObjects();
+
+                    map.SetGameMode(GameMode.Classic);
+                    map.SetGoalKind(MapGoalKind.None);
+                    stage?.SetObjectsByGameModeNGoalKind(GameMode.Classic, MapGoalKind.None);
+                    map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
+                    break;
+                }
+
+            case GameMode.Adventure:
+                {
+                    Debug.Log($"[BTN] Enter Adventure goal={goalKind}");
+
+                    if (goalKind == MapGoalKind.Tutorial || goalKind == MapGoalKind.None)
+                    {
+                        var fallback = MapManager.Instance?.CurrentMapData?.goalKind ?? MapGoalKind.Score;
+                        Debug.LogWarning($"[BTN] goalKind was {goalKind}, fallback => {fallback}");
+                        goalKind = fallback;
+                    }
+
+                    map.SetGameMode(GameMode.Adventure);
+                    map.SetGoalKind(goalKind);
+
+                    if (goalKind == MapGoalKind.Score) map.SetAdvScoreObjects();
+                    else if (goalKind == MapGoalKind.Fruit) map.SetAdvFruitObjects();
+
+                    stage?.SetObjectsByGameModeNGoalKind(GameMode.Adventure, goalKind);
+                    Debug.Log("[BTN] Stage.Apply done");
+                    break;
+                }
         }
     }
 

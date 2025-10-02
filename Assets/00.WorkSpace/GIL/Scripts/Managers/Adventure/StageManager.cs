@@ -3,6 +3,7 @@ using _00.WorkSpace.GIL.Scripts.Maps;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Localization.Settings;
@@ -201,44 +202,35 @@ public class StageManager : MonoBehaviour
     /// </summary>
     /// <param name="gameMode">게임 모드</param>
     /// <param name="goalKind">어드벤쳐일 경우 골 타입 </param>
-    public void SetObjectsByGameModeNGoalKind(GameMode gameMode, MapGoalKind goalKind = default)
+    public void SetObjectsByGameModeNGoalKind(GameMode gameMode, MapGoalKind goalKind)
     {
-        // 클래식 모드일 경우
-        if (gameMode == GameMode.Classic)
+        void ToggleAll(GameObject[] arr, bool on)
         {
-            foreach (var obj in classicModeObjects)
-                obj.SetActive(true);
-            foreach (var obj in adventureFruitModeObjects)
-                obj.SetActive(false);
-            foreach (var obj in adventureScoreModeObjects)
-                obj.SetActive(false);
-        }
-        // 어드벤쳐 모드일 경우
-        else if (gameMode == GameMode.Adventure)
-        {
-            // 점수 모드일 경우
-            if (goalKind == MapGoalKind.Score)
-            {
-                foreach (var obj in classicModeObjects)
-                    obj.SetActive(false);
-                foreach (var obj in adventureFruitModeObjects)
-                    obj.SetActive(false);
-                foreach (var obj in adventureScoreModeObjects)
-                    obj.SetActive(true);
-            }
-            // 과일 모드일 경우
-            else if (goalKind == MapGoalKind.Fruit)
-            {
-                foreach (var obj in classicModeObjects)
-                    obj.SetActive(false);
-                foreach (var obj in adventureFruitModeObjects)
-                    obj.SetActive(true);
-                foreach (var obj in adventureScoreModeObjects)
-                    obj.SetActive(false);
-            }
+            if (arr == null) return;
+            for (int i = 0; i < arr.Length; i++) if (arr[i]) arr[i].SetActive(on);
         }
 
+        // 베이스라인: 모두 OFF
+        ToggleAll(classicModeObjects, false);
+        ToggleAll(adventureScoreModeObjects, false);
+        ToggleAll(adventureFruitModeObjects, false);
+
+        if (gameMode == GameMode.Classic)
+        {
+            ToggleAll(classicModeObjects, true);
+        }
+        else if (gameMode == GameMode.Adventure)
+        {
+            if (goalKind == MapGoalKind.Score) ToggleAll(adventureScoreModeObjects, true);
+            else if (goalKind == MapGoalKind.Fruit) ToggleAll(adventureFruitModeObjects, true);
+        }
+
+        Debug.Log($"[Stage.Apply] OUT AdvScore={(adventureScoreModeObjects?.Any(go => go && go.activeSelf) == true ? "ON" : "OFF")} " +
+                  $"AdvFruit={(adventureFruitModeObjects?.Any(go => go && go.activeSelf) == true ? "ON" : "OFF")} " +
+                  $"Classic={(classicModeObjects?.Any(go => go && go.activeSelf) == true ? "ON" : "OFF")}");
     }
+
+
 
     private IEnumerator InitStageFromSaveNextFrame()
     {
