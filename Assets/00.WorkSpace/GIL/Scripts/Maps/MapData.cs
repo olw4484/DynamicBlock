@@ -3,7 +3,13 @@ using UnityEngine;
 
 namespace _00.WorkSpace.GIL.Scripts.Maps
 {
-    public enum MapGoalKind { Tutorial, Score, Fruit }
+    public enum MapGoalKind
+    {
+        Tutorial = 0,
+        Score = 1,
+        Fruit = 2,
+        None = 3
+    }
 
     [CreateAssetMenu(fileName = "Stage_0", menuName = "Map Data", order = 1)]
     public class MapData : ScriptableObject

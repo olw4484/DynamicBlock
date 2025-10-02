@@ -10,7 +10,6 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using UnityEngine.SocialPlatforms.Impl;
 using Random = UnityEngine.Random;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
@@ -168,7 +167,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         void OnDisable()
         {
             Game.Bus?.Unsubscribe<GameOverConfirmed>(OnGameOverConfirmed);
-            Game.Bus?.Unsubscribe<GameResetRequest>((Action<GameResetRequest>)null);
+            Game.Bus?.Unsubscribe<GameResetRequest>(null);
         }
 
         private void ApplySavedGameMode(GameData data)
@@ -768,6 +767,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void EnterClassic(ClassicEnterPolicy policy = ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew)
         {
+            ClearAdventureListeners();
+            DisableAdventureObjects();
+            SetGoalKind(MapGoalKind.None);
+
             var gm = GridManager.Instance;
             if (!gm) { Debug.LogError("[ClassicEnter] GridManager missing"); return; }
 
@@ -1139,6 +1142,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         public void SetAdvScoreObjects()
         {
+            if (CurrentMode != GameMode.Adventure) return;
             int target = Mathf.Max(1, _currentMapData?.scoreGoal ?? 1);
             int current = 0; // 이어하기면 saveManager.gameData.currentScore 등으로 대체 가능
 
@@ -1219,6 +1223,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         public void SetAdvFruitObjects()
         {
+            if (CurrentMode != GameMode.Adventure) return;
             //StageManager의 adventureFruitModeObjects[1] 번에 과일모드 현재 과일 목표들 오브젝트 있음
             var stage = StageManager.Instance;
             if (stage == null || stage.adventureFruitModeObjects == null || stage.adventureFruitModeObjects.Length == 0)
@@ -1337,6 +1342,28 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
 
             StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
+        }
+
+        public void ClearAdventureListeners()
+        {
+            if (_scoreProgressHandler != null)
+            {
+                var sm = ScoreManager.Instance;
+                if (sm != null) sm.OnScoreChanged -= _scoreProgressHandler;
+                _scoreProgressHandler = null;
+            }
+            _fruitUI = null;
+        }
+        public void DisableAdventureObjects()
+        {
+            var stage = StageManager.Instance; if (!stage) return;
+            void ToggleAll(GameObject[] arr, bool on)
+            {
+                if (arr == null) return;
+                for (int i = 0; i < arr.Length; i++) if (arr[i]) arr[i].SetActive(on);
+            }
+            ToggleAll(stage.adventureScoreModeObjects, false);
+            ToggleAll(stage.adventureFruitModeObjects, false);
         }
     }
 }
