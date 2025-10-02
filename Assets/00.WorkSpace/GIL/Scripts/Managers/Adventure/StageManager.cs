@@ -1,10 +1,11 @@
+using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using _00.WorkSpace.GIL.Scripts.Managers;
-using _00.WorkSpace.GIL.Scripts.Maps;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Localization.Settings;
 using UnityEngine.UI;
 using UnityEngine.UIElements.Experimental;
 public class StageManager : MonoBehaviour
@@ -33,7 +34,8 @@ public class StageManager : MonoBehaviour
 
     [SerializeField] private int currentStage = 0; // 0-based index
     [SerializeField] public bool isAllStagesCleared = false; // 모든 스테이지 클리어 여부
-
+    [SerializeField] private int lastPlayedStageIndex = -1; // 0-based
+    private bool _initializedFromSave;
     public int GetCurrentStage()
     {
         return currentStage;
@@ -54,10 +56,9 @@ public class StageManager : MonoBehaviour
             generator = FindAnyObjectByType<StageList>();
         }
     }
-
     private void OnEnable()
     {
-        StartCoroutine(SetCurrentActiveStageAfterOneFrame());
+        if (!_initializedFromSave) StartCoroutine(InitStageFromSaveNextFrame());
     }
 
     private IEnumerator SetCurrentActiveStageAfterOneFrame()
@@ -69,8 +70,8 @@ public class StageManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        SetCurrentActiveStage(1); // 기본값 1로 설정
     }
+
 
     private void Update()
     {
@@ -86,66 +87,74 @@ public class StageManager : MonoBehaviour
     /// </summary>
     public void SetStageClearAndActivateNext()
     {
-        // 현재 스테이지가 전체 스테이지를 벗어났는가?
-        // Index Out of Range Exit Condition
+        var id = StageFlowTrace.NewSeq("ClearAndNext");
+        StageFlowTrace.Log(id, $"Before: currentStage={currentStage}, lastPlayed={lastPlayedStageIndex}, total={generator.stageButtons.Count}");
+
         if (currentStage >= generator.stageButtons.Count)
         {
             SetAllStagesCleared(true);
+            StageFlowTrace.Log(id, "All Cleared A");
             return;
         }
-        generator.stageButtons[currentStage].GetComponent<EnterStageButton>().SetButtonState(ButtonState.Cleared);
-        // Index Out of Range Exit Condition
+
+        generator.stageButtons[currentStage].GetComponent<EnterStageButton>()?.SetButtonState(ButtonState.Cleared);
+
         currentStage++;
+        StageFlowTrace.Log(id, $"After++: currentStage={currentStage}");
+
         if (currentStage >= generator.stageButtons.Count)
         {
             SetAllStagesCleared(true);
+            StageFlowTrace.Log(id, "All Cleared B");
             return;
         }
-        generator.stageButtons[currentStage].GetComponent<EnterStageButton>().SetButtonState(ButtonState.Playable);
-        SetCurrentStageButton(currentStage+1);
+
+        generator.stageButtons[currentStage].GetComponent<EnterStageButton>()?.SetButtonState(ButtonState.Playable);
+        SetCurrentStageButton(currentStage + 1);
+
+        StageFlowTrace.Log(id, $"After: currentStage={currentStage}, lastPlayed(keep)={lastPlayedStageIndex}");
+        StageFlowTrace.Log(id, $"States: {StageFlowTrace.DumpButtons(generator.stageButtons)}");
     }
+
     /// <summary>
     /// 현재 활성화 스테이지 설정
     /// </summary>
     /// <param name="stageNumber">활성화할 스테이지 수, 해당 수 이전은 Cleared, 이후는 Locked로 설정</param>
     public void SetCurrentActiveStage(int stageNumber)
     {
-        // 1) 1 이상인지 확인
+        var id = StageFlowTrace.NewSeq("SetCurrentActiveStage");
+        StageFlowTrace.Log(id, $"Param stageNumber(1-based)={stageNumber}");
+
         if (stageNumber < 1)
         {
-            Debug.LogWarning("[StageManager] Stage Number must be greater than 0");
+            StageFlowTrace.Log(id, "stageNumber < 1 → return");
             return;
         }
-        // 2) 현재 스테이지를 입력한 스테이지로 변경
-        currentStage = stageNumber - 1; // 0-based index
-        // 3) 모든 스테이지를 Locked로 변경
+
+        currentStage = stageNumber - 1; // 0-based
+        StageFlowTrace.Log(id, $"Computed currentStage(0-based)={currentStage}");
+
         foreach (var button in generator.stageButtons)
         {
             var enterButton = button.GetComponent<EnterStageButton>();
-            // 못 찾았을 경우 Exit Contition
-            if (enterButton == null) return;
+            if (!enterButton) { StageFlowTrace.Log(id, "missing EnterStageButton"); return; }
             enterButton.SetButtonState(ButtonState.Locked);
         }
-        // 4) 현재 스테이지까지 Cleared로 변경, 다음 스테이지를 Playable로 변경
+
         for (int i = 0; i < currentStage; i++)
         {
             if (i >= generator.stageButtons.Count) break;
-            var enterButton = generator.stageButtons[i].GetComponent<EnterStageButton>();
-            if (enterButton == null) return;
-            enterButton.SetButtonState(ButtonState.Cleared);
+            generator.stageButtons[i].GetComponent<EnterStageButton>()?.SetButtonState(ButtonState.Cleared);
         }
-        // 현재 스테이지가 전체 스테이지를 벗어났는가?
+
         if (currentStage < generator.stageButtons.Count)
         {
-            var enterButton = generator.stageButtons[currentStage].GetComponent<EnterStageButton>();
-            if (enterButton != null)
-                enterButton.SetButtonState(ButtonState.Playable);
+            generator.stageButtons[currentStage].GetComponent<EnterStageButton>()?.SetButtonState(ButtonState.Playable);
         }
 
-        // 5) 현재 스테이지 진입 버튼에 현재 스테이지 정보 설정
-        SetCurrentStageButton(stageNumber);
+        StageFlowTrace.Log(id, $"States: {StageFlowTrace.DumpButtons(generator.stageButtons.ToArray())}");
 
-        Debug.Log($"[StageManager] Debug : Set Current Active Stage to {stageNumber}");
+        SetCurrentStageButton(stageNumber);
     }
 
     /// <summary>
@@ -155,19 +164,20 @@ public class StageManager : MonoBehaviour
     private void SetCurrentStageButton(int stageNumber)
     {
         enterCurrentStageButton.GetComponentInChildren<TextMeshProUGUI>().text = $"Level {stageNumber}";
-        // 이전 리스너 제거 ( 안전 처리 )
         enterCurrentStageButton.onClick.RemoveAllListeners();
-        // 최신 스테이지에 대한 리스너 추가
+
+        int capturedStage = currentStage;
+
+        var id = StageFlowTrace.NewSeq("BindEnterCurrentStageButton");
+        StageFlowTrace.Log(id, $"Bind: stageNumber(label)={stageNumber}, capturedStage(index)={capturedStage}, currentStage(now)={currentStage}, total={generator.stageButtons.Count}", this);
+
         enterCurrentStageButton.onClick.AddListener(() =>
         {
-            // 기존 버튼의 Invoke
-            var enterButton = generator.stageButtons[currentStage].GetComponent<EnterStageButton>();
-            if (enterButton != null)
-                enterButton.EnterStage();
-            // PanelSwitchOnClick Invoke
-            generator.stageButtons[currentStage].GetComponent<PanelSwitchOnClick>().Invoke();
+            StageFlowTrace.Log(id, $"CLICK: capturedStage={capturedStage}, nowCurrent={currentStage}");
+            EnterStageByIndex(capturedStage, "EnterByCurrentStageButton");
         });
     }
+
     /// <summary>
     /// 모든 스테이지 클리어 상태 설정
     /// </summary>
@@ -228,6 +238,42 @@ public class StageManager : MonoBehaviour
             }
         }
 
+    }
+
+    private IEnumerator InitStageFromSaveNextFrame()
+    {
+        yield return null;
+        int saved = MapManager.Instance?.saveManager?.gameData?.adventureBestIndex ?? 1;
+        Debug.Log($"[StageManager] Init from save: adventureBestIndex(raw)={saved}");
+        // saved가 1-based라면 그대로, 0-based라면 +1 보정하세요.
+        // saved = saved + 1;
+
+        if (saved < 1) saved = 1;
+        SetCurrentActiveStage(saved);
+        _initializedFromSave = true;
+    }
+
+    public void EnterStageByIndex(int idx, string source = "EnterStageByIndex")
+    {
+        var id = StageFlowTrace.NewSeq(source);
+        StageFlowTrace.Log(id, $"Request idx={idx}, currentStage={currentStage}, lastPlayed={lastPlayedStageIndex}, total={generator.stageButtons.Count}", this);
+
+        if (idx < 0 || idx >= generator.stageButtons.Count)
+        { StageFlowTrace.Log(id, $"OUT-OF-RANGE idx={idx}"); return; }
+
+        lastPlayedStageIndex = idx;
+
+        var btn = generator.stageButtons[idx];
+        StageFlowTrace.Log(id, $"Go with button={btn?.name}");
+
+        btn.GetComponent<EnterStageButton>()?.EnterStage();
+        btn.GetComponent<PanelSwitchOnClick>()?.Invoke();
+    }
+
+    public void RetryLastStage()
+    {
+        int idx = (lastPlayedStageIndex >= 0) ? lastPlayedStageIndex : currentStage;
+        EnterStageByIndex(idx, "RetryLastStage");
     }
 
     #region // Test / QA Debug Button Events

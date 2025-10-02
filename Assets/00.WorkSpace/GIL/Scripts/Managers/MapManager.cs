@@ -282,24 +282,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         /// </summary>
         /// <param name="index">생성할 맵 Index, 0일 경우 튜토리얼, 1 이상일 경우 스테이지 번호</param>
         // 버튼/Start에서 한 줄 사용
-        public void SetMapDataToGrid(int index = 0, bool publishGridReady = true) // ← 파라미터 추가
+        public void SetMapDataToGrid(int index = 0, bool publishGridReady = true)
         {
             if (_isApplyingMap) { Debug.LogWarning("[MapManager] Re-entrant SetMapDataToGrid blocked"); return; }
             _isApplyingMap = true;
             try
             {
                 if (_mapList == null || _mapList.Length == 0) LoadMapData();
-                if (_mapList == null || _mapList.Length == 0)
-                { Debug.LogError("[MapManager] Maps not found."); return; }
+                if (_mapList == null || _mapList.Length == 0) { Debug.LogError("[MapManager] Maps not found."); return; }
 
                 int idx = Mathf.Clamp(index, 0, _mapList.Length - 1);
-                if (idx == 0) idx = defaultMapIndex;
+
+                // Adventure 모드에서는 0을 기본맵으로 바꾸지 않는다
+                if (idx == 0 && CurrentMode != GameMode.Adventure)
+                    idx = defaultMapIndex;
 
                 var map = _mapList[idx];
                 if (!map) { Debug.LogError($"[MapManager] MapData[{idx}] is null."); return; }
 
                 ApplyMapToCurrentGrid(map, publishGridReady);
-                Debug.Log("[MapManager] SetMapDataToGrid 완료: index=" + index);
+                Debug.Log($"[MapManager] SetMapDataToGrid 완료: index={index}, resolvedIdx={idx}, mode={CurrentMode}");
                 if (CurrentMode == GameMode.Classic)
                     StartCoroutine(RestoreScoreNextFrame());
             }
@@ -994,34 +996,37 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void EnterStage(int stageNumber)
         {
-            // currentMapData 안전 초기화 이후 진행
+            if (stageNumber <= 0)
+            {
+                Debug.LogError($"[MapManager] EnterStage expects 1-based, got {stageNumber}");
+                return;
+            }
+
+            int idx0 = Mathf.Clamp(stageNumber - 1, 0, _mapList.Length - 1);
+            int mapIdx = Mathf.Clamp(idx0 + 1, 1, _mapList.Length - 1);
+
             _currentMapData = null;
             _scoreGoalClearedAnnounced = false;
             _fruitAllClearedAnnounced = false;
-            Debug.Log($"[MapManager] EnterAdventure 호출됨: stage {stageNumber}");
+
+            Debug.Log($"[MapManager] EnterStage(1-based)={stageNumber} -> idx0={idx0} => mapIdx={mapIdx}");
             SetGameMode(GameMode.Adventure);
-            _currentMapData = _mapList[stageNumber]; // 현재 맵 데이터 설정
-            // 맵 데이터가 과일 모드일 경우 활성화된 과일 종류 및 갯수 저장 
+
+            _currentMapData = _mapList[mapIdx];
+
             if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
                 SyncFruitRuntimeFromMap(_currentMapData);
             else
                 ClearFruitRuntime();
-            Debug.Log($"Current Map Data의 클리어 종류 : {_currentMapData.goalKind}");
-            // 어드벤처 모드 진입 로직 구현
-            SetMapDataToGrid(stageNumber);
-            // Fruit 모드 UI / 진행값 준비
+
+            SetMapDataToGrid(mapIdx);
+
             if (_currentMapData != null)
             {
-                if (_currentMapData.goalKind == MapGoalKind.Fruit)
-                {
-                    ResetFruitProgress();
-                    SetAdvFruitObjects();
-                }
-                else if (_currentMapData.goalKind == MapGoalKind.Score)
-                {
-                    SetAdvScoreObjects(); // 점수 모드 UI
-                }
+                if (_currentMapData.goalKind == MapGoalKind.Fruit) { ResetFruitProgress(); SetAdvFruitObjects(); }
+                else if (_currentMapData.goalKind == MapGoalKind.Score) { SetAdvScoreObjects(); }
             }
+
             StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
         }
 
@@ -1158,10 +1163,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 return;
             }
 
-            // ✅ UI 초기화
+            // UI 초기화
             ui.Initialize(target, current);
 
-            // ✅ 점수 이벤트 구독 (중복 구독 방지)
+            // 점수 이벤트 구독 (중복 구독 방지)
             var scoreMgr = ScoreManager.Instance;
             if (scoreMgr != null)
             {
@@ -1300,6 +1305,38 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int idx = code - FruitBaseCode;
             if (icons != null && idx >= 0 && idx < icons.Length) return icons[idx];
             return GetFruitSpriteByCode(code);
+        }
+        public void EnterAdventureByIndex0(int idx0)
+        {
+            // 0-based 스테이지 인덱스를 안전하게 클램프
+            idx0 = Mathf.Clamp(idx0, 0, _mapList.Length - 1);
+
+            // 실제 맵 인덱스는 +1 (0은 튜토리얼)
+            int mapIdx = Mathf.Clamp(idx0 + 1, 1, _mapList.Length - 1);
+
+            _currentMapData = null;
+            _scoreGoalClearedAnnounced = false;
+            _fruitAllClearedAnnounced = false;
+
+            Debug.Log($"[MapManager] EnterAdventureByIndex0 idx0={idx0} => mapIdx={mapIdx}");
+            SetGameMode(GameMode.Adventure);
+
+            _currentMapData = _mapList[mapIdx];
+
+            if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
+                SyncFruitRuntimeFromMap(_currentMapData);
+            else
+                ClearFruitRuntime();
+
+            SetMapDataToGrid(mapIdx, publishGridReady: true);
+
+            if (_currentMapData != null)
+            {
+                if (_currentMapData.goalKind == MapGoalKind.Fruit) { ResetFruitProgress(); SetAdvFruitObjects(); }
+                else if (_currentMapData.goalKind == MapGoalKind.Score) { SetAdvScoreObjects(); }
+            }
+
+            StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));
         }
     }
 }
