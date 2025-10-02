@@ -85,7 +85,7 @@ public sealed class RestartOnClick : MonoBehaviour
     {
         // 같은 프레임 클릭/리셋 충돌 방지
         yield return null;                 // 한 프레임 쉬고
-        yield return new WaitForEndOfFrame(); // UI 정리까지 완료 보장(안정성↑)
+        yield return new WaitForEndOfFrame(); // UI 정리까지 완료 보장(안정성)
 
         var bus = Game.Bus;
 
