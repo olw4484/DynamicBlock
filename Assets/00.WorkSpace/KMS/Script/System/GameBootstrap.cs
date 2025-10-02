@@ -23,10 +23,21 @@ public class GameBootstrap : MonoBehaviour
     [SerializeField] private EffectLane effectLane;
     [SerializeField] private SoundLane soundLane;
 
+    private static bool _bootstrapped;
+
     private void Awake()
     {
+        if (_bootstrapped)
+        {
+            // 이 Bootstrap은 이미 초기화 된 뒤에 들어온 두 번째 인스턴스
+            Destroy(gameObject);
+            return;
+        }
+        _bootstrapped = true;
+        DontDestroyOnLoad(gameObject); // Bootstrap 루트 자체를 고정
+
         var group = ManagerGroup.Instance
-              ?? new GameObject("ManagerGroup").AddComponent<ManagerGroup>();
+            ?? new GameObject("ManagerGroup").AddComponent<ManagerGroup>();
         DontDestroyOnLoad(group.gameObject);
 
         if (gridManager == null)
@@ -84,6 +95,11 @@ public class GameBootstrap : MonoBehaviour
         group.Initialize();
         var report = Game.Bind(group);
 
+        var managers = ManagerGroup.Instance.Managers.OrderBy(m => m.Order).ToList();
+        foreach (var m in managers) m.PreInit();
+        foreach (var m in managers) m.Init();
+        foreach (var m in managers) m.PostInit();
+
         // 씬 파사드/레인 확보 & 바인딩
         if (!audioFx) audioFx = FindFirstObjectByType<AudioFxFacade>();
         if (!blockFx) blockFx = FindFirstObjectByType<BlockFxFacade>();
@@ -115,10 +131,7 @@ public class GameBootstrap : MonoBehaviour
 
         var go = new GameObject(name ?? typeof(T).Name);
         var comp = go.AddComponent<T>();
-
-        // 멀티씬 운용이면 아래 주석 해제 고려
         // DontDestroyOnLoad(go);
-
         return comp;
     }
 }
