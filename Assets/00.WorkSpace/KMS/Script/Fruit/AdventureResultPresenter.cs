@@ -96,7 +96,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (ADResult_ClearPanel) ADResult_ClearPanel.SetActive(true);
         if (Clear_ResultScore) Clear_ResultScore.text = score.ToString("N0");
 
-        // 결과 노출 로깅(선택)
+        // 결과 노출 로깅
         AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "clear");
 
         // 버튼 리스너 바인딩(중복 방지)
@@ -104,32 +104,15 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (btn)
         {
             btn.onClick.RemoveAllListeners();
+
+            int currIdx0 = StageManager.Instance ? StageManager.Instance.GetCurrentStage() : 0;
+            int nextIdx0 = currIdx0 + 1; // 다음 스테이지 (0-based)
+
             btn.onClick.AddListener(() =>
             {
                 AnalyticsManager.Instance?.LogEvent("Clear_Confirm");
-                ClosePanel();
-                // TODO: 다음 스테이지 진입 메시지/씬 전환 호출
-
-                // RestartOnClick.cs에서 들고옴
-                var sm = MapManager.Instance?.saveManager;
-
-                var bus = Game.Bus;
-
-                // 1) 저장 상태 확실히 삭제 + 스냅샷 억제
-                sm?.ClearRunState(save: true);
-                sm?.SkipNextSnapshot("Restart");
-                sm?.SuppressSnapshotsFor(1.0f);
-
-                // 2) 리셋 이벤트 (BlockStorage.ResetRuntime 등)
-                bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
-
-                string[] closeList = {"Adventure_Result"};
-
-                // 3) UI 정리/전환
-                RestartFlow.SoftReset("Game", closeList);
-                
-                StageManager.Instance.SetCurrentStage(StageManager.Instance.GetCurrentStage() + 1);
-                MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage());
+                // 클릭스루 방지: 코루틴에서 다음 프레임에 처리
+                StartCoroutine(Co_GoNextAdventure(nextIdx0, currIdx0));
             });
         }
 
@@ -160,39 +143,73 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (btn)
         {
             btn.onClick.RemoveAllListeners();
+
+            // 바인딩 시점 스냅샷(0-based)
+            int capturedIdx0 = StageManager.Instance ? StageManager.Instance.GetCurrentStage() : 0;
+
             btn.onClick.AddListener(() =>
             {
-                AnalyticsManager.Instance?.RetryLog(false);   // Adventure 재시도
-                ClosePanel();
-                // TODO: 리트라이 메시지/씬 리셋 호출
-                // GIL_Add : 
-                // 현재 스테이지 재시작하기
-                // RestartOnClick.cs에서 들고옴
-                var sm = MapManager.Instance?.saveManager;
-
-                var bus = Game.Bus;
-
-                // 1) 저장 상태 확실히 삭제 + 스냅샷 억제
-                sm?.ClearRunState(save: true);
-                sm?.SkipNextSnapshot("Restart");
-                sm?.SuppressSnapshotsFor(1.0f);
-
-                // 2) 리셋 이벤트 (BlockStorage.ResetRuntime 등)
-                bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
-
-                string[] closeList = {"Adventure_Result"};
-
-                // 3) UI 정리/전환
-                RestartFlow.SoftReset("Game", closeList);
-
-                // end) 현재 스테이지 재 입장하기
-                MapManager.Instance.EnterStage(StageManager.Instance.GetCurrentStage());
+                AnalyticsManager.Instance?.RetryLog(false);
+                // 클릭스루 방지: 코루틴에서 다음 프레임에 처리
+                StartCoroutine(Co_RetryAdventure(capturedIdx0));
             });
         }
 
         if (EventSystem.current && btn) EventSystem.current.SetSelectedGameObject(btn.gameObject);
 
         ApplyModeUI(kind, score);
+    }
+
+    // =======================
+    // ▼ 코루틴 추가 (동일 클래스 내)
+    // =======================
+    private IEnumerator Co_RetryAdventure(int idx0)
+    {
+        // 같은 프레임 클릭스루 방지
+        yield return null;
+
+        var sm = MapManager.Instance?.saveManager;
+        var bus = Game.Bus;
+
+        // 저장/스냅샷 억제 + 런타임 리셋
+        sm?.ClearRunState(save: true);
+        sm?.SkipNextSnapshot("Restart");
+        sm?.SuppressSnapshotsFor(1.0f);
+        bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
+
+        // UI 정리 (이름이 실제 패널 키와 일치해야 함)
+        RestartFlow.SoftReset("Game", new[] { "Adventure_Result" });
+        ClosePanel();
+
+        // 0-based 그대로 진입
+        MapManager.Instance.EnterAdventureByIndex0(idx0);
+
+        Debug.Log($"[Retry] idx0={idx0} now={StageManager.Instance?.GetCurrentStage()}");
+    }
+
+    private IEnumerator Co_GoNextAdventure(int nextIdx0, int prevIdx0)
+    {
+        // 같은 프레임 클릭스루 방지
+        yield return null;
+
+        var sm = MapManager.Instance?.saveManager;
+        var bus = Game.Bus;
+
+        sm?.ClearRunState(save: true);
+        sm?.SkipNextSnapshot("Restart");
+        sm?.SuppressSnapshotsFor(1.0f);
+        bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
+
+        RestartFlow.SoftReset("Game", new[] { "Adventure_Result" });
+        ClosePanel();
+
+        // StageManager 표시는 0-based 유지
+        StageManager.Instance.SetCurrentStage(nextIdx0);
+
+        // 0-based 그대로 다음 스테이지 진입
+        MapManager.Instance.EnterAdventureByIndex0(nextIdx0);
+
+        Debug.Log($"[NextStage] prevIdx0={prevIdx0} nextIdx0={nextIdx0}");
     }
 
     private void HideAll()
