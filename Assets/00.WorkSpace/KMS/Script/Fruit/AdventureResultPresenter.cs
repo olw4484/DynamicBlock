@@ -13,7 +13,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
 {
     [Header("Roots")]
     [SerializeField] private GameObject ADResult_Canvas;
-    [SerializeField] private Key Adventure_Result;
+    [SerializeField] private string panelKey = "Adventure_Result";
 
     [Header("Clear")]
     [SerializeField] private GameObject ClearBG;
@@ -37,13 +37,15 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     [SerializeField] private TMP_Text scoreProgressText; // "현재/목표"
 
     [Header("Fruit Group UI")]
-    [SerializeField] private TMP_Text fruitTotalText;    // "수집/목표" 총합 (개별 뱃지는 프로젝트 컴포넌트에 연결)
+    [SerializeField] private TMP_Text fruitTotalText;    // "수집/목표" 총합
+    [SerializeField] private bool useFruitTotalText = false;
 
     [Header("Fruit Layout")]
     [SerializeField] private FruitBadgeLayoutRows fruitLayout; // 과일 뱃지 2열 배치
 
     private EventQueue _bus;
     private Coroutine _scoreTween;
+    private System.Action<GameResetRequest> _onReset;
 
     private void Awake() => HideAll();
 
@@ -54,27 +56,42 @@ public sealed class AdventureResultPresenter : MonoBehaviour
             _bus = Game.Bus;
             _bus.Subscribe<AdventureStageCleared>(OnCleared, replaySticky: false);
             _bus.Subscribe<AdventureStageFailed>(OnFailed, replaySticky: false);
+            _bus.Subscribe<GameResetRequest>(OnGameReset, replaySticky: false);
         }));
     }
     private void OnDisable()
     {
         if (_bus == null) return;
+        if (_onReset != null) _bus.Unsubscribe(_onReset);
         _bus.Unsubscribe<AdventureStageCleared>(OnCleared);
         _bus.Unsubscribe<AdventureStageFailed>(OnFailed);
+        _bus.Unsubscribe<GameResetRequest>(OnGameReset);
+    }
+
+    private void OnGameReset(GameResetRequest _)
+    {
+        _bus.ClearSticky<AdventureStageCleared>();
+        _bus.ClearSticky<AdventureStageFailed>();
+        _bus.ClearSticky<GameOverConfirmed>();
+        _bus.ClearSticky<GameOver>();
+        HideAll();
     }
 
     private void OpenPanel()
     {
-        // UIManager가 받아서 SetPanel("Adventure_Result", true) 수행
-        _bus?.PublishImmediate(new PanelToggle("Adventure_Result", true));
+        _bus?.PublishImmediate(new PanelToggle(panelKey, true));
     }
     private void ClosePanel()
     {
-        _bus?.PublishImmediate(new PanelToggle("Adventure_Result", false));
+        _bus?.PublishImmediate(new PanelToggle(panelKey, false));
     }
 
     // 이벤트에서 kind/score 둘 다 받도록 변경
-    private void OnCleared(AdventureStageCleared e) => ShowClear(e.kind, e.finalScore);
+    private void OnCleared(AdventureStageCleared e)
+    {
+        Debug.Log($"[ADResult] CLEARED kind={e.kind}, score={e.finalScore}, mapGoal={MapManager.Instance?.CurrentMapData?.goalKind}");
+        ShowClear(e.kind, e.finalScore);
+    }
     private void OnFailed(AdventureStageFailed e) => ShowFail(e.kind, e.finalScore);
 
     // 외부에서 직접 호출할 수 있도록 오버로드도 변경
@@ -204,7 +221,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         ClosePanel();
 
         // StageManager 표시는 0-based 유지
-        StageManager.Instance.SetCurrentStage(nextIdx0);
+        StageManager.Instance.SetStageClearAndActivateNext();
 
         // 0-based 그대로 다음 스테이지 진입
         MapManager.Instance.EnterAdventureByIndex0(nextIdx0);
@@ -224,6 +241,11 @@ public sealed class AdventureResultPresenter : MonoBehaviour
 
         if (scoreGroup) scoreGroup.SetActive(false);
         if (fruitGroup) fruitGroup.SetActive(false);
+        if (_scoreTween != null) { StopCoroutine(_scoreTween); _scoreTween = null; }
+        if (scoreProgress) scoreProgress.value = 0f;
+        if (scoreProgressText) scoreProgressText.text = "";
+        if (Clear_ResultScore) Clear_ResultScore.text = "";
+        if (Fail_ResultScore) Fail_ResultScore.text = "";
     }
 
     // 핵심: 모드별 UI 세팅 & 슬라이더/라벨 채우기
@@ -240,9 +262,19 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         }
         else
         {
-            RebuildFruitBadgesForResult();
-            UpdateFruitProgressText();
+            if (_scoreTween != null) { StopCoroutine(_scoreTween); _scoreTween = null; }
+            if (scoreProgress) scoreProgress.value = 0f;
+
+            // 과일 UI는 프레임 끝에서 갱신(타이밍 이슈 방지)
+            StartCoroutine(Co_RepaintFruitUIEndOfFrame());
         }
+    }
+
+    private IEnumerator Co_RepaintFruitUIEndOfFrame()
+    {
+        yield return new WaitForEndOfFrame();
+        RebuildFruitBadgesForResult();
+        if (useFruitTotalText) UpdateFruitProgressText();  // 원하면 합계만 표시
     }
     private void ConfigureScoreSlider(int goal, int curr)
     {

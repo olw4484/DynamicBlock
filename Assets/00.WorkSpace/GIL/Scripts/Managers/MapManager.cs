@@ -1,3 +1,4 @@
+using _00.WorkSpace.GIL.Scripts.Blocks;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Messages;
@@ -1080,6 +1081,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 int idx = code - FruitBaseCode;
                 int target = Mathf.Max(0, _fruitGoalsInitial[idx]);
                 int current = Mathf.Clamp(fruitCurrentsRuntime[idx], 0, target);
+                Debug.Log($"[FruitChk] code={code} current={current}/{target}");
                 if (current < target) return false;
             }
             return true;
@@ -1096,7 +1098,10 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             saveManager?.TryUpdateAdventureBest(index, name);
 
             int finalScore = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
-            Game.Bus?.PublishImmediate(new AdventureStageCleared(MapGoalKind.Fruit, finalScore));
+            var ev = new AdventureStageCleared(MapGoalKind.Fruit, finalScore);
+            Game.Bus?.PublishSticky(ev, alsoEnqueue: false);
+            Game.Bus?.PublishImmediate(ev);
+            Debug.Log($"[Fruit] ALL CLEARED -> AdventureStageCleared(Fruit, score={finalScore})");
         }
 
         public int GetInitialFruitGoalByCode(int code)
@@ -1326,19 +1331,29 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Debug.Log($"[MapManager] EnterAdventureByIndex0 idx0={idx0} => mapIdx={mapIdx}");
             SetGameMode(GameMode.Adventure);
 
+            ScoreManager.Instance?.ResetAll();
+            GridManager.Instance?.ResetBoardToEmpty();
+            UnityEngine.Object.FindFirstObjectByType<BlockStorage>()?.ClearHand();
+            saveManager?.ClearRunState(save: true);
+            saveManager?.SkipNextSnapshot("AdventureEnter");
+            saveManager?.SuppressSnapshotsFor(1.0f);
+
             _currentMapData = _mapList[mapIdx];
 
-            if (_currentMapData != null && _currentMapData.goalKind == MapGoalKind.Fruit)
-                SyncFruitRuntimeFromMap(_currentMapData);
-            else
-                ClearFruitRuntime();
+
+            var kind = _currentMapData != null ? _currentMapData.goalKind : MapGoalKind.Score;
+            SetGoalKind(kind);
+            StageManager.Instance?.SetObjectsByGameModeNGoalKind(GameMode.Adventure, kind);
+            if (kind == MapGoalKind.Fruit) SyncFruitRuntimeFromMap(_currentMapData);
+            else ClearFruitRuntime();
+
 
             SetMapDataToGrid(mapIdx, publishGridReady: true);
 
             if (_currentMapData != null)
             {
-                if (_currentMapData.goalKind == MapGoalKind.Fruit) { ResetFruitProgress(); SetAdvFruitObjects(); }
-                else if (_currentMapData.goalKind == MapGoalKind.Score) { SetAdvScoreObjects(); }
+                if (kind == MapGoalKind.Fruit) { ResetFruitProgress(); SetAdvFruitObjects(); }
+                else { SetAdvScoreObjects(); }
             }
 
             StartCoroutine(Co_PostEnterSignals(GameMode.Adventure));

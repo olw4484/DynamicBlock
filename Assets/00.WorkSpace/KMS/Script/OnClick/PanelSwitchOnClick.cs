@@ -1,9 +1,10 @@
 using _00.WorkSpace.GIL.Scripts.Blocks;
 using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Maps;
+using _00.WorkSpace.GIL.Scripts.Messages;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using System.Collections;
-using _00.WorkSpace.GIL.Scripts.Maps;
 
 public enum InvokeSfxMode
 {
@@ -75,12 +76,18 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 case "Score":
                 case "Fruit":
                     {
+                        // 먼저 스티키 정리
+                        var bus = Game.Bus;
+                        bus.ClearSticky<AdventureStageCleared>();
+                        bus.ClearSticky<AdventureStageFailed>();
+                        bus.ClearSticky<GameOverConfirmed>();
+                        bus.ClearSticky<GameOver>();
+
                         // 공통: 게임 화면으로 전환
                         Game.Bus.PublishImmediate(new GameResetRequest(targetPanel, ResetReason.ToGame));
                         StartCoroutine(EnterGameNextFrame());
                         break;
                     }
-
                 case "Main":
                     {
                         if (!clearRunStateOnClick)
@@ -168,24 +175,24 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
             case GameMode.Adventure:
                 {
-                    Debug.Log($"[BTN] Enter Adventure goal={goalKind}");
-
-                    if (goalKind == MapGoalKind.Tutorial || goalKind == MapGoalKind.None)
-                    {
-                        var fallback = MapManager.Instance?.CurrentMapData?.goalKind ?? MapGoalKind.Score;
-                        Debug.LogWarning($"[BTN] goalKind was {goalKind}, fallback => {fallback}");
-                        goalKind = fallback;
-                    }
-
+                        // 1) 모드 지정
                     map.SetGameMode(GameMode.Adventure);
-                    map.SetGoalKind(goalKind);
-
-                    if (goalKind == MapGoalKind.Score) map.SetAdvScoreObjects();
-                    else if (goalKind == MapGoalKind.Fruit) map.SetAdvFruitObjects();
-
-                    stage?.SetObjectsByGameModeNGoalKind(GameMode.Adventure, goalKind);
-                    Debug.Log("[BTN] Stage.Apply done");
-                    break;
+                    
+                        // 2) 현재 선택된 스테이지(0-based) 로드
+                    var idx0 = StageManager.Instance ? StageManager.Instance.GetCurrentStage() : 0;
+                    map.EnterAdventureByIndex0(idx0);
+                    
+                        // 3) 실제 맵의 목표종류에 맞춰 오브젝트/HUD 구성
+                    var md = map.CurrentMapData;
+                    var kind = md != null ? md.goalKind : MapGoalKind.Score;
+                    map.SetGoalKind(kind);
+                        if (kind == MapGoalKind.Score) map.SetAdvScoreObjects();
+                        else map.SetAdvFruitObjects();
+                    
+                        // 4) 스테이지/HUD 토글도 맵 로드 후 최종 kind로 적용
+                    stage?.SetObjectsByGameModeNGoalKind(GameMode.Adventure, kind);
+                    Debug.Log($"[BTN] Adventure enter idx0={idx0}, kind={kind}");
+                        break;
                 }
         }
     }

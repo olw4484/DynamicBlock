@@ -16,9 +16,11 @@ public sealed class GameOverResultRouter : MonoBehaviour
 
     private EventQueue _bus;
     private bool _shownOnce;
+    private bool _revived;
 
     private void OnEnable()
     {
+        _shownOnce = false;
         if (hideAllOnEnable)
         {
             if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
@@ -28,11 +30,19 @@ public sealed class GameOverResultRouter : MonoBehaviour
         StartCoroutine(GameBindingUtil.WaitAndRun(() =>
         {
             _bus = Game.Bus;
-            // 최종 확정 신호
-            _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: true);
 
-            _bus.Subscribe<AdventureStageCleared>(OnAdventureCleared, replaySticky: true);
-            _bus.Subscribe<AdventureStageFailed>(OnAdventureFailed, replaySticky: true);
+            _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: false);
+            _bus.Subscribe<AdventureStageCleared>(OnAdventureCleared, replaySticky: false);
+            _bus.Subscribe<AdventureStageFailed>(OnAdventureFailed, replaySticky: false);
+
+            _bus.Subscribe<GameResetRequest>(r => {
+                _shownOnce = false;
+                _revived = (r.reason == ResetReason.Restart);
+                _bus.ClearSticky<GameOver>();
+                _bus.ClearSticky<GameOverConfirmed>();
+                _bus.ClearSticky<AdventureStageCleared>();
+                _bus.ClearSticky<AdventureStageFailed>();
+            }, replaySticky: false);
         }));
     }
 
@@ -42,9 +52,19 @@ public sealed class GameOverResultRouter : MonoBehaviour
         _bus.Unsubscribe<GameOverConfirmed>(OnGameOverConfirmed);
         _bus.Unsubscribe<AdventureStageCleared>(OnAdventureCleared);
         _bus.Unsubscribe<AdventureStageFailed>(OnAdventureFailed);
+        _bus.Unsubscribe<GameResetRequest>(OnGameResetRequest);
     }
 
-    // 선택: 어드벤처 전용 이벤트가 이미 발행될 때 바로 처리
+    private void OnGameResetRequest(GameResetRequest _)
+    {
+        // 새 게임 진입 직전 항상 깨끗이
+        _shownOnce = false;
+        _bus.ClearSticky<AdventureStageCleared>();
+        _bus.ClearSticky<AdventureStageFailed>();
+        _bus.ClearSticky<GameOverConfirmed>();
+        _bus.ClearSticky<GameOver>();
+    }
+
     private void OnAdventureCleared(AdventureStageCleared e)
     {
         if (_shownOnce) return;
@@ -52,8 +72,9 @@ public sealed class GameOverResultRouter : MonoBehaviour
 
         _shownOnce = true;
         if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
-        adventurePresenter?.ShowClearPublic(e.kind, e.finalScore);
+        StartCoroutine(Co_ShowAdResultNextFrame(true, e.kind, e.finalScore));
     }
+
 
     private void OnAdventureFailed(AdventureStageFailed e)
     {
@@ -62,12 +83,13 @@ public sealed class GameOverResultRouter : MonoBehaviour
 
         _shownOnce = true;
         if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
-        adventurePresenter?.ShowFailPublic(e.kind, e.finalScore);
+        StartCoroutine(Co_ShowAdResultNextFrame(false, e.kind, e.finalScore));
     }
 
     // 공통: 부활/연출이 끝나고 확정될 때(최종 분기)
     private void OnGameOverConfirmed(GameOverConfirmed e)
     {
+        if (_revived) { _revived = false; return; }
         var mm = MapManager.Instance;
         var sm = Game.Save;
         var mode = mm?.CurrentMode ?? GameMode.Classic;
@@ -76,7 +98,9 @@ public sealed class GameOverResultRouter : MonoBehaviour
         if (mode == GameMode.Adventure)
         {
             var md = mm?.CurrentMapData;
-            var kind = md?.goalKind ?? MapGoalKind.Score;
+            MapGoalKind kind = MapGoalKind.Score;
+             if (md != null) kind = md.goalKind;
+             else if (mm != null) kind = mm.CurrentGoalKind;
 
             bool cleared = ComputeAdventureCleared(kind, md);
 

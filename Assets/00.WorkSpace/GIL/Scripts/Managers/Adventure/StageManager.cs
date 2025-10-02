@@ -98,7 +98,19 @@ public class StageManager : MonoBehaviour
             return;
         }
 
+        // 현재 스테이지 Cleared
         generator.stageButtons[currentStage].GetComponent<EnterStageButton>()?.SetButtonState(ButtonState.Cleared);
+
+        // 진행도 저장 (세이브가 1-based면 +1, 0-based면 그대로)
+        var save = MapManager.Instance?.saveManager?.gameData;
+        if (save != null)
+        {
+            int cleared1 = currentStage + 1;
+            if (cleared1 > save.adventureBestIndex)
+                save.adventureBestIndex = cleared1;
+
+            MapManager.Instance.saveManager.SaveGame();
+        }
 
         currentStage++;
         StageFlowTrace.Log(id, $"After++: currentStage={currentStage}");
@@ -110,7 +122,10 @@ public class StageManager : MonoBehaviour
             return;
         }
 
+        // 다음 스테이지만 Playable
         generator.stageButtons[currentStage].GetComponent<EnterStageButton>()?.SetButtonState(ButtonState.Playable);
+
+        // 라벨만 1-based로 표기
         SetCurrentStageButton(currentStage + 1);
 
         StageFlowTrace.Log(id, $"After: currentStage={currentStage}, lastPlayed(keep)={lastPlayedStageIndex}");
@@ -235,13 +250,9 @@ public class StageManager : MonoBehaviour
     private IEnumerator InitStageFromSaveNextFrame()
     {
         yield return null;
-        int saved = MapManager.Instance?.saveManager?.gameData?.adventureBestIndex ?? 1;
-        Debug.Log($"[StageManager] Init from save: adventureBestIndex(raw)={saved}");
-        // saved가 1-based라면 그대로, 0-based라면 +1 보정하세요.
-        // saved = saved + 1;
-
-        if (saved < 1) saved = 1;
-        SetCurrentActiveStage(saved);
+        int saved0 = MapManager.Instance?.saveManager?.gameData?.adventureBestIndex ?? 0; // 0-based
+        if (saved0 < 0) saved0 = 0;
+        SetCurrentActiveStage(saved0 + 1);
         _initializedFromSave = true;
     }
 
@@ -251,15 +262,22 @@ public class StageManager : MonoBehaviour
         StageFlowTrace.Log(id, $"Request idx={idx}, currentStage={currentStage}, lastPlayed={lastPlayedStageIndex}, total={generator.stageButtons.Count}", this);
 
         if (idx < 0 || idx >= generator.stageButtons.Count)
-        { StageFlowTrace.Log(id, $"OUT-OF-RANGE idx={idx}"); return; }
+        {
+            StageFlowTrace.Log(id, $"OUT-OF-RANGE idx={idx}");
+            return;
+        }
 
         lastPlayedStageIndex = idx;
+
+        SetCurrentStage(idx);
 
         var btn = generator.stageButtons[idx];
         StageFlowTrace.Log(id, $"Go with button={btn?.name}");
 
-        btn.GetComponent<EnterStageButton>()?.EnterStage();
+
         btn.GetComponent<PanelSwitchOnClick>()?.Invoke();
+
+        // MapManager 쪽 엔트리 호출을 여기서 정식 API
     }
 
     public void RetryLastStage()
