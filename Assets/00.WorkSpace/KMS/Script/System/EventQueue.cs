@@ -411,3 +411,4 @@ public readonly struct AdventureBestUpdated
     public AdventureBestUpdated(int prevIndex, int newIndex, string stageName)
     { this.prevIndex = prevIndex; this.newIndex = newIndex; this.stageName = stageName; }
 }
+public readonly struct ServiceNoticeCheck { }

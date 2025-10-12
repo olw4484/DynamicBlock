@@ -1,5 +1,6 @@
 using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
+using System.Collections;
 
 public sealed class SplashCoordinator : MonoBehaviour
 {
@@ -7,6 +8,9 @@ public sealed class SplashCoordinator : MonoBehaviour
     [SerializeField] string nextPanel = "Main";
     [SerializeField] float minShowSec = 1.5f;
     [SerializeField] bool allowTapSkip = true;
+
+    // 에디터에서 직접 할당하거나, 비워두면 런타임에 찾아서 씀
+    [SerializeField] ServiceNoticeGate noticeGate;
 
     EventQueue _bus;
     bool _finished;
@@ -35,7 +39,6 @@ public sealed class SplashCoordinator : MonoBehaviour
             if (_finished) return;
             _finished = true;
 
-            // UI 강제 종료 & 전환 (지연 무시)
             var ui = UI;
             if (ui)
             {
@@ -59,6 +62,14 @@ public sealed class SplashCoordinator : MonoBehaviour
 
             _bus.PublishImmediate(new AppSplashFinished());
 
+            _bus.PublishAfter(new ServiceNoticeCheck(), 0.05f);
         }, replaySticky: false);
+
+    }
+    IEnumerator CoOpenNoticeNextFrame()
+    {
+        yield return null;
+        var gate = FindFirstObjectByType<ServiceNoticeGate>(FindObjectsInactive.Include);
+        gate?.TryOpenIfNeeded();
     }
 }
