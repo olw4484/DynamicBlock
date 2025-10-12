@@ -1,5 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
+using _00.WorkSpace.GIL.Scripts.Managers;
 using UnityEngine;
 
 public sealed class SplashCoordinator : MonoBehaviour
@@ -12,41 +11,52 @@ public sealed class SplashCoordinator : MonoBehaviour
     EventQueue _bus;
     bool _finished;
 
+    static UIManager UI => (Game.UI as UIManager) ?? Object.FindFirstObjectByType<UIManager>();
+
     void OnEnable() => StartCoroutine(GameBindingUtil.WaitAndRun(() => Bind(Game.Bus)));
 
     void Bind(EventQueue bus)
     {
         _bus = bus;
 
-        // 1) 시작: 스플래시 켜기 (Sticky + Immediate)
         var onSplash = new PanelToggle(splashPanel, true);
         _bus.PublishSticky(onSplash, alsoEnqueue: false);
         _bus.PublishImmediate(onSplash);
 
-        // 2) 최소 노출 시간 뒤 자동 종료 예약
         _bus.PublishAfter(new SplashFinish(), minShowSec);
 
-        // 3) 프리로드 완료/탭-스킵도 종료 트리거
         if (allowTapSkip)
             _bus.Subscribe<SplashSkipRequest>(_ => { if (!_finished) _bus.PublishImmediate(new SplashFinish()); }, replaySticky: false);
+
         _bus.Subscribe<PreloadDone>(_ => { if (!_finished) _bus.PublishImmediate(new SplashFinish()); }, replaySticky: false);
 
-        // 4) 실제 종료 처리 (디듀프 가드)
         _bus.Subscribe<SplashFinish>(_ =>
         {
             if (_finished) return;
             _finished = true;
 
-            var offSplash = new PanelToggle(splashPanel, false);
-            _bus.PublishSticky(offSplash, alsoEnqueue: false);
-            _bus.PublishImmediate(offSplash);
-
-            if (!string.IsNullOrEmpty(nextPanel))
+            // UI 강제 종료 & 전환 (지연 무시)
+            var ui = UI;
+            if (ui)
             {
-                var onNext = new PanelToggle(nextPanel, true);
-                _bus.PublishSticky(onNext, alsoEnqueue: false);
-                _bus.PublishImmediate(onNext);
+                ui.ClosePanelImmediate(splashPanel);
+                if (!string.IsNullOrEmpty(nextPanel))
+                    ui.SetPanel(nextPanel, true, ignoreDelay: true);
             }
+            else
+            {
+                var offSplash = new PanelToggle(splashPanel, false);
+                _bus.PublishSticky(offSplash, alsoEnqueue: false);
+                _bus.PublishImmediate(offSplash);
+
+                if (!string.IsNullOrEmpty(nextPanel))
+                {
+                    var onNext = new PanelToggle(nextPanel, true);
+                    _bus.PublishSticky(onNext, alsoEnqueue: false);
+                    _bus.PublishImmediate(onNext);
+                }
+            }
+
             _bus.PublishImmediate(new AppSplashFinished());
 
         }, replaySticky: false);

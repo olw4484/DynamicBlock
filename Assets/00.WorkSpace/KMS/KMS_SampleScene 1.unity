@@ -287,7 +287,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ADResult_Canvas: {fileID: 277906050164806209}
-  Adventure_Result: 0
+  panelKey: Adventure_Result
   ClearBG: {fileID: 4469821924443568246}
   ADResult_ClearPanel: {fileID: 4081781631888422995}
   Clear_ResultScore: {fileID: 8894075044798424344}
@@ -301,6 +301,7 @@ MonoBehaviour:
   scoreProgress: {fileID: 394947863268721254}
   scoreProgressText: {fileID: 8894075044798424344}
   fruitTotalText: {fileID: 0}
+  useFruitTotalText: 0
   fruitLayout: {fileID: 6922627902180968741}
 --- !u!1 &137762577
 GameObject:
@@ -1830,6 +1831,10 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8186495105628984880, guid: 693abc1d8a292524da41b819a76c1c06, type: 3}
+      propertyPath: itemSpacingX
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8636015216115865984, guid: 693abc1d8a292524da41b819a76c1c06, type: 3}
       propertyPath: m_SizeDelta.x
       value: 0
@@ -2095,39 +2100,39 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4422399473427885396, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4422399473427885396, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4422399473427885396, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 186.39824
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4422399473427885396, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -75
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4910958010535346649, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4910958010535346649, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4910958010535346649, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 230.94249
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4910958010535346649, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 384.52878
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4910958010535346649, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -75
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6638072885079073706, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_Name
@@ -2135,19 +2140,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6638072885079073706, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6984976993560609540, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6984976993560609540, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6984976993560609540, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 249.05753
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6984976993560609540, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -2155,7 +2160,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6984976993560609540, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -75
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7656827093631859708, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_Pivot.x
@@ -2239,23 +2244,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8087940484849506558, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8087940484849506558, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8087940484849506558, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 293.60175
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8087940484849506558, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 353.1991
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8087940484849506558, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -75
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2888,6 +2893,10 @@ PrefabInstance:
       propertyPath: adventureScoreModeObjects.Array.data[1]
       value: 
       objectReference: {fileID: 1423900590}
+    - target: {fileID: 1581597087024376656, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: achievementDb
+      value: 
+      objectReference: {fileID: 11400000, guid: c26cfb7086f94ec40b21c83ec7d30b08, type: 2}
     - target: {fileID: 3086870939394088082, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: m_Name
       value: ==== Managers ====
@@ -2968,6 +2977,10 @@ PrefabInstance:
       propertyPath: _panels.Array.data[11].root
       value: 
       objectReference: {fileID: 277906050164806209}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[9].isModal
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6837704552208090548, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: scoreText
       value: 

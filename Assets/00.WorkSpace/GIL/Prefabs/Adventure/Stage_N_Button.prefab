@@ -148,7 +148,6 @@ GameObject:
   - component: {fileID: 8778948114370188760}
   - component: {fileID: 4411762161352507190}
   - component: {fileID: 3144203946588798498}
-  - component: {fileID: 3735727100625425493}
   m_Layer: 5
   m_Name: Stage_N_Button
   m_TagString: Untagged
@@ -285,7 +284,6 @@ MonoBehaviour:
   stageButtonImage: {fileID: 2369435605088257752}
   button: {fileID: 8778948114370188760}
   buttonText: {fileID: 5206756636522517261}
-  panelSwitch: {fileID: 3735727100625425493}
   normalSprite: {fileID: 21300000, guid: a3e78e8e524040741afd3634bc3ebfe3, type: 3}
   activeSprite: {fileID: 21300000, guid: d3825727bc72c7c4d81a5cfa788493a9, type: 3}
   clearSprite: {fileID: 0}
@@ -310,27 +308,3 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
---- !u!114 &3735727100625425493
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8248359133486922377}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 68ef6b8dfc9409c4293251e938943853, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetPanel: Game
-  closeModalFirst: 1
-  modalsToClose:
-  - GameOver
-  - Option
-  - Stage
-  clearRunStateOnClick: 0
-  sfxMode: 1
-  customId: 1001
-  cooldown: 0.12
-  enterMode: 2
-  goalKind: 1

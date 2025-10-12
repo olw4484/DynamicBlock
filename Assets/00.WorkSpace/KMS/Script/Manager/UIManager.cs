@@ -26,6 +26,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         public bool closeOnEscape = true;    // ESC로 닫기 허용
         public int baseSorting = 1000;       // 모달 기본 정렬
         public string fallbackKey = null;    // 닫힐 때 자동으로 켜줄 패널
+        public float closeDelaySeconds = 0f;
     }
 
     [Header("HUD")]
@@ -63,12 +64,15 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     // 패널별 페이드 코루틴 관리
     private readonly Dictionary<string, Coroutine> _fadeJobs = new();
+    private readonly Dictionary<string, Coroutine> _closeDelayJobs = new();
     // DIM 페이드 코루틴
     private Coroutine _dimJob;
 
-    // HUD state
-    private int _lastHighScore = 0;
-    int _pendingDownedScore;
+
+    // HUD state (모드별 최고점 캐시)
+    private int _lastBestClassic = 0;
+    private int _lastBestAdventure = 0;
+    private int _pendingDownedScore;
 
     private int _lastLoggedClassicBest = -1;
     private int _bestShown = -1;
@@ -174,16 +178,19 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         }, replaySticky: true);
 
         _bus.Subscribe<GameDataChanged>(e =>
-        {
-            _lastHighScore = e.data.highScore;
+                {
+            _lastBestClassic = e.data.classicHighScore;
+            _lastBestAdventure = e.data.adventureHighScore;
             UpdateBestHUD();
-            Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
-        }, replaySticky: true);
+                    }, replaySticky: true);
 
         // 리바이브 패널 ON (저장/FX 금지)
         _bus.Subscribe<PlayerDowned>(e =>
         {
             _pendingDownedScore = e.score;
+
+            CancelCloseDelay("Revive");
+
             if (_reviveDelayJob != null) StopCoroutine(_reviveDelayJob);
             _reviveDelayJob = StartCoroutine(Co_OpenReviveAfterDelay(_reviveDelaySec));
         }, replaySticky: false);
@@ -204,18 +211,29 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
 
-            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
-            int best = e.isNewBest ? e.score : _lastHighScore;
-            SetAll(_goBestTexts, $"{FormatScore(best)}");
-
-            SetPanel("Revive", false);
-
-            // Classic 신기록 로깅
             var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
             bool isAdventure = (mm?.CurrentMode == GameMode.Adventure);
+
+            // 현재 모드 기준 베스트 값
+            int bestNow = isAdventure ? _lastBestAdventure : _lastBestClassic;
+
             if (!isAdventure && e.isNewBest)
             {
-                // 간단 중복 방지 가드: 동일 점수 중복 로그 방지
+                // 클래식 신기록: 캐시 즉시 갱신 + HUD 즉시 갱신
+                bestNow = e.score;
+                _lastBestClassic = Mathf.Max(_lastBestClassic, e.score);
+                UpdateBestHUD();
+            }
+
+            // 결과 패널 텍스트 세팅(총점 + 베스트)
+            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
+            SetAll(_goBestTexts, $"{FormatScore(bestNow)}");
+
+            SetPanel("Revive", false, ignoreDelay: true);
+
+            // Classic 신기록 로깅(중복 방지)
+            if (!isAdventure && e.isNewBest)
+            {
                 if (_lastLoggedClassicBest != e.score)
                 {
                     AnalyticsManager.Instance?.ClassicBestLog(e.score);
@@ -223,8 +241,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
                 }
             }
 
+            // 어드벤처는 별도 결과 흐름이면 여기서 종료
             if (isAdventure) return;
 
+            // 클래식: 신기록/일반 결과 패널 토글
             SetPanel("GameOver", !e.isNewBest);
             SetPanel("NewRecord", e.isNewBest);
 
@@ -237,9 +257,9 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
 
-            SetPanel("Revive", false);
-            SetPanel("GameOver", false);
-            SetPanel("NewRecord", false);
+            SetPanel("Revive", false, ignoreDelay: true);
+            SetPanel("GameOver", false, ignoreDelay: true);
+            SetPanel("NewRecord", false, ignoreDelay: true);
 
             ForceCloseAllModals();
             NormalizeAllPanelsAlpha();
@@ -255,68 +275,139 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
 
         var data = (Game.Save as ISaveService)?.Data;
-        if (data != null)
-        {
-            _lastHighScore = data.highScore;
+                if (data != null)
+                    {
+            _lastBestClassic = data.classicHighScore;
+            _lastBestAdventure = data.adventureHighScore;
             UpdateBestHUD();
-            Debug.Log($"[UI] Seed Best from Save: {_lastHighScore}");
-        }
+                    }
     }
 
     private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);
 
     private void UpdateBestHUD()
     {
+        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+        var mode = mm?.CurrentMode ?? GameMode.Classic;
+
+        int best = (mode == GameMode.Adventure) ? _lastBestAdventure : _lastBestClassic;
         int cur = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
-        int display = Mathf.Max(_lastHighScore, cur);
-        if (display == _bestShown) return;   // 불필요한 갱신 방지
+
+        // 클래식은 현재 진행 점수와 비교해 더 큰 값 표시(사용자 기대치)
+        int display = (mode == GameMode.Classic) ? Mathf.Max(best, cur) : best;
+        if (display == _bestShown) return;
         _bestShown = display;
 
         if (_hudBestText) _hudBestText.text = $"{display:#,0}";
-        SetAll(_goBestTexts, $"{FormatScore(display)}"); // 결과 패널도 동기화
+        // 결과 패널 Best 라벨은 GameOverConfirmed에서 다시 세팅하므로 여기선 HUD만
     }
 
     // === 외부 API ===
-    public void SetPanel(string key, bool on)
+    public void SetPanel(string key, bool on, bool ignoreDelay = false)
     {
         Debug.Log($"SetPanel {key} -> {on}");
         if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
 
-        // 모달: 스택 기반 처리
+        // 켤 때는 항상 지연닫기/페이드 중단 (레이스 차단)
+        if (on)
+        {
+            CancelCloseDelay(key);
+            StopFade(key);
+        }
+
         if (p.isModal)
         {
-            if (on) PushModalInternal(key, on);
-            else PopModalInternal(key);
+            if (on)
+            {
+                PushModalInternal(key, on);
+            }
+            else
+            {
+                // 모달: 지연 닫기 사용 여부
+                if (!ignoreDelay && p.closeDelaySeconds > 0f && p.root.activeSelf)
+                    StartCloseDelayForModal(key, p);
+                else
+                    PopModalInternal(key);
+            }
             return;
         }
 
-        // 일반 패널
+        // 일반 패널 (CanvasGroup 미사용)
         if (!p.useCanvasGroup)
         {
+            if (!on && !ignoreDelay && p.closeDelaySeconds > 0f && p.root.activeSelf)
+            {
+                StartCloseDelay(key, p);
+                return;
+            }
             p.root.SetActive(on);
             return;
         }
 
-        if (!on && !p.root.activeSelf) return;
-
+        // 일반 패널 (CanvasGroup 사용)
         var cg = EnsureCanvasGroup(p.root);
 
-        if (on)
-            ResetChildCanvasGroupsAlpha(p.root);
-
-        if (!p.root.activeSelf)
+        if (!on)
         {
-            p.root.SetActive(true);
-            if (on) cg.alpha = 0f;
+            if (!ignoreDelay && p.root.activeSelf && p.closeDelaySeconds > 0f)
+            {
+                StartCloseDelay(key, p);
+                return;
+            }
+            StopFade(key);
+            _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 0f, 0.15f, false, key));
+            return;
         }
+
+        // on == true
+        ResetChildCanvasGroupsAlpha(p.root);
+        if (!p.root.activeSelf) { p.root.SetActive(true); cg.alpha = 0f; }
+        cg.blocksRaycasts = true;
+        cg.interactable = true;
 
         StopFade(key);
-        _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on, key));
-        if (on) StartCoroutine(FailsafeOpenSnap(key, p.root, EnsureCanvasGroup(p.root)));
-        if (on && key == "Revive")
+        _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 1f, 0.15f, true, key));
+
+        if (on) StartCoroutine(FailsafeOpenSnap(key, p.root, cg));
+        if (on && key == "Revive") Game.Ads?.Refresh();
+    }
+    private void StartCloseDelay(string key, PanelEntry p)
+    {
+        // 이전 지연 작업 취소
+        if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+            StopCoroutine(job);
+
+        _closeDelayJobs[key] = StartCoroutine(CoCloseAfterDelay(key, p));
+    }
+
+    private IEnumerator CoCloseAfterDelay(string key, PanelEntry p)
+    {
+        var cg = EnsureCanvasGroup(p.root);
+        cg.blocksRaycasts = false; cg.interactable = false;
+
+        float t = 0f, timeout = Mathf.Max(0.01f, p.closeDelaySeconds);
+        while (t < timeout)
         {
-            Game.Ads?.Refresh();   // Reward/Interstitial 준비 안됐으면 바로 로드 시작
+            if (!_closeDelayJobs.ContainsKey(key)) yield break;
+            if (!p.root.activeSelf) { _closeDelayJobs.Remove(key); yield break; }
+            if (AllChildScalesAreOne(p.root)) break;
+            t += Time.unscaledDeltaTime;
+            yield return null;
         }
+
+        if (!_closeDelayJobs.ContainsKey(key)) yield break;
+
+        StopFade(key);
+        _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 0f, 0.15f, false, key));
+        _closeDelayJobs.Remove(key);
+    }
+
+    static bool AllChildScalesAreOne(GameObject root)
+    {
+        var rts = root.GetComponentsInChildren<RectTransform>(true);
+        for (int i = 0; i < rts.Length; i++)
+            if (rts[i].localScale != Vector3.one) return false;
+        return true;
     }
 
     private IEnumerator FadeRoutine(CanvasGroup cg, float target, float dur, bool finalActive, string key)
@@ -579,10 +670,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         }
 
         // 3) UI 전환(원자적)
-        SetPanel("GameOver", false);
-        SetPanel("NewRecord", false);
-        SetPanel(offKey, false);
-        SetPanel(onKey, true);
+        SetPanel("GameOver", false, ignoreDelay: true);
+        SetPanel("NewRecord", false, ignoreDelay: true);
+        SetPanel(offKey, false, ignoreDelay: true);
+        SetPanel(onKey, true, ignoreDelay: true);
 
         _bus.PublishImmediate(new PanelToggle(offKey, false));
         var onEvt = new PanelToggle(onKey, true);
@@ -619,12 +710,17 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
             if (_panelMap.TryGetValue(key, out var p) && p.root)
             {
+                if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+                {
+                    StopCoroutine(job);
+                    _closeDelayJobs.Remove(key);
+                }
+
                 var cg = EnsureCanvasGroup(p.root);
                 StopFadeAndSnap(key, cg, false);
                 ResetChildCanvasGroupsAlpha(p.root);
             }
         }
-
         UpdateDimByStack();
         ForceMainUIClean();
     }
@@ -741,6 +837,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     {
         // 1) UI 터치 차단(오버레이)
         SetPreReviveBlock(true);
+        CancelCloseDelay("Revive");
 
         // 2) 전역 입력 락 (직접 Input 읽는 스크립트용)
         _bus?.PublishImmediate(new InputLock(true, "PreRevive"));
@@ -749,7 +846,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         yield return new WaitForSecondsRealtime(Mathf.Max(0f, delay));
 
         SetPreReviveBlock(false);
-        SetPanel("Revive", true);
+        SetPanel("Revive", true, ignoreDelay: true);
         Game.Audio.PlayContinueTimeCheckSE();
 
         // 3) 전역 입력락 해제
@@ -762,6 +859,77 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         yield return null;
         Debug.Log($"[Sanity] modals={_modalOrder.Count} dim.enabled={(dimOverlay && dimOverlay.enabled)}");
         SetPreReviveBlock(false);
+    }
+
+    public void ClosePanelImmediate(string key)
+    {
+        if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
+
+        // 지연 코루틴/페이드 중이면 정지
+        if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+        {
+            StopCoroutine(job);
+            _closeDelayJobs.Remove(key);
+        }
+        StopFade(key);
+
+        // 모달 스택에서 제거 + DIM 업데이트
+        int idx = _modalOrder.LastIndexOf(key);
+        if (idx >= 0) _modalOrder.RemoveAt(idx);
+        UpdateDimByStack();
+
+        // 바로 비활성
+        var cg = EnsureCanvasGroup(p.root);
+        cg.alpha = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+        p.root.SetActive(false);
+    }
+    private void StartCloseDelayForModal(string key, PanelEntry p)
+    {
+        if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+            StopCoroutine(job);
+
+        _closeDelayJobs[key] = StartCoroutine(CoCloseModalAfterDelay(key, p));
+    }
+
+    private IEnumerator CoCloseModalAfterDelay(string key, PanelEntry p)
+    {
+        // (스택 제거 + DIM 반영)
+        int idx = _modalOrder.LastIndexOf(key);
+        if (idx >= 0) _modalOrder.RemoveAt(idx);
+        UpdateDimByStack();
+
+        var cg = EnsureCanvasGroup(p.root);
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+
+        float wait = Mathf.Max(0f, p.closeDelaySeconds);
+        float t = 0f;
+        while (t < wait)
+        {
+            if (!_closeDelayJobs.ContainsKey(key)) yield break;
+            if (!p.root.activeSelf) { _closeDelayJobs.Remove(key); yield break; }
+            if (AllChildScalesAreOne(p.root)) break;
+            t += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (!_closeDelayJobs.ContainsKey(key)) yield break;
+
+        StopFade(key);
+        if (p.useCanvasGroup)
+            _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 0f, 0.12f, false, key));
+        else
+            p.root.SetActive(false);
+
+        _closeDelayJobs.Remove(key);
+    }
+    private void CancelCloseDelay(string key)
+    {
+        if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+            StopCoroutine(job);
+        _closeDelayJobs.Remove(key);
     }
 }
 public readonly struct PanelToggle

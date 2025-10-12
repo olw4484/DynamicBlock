@@ -113,7 +113,7 @@ public class ReviveScreen : MonoBehaviour
         if (_countText) _countText.text = ((int)Mathf.Ceil(_remain)).ToString();
         if (_countImage) _countImage.fillAmount = Mathf.Clamp01(_remain / _windowSeconds);
 
-        // ★ 준비됐을 때만 버튼 활성화 (즉시 포기로 새지 않도록)
+        // 준비됐을 때만 버튼 활성화 (즉시 포기로 새지 않도록)
         if (_reviveBtn) _reviveBtn.interactable = Ads?.IsRewardedReady() ?? false;
     }
 
