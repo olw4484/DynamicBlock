@@ -93,7 +93,7 @@ public sealed class AchievementUIBinder : MonoBehaviour
 
         // 1) 통계 텍스트
         if (txtHighestCombo) txtHighestCombo.text = Mathf.Max(_data.bestCombo, _data.currentCombo).ToString();
-        if (txtBestScore) txtBestScore.text = _data.highScore.ToString("N0");
+        if (txtBestScore) txtBestScore.text = _data.highScore.ToString("#0");
         if (txtRounds) txtRounds.text = _data.playCount.ToString();
         if (txtLoginDays) txtLoginDays.text = _data.loginDays.ToString();
 
