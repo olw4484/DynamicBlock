@@ -39,6 +39,9 @@ public class AdManager : MonoBehaviour, IAdService
     const float WATCHDOG_SEC = 12f;
     Coroutine _rewardWatchdog;
     Coroutine _interstitialWatchdog;
+    
+    // 업적창 배너 광고 숨기기
+    int _bannerBlockCount = 0;
 
     // ===== Unity =====
     void Awake()
@@ -386,8 +389,17 @@ public class AdManager : MonoBehaviour, IAdService
             OnFailedInternal();
         }
     }
+    public void PushBannerBlock()
+    {
+        _bannerBlockCount++;
+        ToggleBanner(false);
+    }
 
-
+    public void PopBannerBlock()
+    {
+        _bannerBlockCount = Mathf.Max(0, _bannerBlockCount - 1);
+        if (_bannerBlockCount == 0) ToggleBanner(true);
+    }
 
     // (필요하면) 생명주기용 훅
     public void PreInit() { }
