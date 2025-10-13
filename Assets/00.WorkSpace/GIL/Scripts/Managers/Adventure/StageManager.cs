@@ -37,6 +37,7 @@ public class StageManager : MonoBehaviour
     [SerializeField] public bool isAllStagesCleared = false; // 모든 스테이지 클리어 여부
     [SerializeField] private int lastPlayedStageIndex = -1; // 0-based
     private bool _initializedFromSave;
+    private System.Action<AdventureBestUpdated> _onBestUpdated;
     public int GetCurrentStage()
     {
         return currentStage;
@@ -60,6 +61,18 @@ public class StageManager : MonoBehaviour
     private void OnEnable()
     {
         if (!_initializedFromSave) StartCoroutine(InitStageFromSaveNextFrame());
+
+        _onBestUpdated = e => SetCurrentActiveStage(e.newIndex);
+        Game.Bus?.Subscribe(_onBestUpdated, replaySticky: true);
+    }
+
+    private void OnDisable()
+    {
+        if (_onBestUpdated != null)
+        {
+            Game.Bus?.Unsubscribe(_onBestUpdated);
+            _onBestUpdated = null;
+        }
     }
 
     private IEnumerator SetCurrentActiveStageAfterOneFrame()
@@ -268,16 +281,35 @@ public class StageManager : MonoBehaviour
         }
 
         lastPlayedStageIndex = idx;
-
         SetCurrentStage(idx);
 
-        var btn = generator.stageButtons[idx];
-        StageFlowTrace.Log(id, $"Go with button={btn?.name}");
+        var ui = Game.UI as UIManager;
+        var bus = Game.Bus;
 
+        const string MainPanelKey = "Main";
+        const string StagePanelKey = "Stage";
+        const string GamePanelKey = "Game";
 
-        btn.GetComponent<PanelSwitchOnClick>()?.Invoke();
+        // 1) 덮어쓰는 Sticky 막기: Main/Stage 끄기(Sticky + Immediate)
+        bus?.PublishSticky(new PanelToggle(MainPanelKey, false), alsoEnqueue: false);
+        bus?.PublishImmediate(new PanelToggle(MainPanelKey, false));
+        bus?.PublishSticky(new PanelToggle(StagePanelKey, false), alsoEnqueue: false);
+        bus?.PublishImmediate(new PanelToggle(StagePanelKey, false));
 
-        // MapManager 쪽 엔트리 호출을 여기서 정식 API
+        // 2) 안전하게 즉시 비활성(딜레이/페이드 무시)
+        ui?.ClosePanelImmediate(MainPanelKey);
+        ui?.ClosePanelImmediate(StagePanelKey);
+
+        // 3) Game 켜기(Sticky + Immediate + 실제 SetPanel)
+        bus?.PublishSticky(new PanelToggle(GamePanelKey, true), alsoEnqueue: false);
+        bus?.PublishImmediate(new PanelToggle(GamePanelKey, true));
+        ui?.SetPanel(GamePanelKey, true);
+
+        // 4) 실제 어드벤처 진입
+        MapManager.Instance.SetGameMode(GameMode.Adventure);
+        MapManager.Instance.EnterAdventureByIndex0(idx);
+
+        StageFlowTrace.Log(id, $"Go Adventure idx0={idx}");
     }
 
     public void RetryLastStage()

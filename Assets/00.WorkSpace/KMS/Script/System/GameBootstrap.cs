@@ -66,6 +66,9 @@ public class GameBootstrap : MonoBehaviour
         var clearResponder = EnsureInScene<ClearEventResponder>("ClearEventResponder");
         clearResponder.SetDependencies(bus);
 
+        // 공지기능
+        var notice = EnsureInScene<ServiceNoticeGate>("ServiceNoticeSystem");
+        DontDestroyOnLoad(notice.gameObject);
         // spawnerManager
         var spawner = EnsureInScene<BlockSpawnManager>("BlockSpawnManager");
         spawner.SetDependencies(bus);

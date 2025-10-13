@@ -8,33 +8,72 @@ public class BannerSafeAreaLink : MonoBehaviour
     BannerAdController banner;
     int lastW, lastH;
     bool resizing;
+    bool binding;   // 중복 코루틴 방지
 
     void Awake()
     {
         if (safeArea == null) safeArea = GetComponentInChildren<SafeArea>(true);
-        banner = AdManager.Instance?.Banner; // 전역 하나 참조
-        if (banner != null) banner.BannerHeightChangedPx += OnBannerHeight;
         lastW = Screen.width; lastH = Screen.height;
     }
 
     void OnEnable()
     {
-        // 현재 값 즉시 반영
-        OnBannerHeight(banner != null ? banner.CurrentHeightPx : 0);
+        // 배너 준비될 때까지 기다렸다가 바인딩
+        TryBindBanner();
+    }
+
+    void OnDisable()
+    {
+        UnbindBanner();
     }
 
     void OnDestroy()
     {
-        if (banner != null) banner.BannerHeightChangedPx -= OnBannerHeight;
+        UnbindBanner();
+    }
+
+    void UnbindBanner()
+    {
+        if (banner != null)
+        {
+            banner.BannerHeightChangedPx -= OnBannerHeight;
+            banner = null;
+        }
+    }
+
+    void TryBindBanner()
+    {
+        if (binding) return;
+        StartCoroutine(BindWhenReady());
+    }
+
+    System.Collections.IEnumerator BindWhenReady()
+    {
+        binding = true;
+
+        // 기존 바인딩 해제
+        UnbindBanner();
+
+        // AdManager/배너가 생성될 때까지 프레임 단위로 대기
+        while (AdManager.Instance == null || AdManager.Instance.Banner == null)
+            yield return null;
+
+        banner = AdManager.Instance.Banner;
+        banner.BannerHeightChangedPx += OnBannerHeight;
+
+        // 현재 높이 즉시 반영
+        OnBannerHeight(banner.CurrentHeightPx);
+
+        binding = false;
     }
 
     void OnBannerHeight(int px)
     {
         if (!applyBottom || safeArea == null) return;
-        safeArea.SetExtraBottomPx(px);   // 여백만 조정 (배너 재요청 없음)
+        safeArea.SetExtraBottomPx(px);   // 여백만 조정
     }
 
-    // 실제 해상도 변경시에만 디바운스 재요청
+    // 해상도/회전 변경 시 배너 측에 알림
     void OnRectTransformDimensionsChange()
     {
         if (Screen.width == lastW && Screen.height == lastH) return;
@@ -48,7 +87,11 @@ public class BannerSafeAreaLink : MonoBehaviour
         resizing = true;
         yield return null;
         yield return new WaitForSeconds(0.1f);
-        AdManager.Instance?.Banner?.OnOrientationOrResolutionChanged();
+
+        // 배너가 아직 없으면 바인딩 재시도
+        if (banner == null) TryBindBanner();
+        else AdManager.Instance?.Banner?.OnOrientationOrResolutionChanged();
+
         resizing = false;
     }
 }

@@ -90,6 +90,11 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                     }
                 case "Main":
                     {
+                        if (MapManager.Instance?.CurrentMode == GameMode.Adventure)
+                        {
+                            var last = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
+                            MapManager.Instance.saveManager?.UpdateAdventureScore(last);
+                        }
                         if (!clearRunStateOnClick)
                             MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true, src: SaveManager.SnapshotSource.Manual);
                         else

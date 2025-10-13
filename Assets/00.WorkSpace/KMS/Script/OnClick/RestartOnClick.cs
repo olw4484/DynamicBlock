@@ -17,6 +17,9 @@ public sealed class RestartOnClick : MonoBehaviour
 
     void Update() { if (_cool > 0f) _cool -= Time.unscaledDeltaTime; }
 
+    // UIManager 핸들러
+    static UIManager UI => (Game.UI as UIManager) ?? Object.FindFirstObjectByType<UIManager>();
+
     public void Invoke()
     {
         if (_cool > 0f || !Game.IsBound) return;
@@ -30,26 +33,37 @@ public sealed class RestartOnClick : MonoBehaviour
                     var sm = MapManager.Instance?.saveManager;
                     var bus = Game.Bus;
 
-                    // 1) 저장 상태 확실히 삭제 + 스냅샷 억제
                     sm?.ClearRunState(save: true);
                     sm?.SkipNextSnapshot("Restart");
                     sm?.SuppressSnapshotsFor(1.0f);
 
-                    // 2) 리셋 이벤트 (BlockStorage.ResetRuntime 등)
+                    // 엔진/런타임 리셋
                     bus.PublishImmediate(new GameResetRequest(openPanelAfter, ResetReason.Restart));
 
-                    // 3) UI 정리/전환
-                    RestartFlow.SoftReset(openPanelAfter, closePanels);
+                    // UI 강제 정리/전환 (지연 무시)
+                    var ui = UI;
+                    if (ui)
+                    {
+                        if (closePanels != null)
+                            foreach (var k in closePanels)
+                                ui.ClosePanelImmediate(k);
+
+                        if (!string.IsNullOrEmpty(openPanelAfter))
+                            ui.SetPanel(openPanelAfter, true, ignoreDelay: true);
+                    }
+                    else
+                    {
+                        // (폴백) 기존 유틸
+                        RestartFlow.SoftReset(openPanelAfter, closePanels);
+                    }
 
                     if (MapManager.Instance.CurrentMode == GameMode.Adventure)
                     {
-                        // 어드벤처는 0-based 유지 + 다음 프레임에 진입
                         int idx0 = StageManager.Instance ? StageManager.Instance.GetCurrentStage() : 0;
                         MapManager.Instance.StartCoroutine(CoEnterAdventureNextFrame(idx0, openPanelAfter));
                         return;
                     }
 
-                    // 4) 클래식은 기존 코루틴 유지
                     MapManager.Instance.StartCoroutine(CoEnterClassicNextFrame());
                     break;
                 }
@@ -76,6 +90,9 @@ public sealed class RestartOnClick : MonoBehaviour
         MapManager.Instance.SetGameMode(GameMode.Classic);
         MapManager.Instance.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceNew);
 
+        var ui = UI;
+        if (ui) ui.SetPanel("Game", true, ignoreDelay: true);
+
         bus.PublishSticky(new PanelToggle("Game", true), alsoEnqueue: false);
         bus.PublishImmediate(new PanelToggle("Game", true));
         bus.ClearSticky<GameOver>();
@@ -83,21 +100,20 @@ public sealed class RestartOnClick : MonoBehaviour
 
     private IEnumerator CoEnterAdventureNextFrame(int idx0, string openPanel)
     {
-        // 같은 프레임 클릭/리셋 충돌 방지
-        yield return null;                 // 한 프레임 쉬고
-        yield return new WaitForEndOfFrame(); // UI 정리까지 완료 보장(안정성)
+        yield return null;
+        yield return new WaitForEndOfFrame();
 
         var bus = Game.Bus;
 
-        // 게임 패널 다시 열기(클래식 경로와 동작 맞추기)
+        var ui = UI;
+        if (ui && !string.IsNullOrEmpty(openPanel))
+            ui.SetPanel(openPanel, true, ignoreDelay: true);
+
         bus.PublishSticky(new PanelToggle(openPanel, true), alsoEnqueue: false);
         bus.PublishImmediate(new PanelToggle(openPanel, true));
         bus.ClearSticky<GameOver>();
 
-        // 0-based 전용 진입 (튜토리얼이 _mapList[0]일 때 안전하게 +1 보정됨)
         MapManager.Instance.EnterAdventureByIndex0(idx0);
-
         Debug.Log($"[AdventureRestart] re-enter idx0={idx0}");
     }
-
 }

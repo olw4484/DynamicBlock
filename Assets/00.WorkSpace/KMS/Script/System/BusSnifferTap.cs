@@ -16,6 +16,7 @@ public class BusSnifferTap : MonoBehaviour
     [SerializeField] bool showOverlay = true;
 
     readonly Queue<string> _lines = new();
+    System.Action<object> _lineClearedTap;
     bool _enabled = true;
     int _dbgClears;
 
@@ -53,6 +54,7 @@ public class BusSnifferTap : MonoBehaviour
     void OnDisable()
     {
         if (_attached && Game.Bus != null) Game.Bus.RemoveTap(OnAnyEvent);
+        if (_lineClearedTap != null && Game.Bus != null) Game.Bus.RemoveTap(_lineClearedTap);
         _attached = false;
     }
 

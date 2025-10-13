@@ -27,7 +27,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     [SerializeField] private TMP_Text Fail_ResultScore;
     [SerializeField] private GameObject Fail_Button;
 
-    // ▼▼ 추가: 모드 별 UI 그룹 + 점수 슬라이더/라벨 + 과일 합계라벨
+    // 모드 별 UI 그룹 + 점수 슬라이더/라벨 + 과일 합계라벨
     [Header("Mode Groups")]
     [SerializeField] private GameObject scoreGroup;      // 점수 모드용 그룹
     [SerializeField] private GameObject fruitGroup;      // 과일 모드용 그룹
@@ -178,55 +178,56 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     }
 
     // =======================
-    // ▼ 코루틴 추가 (동일 클래스 내)
+    // 코루틴
     // =======================
     private IEnumerator Co_RetryAdventure(int idx0)
     {
         // 같은 프레임 클릭스루 방지
         yield return null;
 
+        var ui = Object.FindFirstObjectByType<UIManager>();
         var sm = MapManager.Instance?.saveManager;
         var bus = Game.Bus;
 
-        // 저장/스냅샷 억제 + 런타임 리셋
+        // 런타임/스냅샷 정리
         sm?.ClearRunState(save: true);
         sm?.SkipNextSnapshot("Restart");
         sm?.SuppressSnapshotsFor(1.0f);
+
+        // 게임 리셋: UIManager가 내부에서 Game/Main 토글
         bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
 
-        // UI 정리 (이름이 실제 패널 키와 일치해야 함)
-        RestartFlow.SoftReset("Game", new[] { "Adventure_Result" });
-        ClosePanel();
+        // 한 프레임 기다려 전환 파이프라인이 끝나도록
+        yield return null;
 
-        // 0-based 그대로 진입
+        // 결과 패널만 확실히 끄고, Game 패널은 확실히 켠다(안전망)
+        ui?.SetPanel(panelKey, false);   // "Adventure_Result"
+        ui?.SetPanel("Game", true);      // 패널 키 철자 확인!
+
+        // 다음 스테이지로 진입
         MapManager.Instance.EnterAdventureByIndex0(idx0);
-
-        Debug.Log($"[Retry] idx0={idx0} now={StageManager.Instance?.GetCurrentStage()}");
     }
 
     private IEnumerator Co_GoNextAdventure(int nextIdx0, int prevIdx0)
     {
-        // 같은 프레임 클릭스루 방지
         yield return null;
 
+        var ui = Object.FindFirstObjectByType<UIManager>();
         var sm = MapManager.Instance?.saveManager;
         var bus = Game.Bus;
 
         sm?.ClearRunState(save: true);
         sm?.SkipNextSnapshot("Restart");
         sm?.SuppressSnapshotsFor(1.0f);
+
         bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
+        yield return null;
 
-        RestartFlow.SoftReset("Game", new[] { "Adventure_Result" });
-        ClosePanel();
+        ui?.SetPanel(panelKey, false);
+        ui?.SetPanel("Game", true);
 
-        // StageManager 표시는 0-based 유지
         StageManager.Instance.SetStageClearAndActivateNext();
-
-        // 0-based 그대로 다음 스테이지 진입
         MapManager.Instance.EnterAdventureByIndex0(nextIdx0);
-
-        Debug.Log($"[NextStage] prevIdx0={prevIdx0} nextIdx0={nextIdx0}");
     }
 
     private void HideAll()

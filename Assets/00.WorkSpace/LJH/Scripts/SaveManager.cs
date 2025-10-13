@@ -44,6 +44,8 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     public GameData gameData;
     public GameData Data => gameData;
     [NonSerialized] public bool skipNextGridSnapshot = false;
+    [SerializeField] private AchievementDatabase achievementDb;
+    private bool _achChecking;
 
     [SerializeField] private float _snapshotDebounce = 0.25f;   // 디바운스 대기
     [SerializeField] private float _snapshotMinInterval = 1.0f; // 최소 저장 간격(초)
@@ -194,7 +196,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             if (TryConsumeDownedPending(out var lastScore)) // 시그니처: out int score, ttlSeconds=0
             {
                 ClearClassicRun();
-                bool isNewBest = lastScore > (gameData?.highScore ?? 0);
+                bool isNewBest = lastScore > (gameData?.classicHighScore ?? 0);
                 _bus.PublishImmediate(new GameOverConfirmed(lastScore, isNewBest, "PendingFinalizedOnEnter"));
                 return;
             }
@@ -230,24 +232,28 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         _bus.Subscribe<LoadRequested>(_ => { LoadGame(); /* TryApplyRunSnapshot(); */ }, replaySticky: false);
         _bus.Subscribe<ResetRequested>(_ => { gameData = GameData.NewDefault(DefaultStages); SaveGame(); }, replaySticky: false);
         _bus.Subscribe<GameOverConfirmed>(e =>
-        {
-            UpdateClassicScore(e.score);
+                {
+                    var mm = MapManager.Instance;
+                    bool isAdventure = mm?.CurrentMode == GameMode.Adventure;
+                    if (isAdventure)
+                        UpdateAdventureScore(e.score);
+                    else
+                        UpdateClassicScore(e.score);
+                    if (gameData != null)
+                    {
+                        gameData.bestCombo = Mathf.Max(gameData.bestCombo, _runMaxCombo);
+                        SaveGame();
+                    }
 
-            if (gameData != null)
-            {
-                gameData.bestCombo = Mathf.Max(gameData.bestCombo, _runMaxCombo);
-                SaveGame();
-            }
+                    if (e.isNewBest) { Game.Fx.PlayNewScoreAt(); Sfx.NewRecord(); }
+                    else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
 
-            if (e.isNewBest) { Game.Fx.PlayNewScoreAt(); Sfx.NewRecord(); }
-            else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
+                    ClearRunState(save: true);
 
-            ClearRunState(save: true);
+                    _runMaxCombo = 0;
 
-            _runMaxCombo = 0;
-
-            Debug.Log($"[Save] FINAL total={e.score}, persistedHigh={gameData?.highScore}");
-        }, replaySticky: false);
+                    Debug.Log($"[Save] FINAL total={e.score}, persistedHigh={gameData?.highScore}");
+                }, replaySticky: false);
         _bus.Subscribe<LanguageChangeRequested>(e => SetLanguageIndex(e.index), replaySticky: false);
         _bus.Subscribe<AllClear>(_ => Debug.Log("[Save] ALL CLEAR!"), replaySticky: false);
 
@@ -257,6 +263,25 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             // 리바이브 창 열릴 동안은 자동 스냅샷 방지
             SuppressSnapshotsFor(5f);
         }, replaySticky: false);
+        _bus.Subscribe<AdventureStageCleared>(e =>
+        {
+            // 점수 반영
+            UpdateAdventureScore(e.finalScore); // 내부에서 SaveGame 호출
+
+            // 현재 스테이지 index(0-based) 파악
+            var map = MapManager.Instance;
+            var sm = StageManager.Instance;
+            int idx0 = (map?.CurrentMapData?.mapIndex)
+                       ?? (sm != null ? sm.GetCurrentStage() : 0);
+
+            // 스테이지 클리어 플래그 + 해당 스테이지 최고점 저장
+            ClearStage(idx0, e.finalScore);        // SaveGame 포함
+
+            // 최고 진행도(1-based) 갱신 시도 (이미 높으면 내부에서 무시)
+            TryUpdateAdventureBest(idx0 + 1, MapManager.Instance?.CurrentMapData?.stageName);
+
+            // 혹시 모를 중복 호출 대비해도 모두 idempotent
+        }, replaySticky: true);
     }
 
     // ------------- Public Save/Load -------------
@@ -474,7 +499,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         var evt = new global::GameDataChanged(d);
         _bus.PublishSticky(evt, alsoEnqueue: false);
         _bus.PublishImmediate(evt);
-        Debug.Log($"[Save] PublishState high={d?.highScore}");
+        Debug.Log($"[Save] PublishState classicHigh={d?.classicHighScore}, advHigh={d?.adventureHighScore}");
     }
 
     // ------------- Language API -------------
@@ -519,35 +544,56 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     }
 
     // ------------- Score/Stage API -------------
+    // 클래식 전용: 모드별 + 레거시 미러링(호환)
     public void UpdateClassicScore(int score)
     {
         if (gameData == null) LoadGame();
 
-        gameData.lastScore = score;
+        gameData.classicLastScore = score;
         gameData.playCount++;
-        if (score > gameData.highScore) gameData.highScore = score;
+        if (score > gameData.classicHighScore) gameData.classicHighScore = score;
+
+        // 레거시 호환: 클래식 값만 미러
+        gameData.lastScore = gameData.classicLastScore;
+        gameData.highScore = gameData.classicHighScore;
+
+        CheckAndRecordAchievementsIfNeeded();
 
         SaveGame();
     }
 
+    // 어드벤처 전용
+    public void UpdateAdventureScore(int score)
+    {
+        if (gameData == null) LoadGame();
+        gameData.adventureLastScore = score;
+        if (score > gameData.adventureHighScore) gameData.adventureHighScore = score;
+        CheckAndRecordAchievementsIfNeeded();
+        SaveGame();
+    }
+
+
+    // 클래식 전용 신기록 갱신
     public bool TryUpdateHighScore(int score, bool save = true)
     {
         if (gameData == null) LoadGame();
-        if (score > gameData.highScore)
+        if (score > gameData.classicHighScore)
         {
-            gameData.highScore = score;
+            gameData.classicHighScore = score;
+            gameData.highScore = gameData.classicHighScore;
+            CheckAndRecordAchievementsIfNeeded();
             if (save) SaveGame();
             return true;
         }
         return false;
     }
 
-    public int CurrentHighScore => gameData?.highScore ?? 0;
+    public int CurrentHighScore => gameData?.classicHighScore ?? 0;
 
     public int GetPersistedHighScoreFresh()
     {
         LoadGame(); // UI 갱신 이벤트 나갈 수 있음(정상)
-        return gameData?.highScore ?? 0;
+        return gameData?.classicHighScore ?? 0;
     }
 
     public void ClearStage(int stageIndex, int score)
@@ -558,6 +604,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         gameData.stageCleared[stageIndex] = 1;
         if (score > gameData.stageScores[stageIndex]) gameData.stageScores[stageIndex] = score;
 
+        CheckAndRecordAchievementsIfNeeded();
         SaveGame();
     }
     public bool IsStageCleared(int stageIndex) => gameData.stageCleared[stageIndex] == 1;
@@ -905,7 +952,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     {
         if (gameData == null) return false;
 
-        if (newIndex < 1) newIndex = 1;
+        newIndex = Mathf.Max(1, newIndex);
 
         int prev = gameData.adventureBestIndex;
         if (newIndex <= prev) return false;
@@ -915,12 +962,28 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
         string name = string.IsNullOrEmpty(stageName) ? $"Stage_{newIndex}" : stageName;
 
-        Game.Bus?.PublishImmediate(new AdventureBestUpdated(
-            prevIndex: prev,
-            newIndex: newIndex,
-            stageName: name));
+        var evt = new AdventureBestUpdated(prev, newIndex, name);
+        Game.Bus?.PublishSticky(evt, alsoEnqueue: false);
+        Game.Bus?.PublishImmediate(evt);
 
         return true;
+    }
+    private void CheckAndRecordAchievementsIfNeeded()
+    {
+        // 중복·재귀 방지 + 준비물 검사
+        if (_achChecking || achievementDb == null || gameData == null) return;
+
+        _achChecking = true;
+        try
+        {
+            var svc = new AchievementService(gameData, achievementDb);
+            svc.EvaluateAll(recordUnlocks: true, utcNow: DateTime.UtcNow, out var newly);
+
+            // 방금 해금이 있으면 저장
+            if (newly != null && newly.Count > 0)
+                SaveGame();
+        }
+        finally { _achChecking = false; }
     }
     // ------------- ISaveService (직접 호출 경로) -------------
     public bool LoadOrCreate() { LoadGame(); return true; }
