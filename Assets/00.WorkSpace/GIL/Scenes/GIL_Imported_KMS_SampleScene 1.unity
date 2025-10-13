@@ -15063,6 +15063,7 @@ MonoBehaviour:
   setCurrentStageInputField: {fileID: 291530278}
   currentStage: 0
   isAllStagesCleared: 0
+  lastPlayedStageIndex: -1
 --- !u!224 &480158907
 RectTransform:
   m_ObjectHideFlags: 0

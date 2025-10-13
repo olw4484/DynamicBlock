@@ -734,6 +734,10 @@ MonoBehaviour:
     highScore: 0
     lastScore: 0
     playCount: 0
+    classicHighScore: 0
+    classicLastScore: 0
+    adventureHighScore: 0
+    adventureLastScore: 0
     bestCombo: 0
     loginDays: 0
     lastLoginYmd: 0
@@ -762,6 +766,7 @@ MonoBehaviour:
     classicDownedUtc: 0
     unlocked: []
     achievementTierStamps: []
+  achievementDb: {fileID: 0}
   _snapshotDebounce: 0.25
   _snapshotMinInterval: 1
 --- !u!114 &1292946899 stripped
@@ -786,11 +791,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37b08c90d480048458603fdd5acc56a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1 &1404889112 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8519971829722108501, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
-  m_PrefabInstance: {fileID: 245269211}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1517388832
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -999,14 +999,16 @@ MonoBehaviour:
     closeOnEscape: 0
     baseSorting: 100
     fallbackKey: 
+    closeDelaySeconds: 0
   - key: Main
-    root: {fileID: 1404889112}
+    root: {fileID: 0}
     defaultActive: 0
     useCanvasGroup: 1
     isModal: 0
     closeOnEscape: 0
     baseSorting: 100
     fallbackKey: 
+    closeDelaySeconds: 0
   - key: GameOver
     root: {fileID: 910381090}
     defaultActive: 0
@@ -1015,6 +1017,7 @@ MonoBehaviour:
     closeOnEscape: 0
     baseSorting: 1000
     fallbackKey: 
+    closeDelaySeconds: 0
   - key: Game_Open
     root: {fileID: 4137700808967914465}
     defaultActive: 1
@@ -1023,6 +1026,7 @@ MonoBehaviour:
     closeOnEscape: 0
     baseSorting: 0
     fallbackKey: 
+    closeDelaySeconds: 0
   - key: Options
     root: {fileID: 7749205270024131278}
     defaultActive: 0
@@ -1031,6 +1035,7 @@ MonoBehaviour:
     closeOnEscape: 0
     baseSorting: 1100
     fallbackKey: 
+    closeDelaySeconds: 0
   mainGroup: {fileID: 0}
   dimOverlay: {fileID: 0}
   _rainbowIcon: {fileID: 0}

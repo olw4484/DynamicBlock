@@ -23,7 +23,6 @@ public class EnterStageButton : MonoBehaviour
     [HideInInspector] public int stageNumber;
     private ButtonState stageButtonState;
 
-    // (선택) 필요시 UIManager 빠르게 접근
     private static UIManager UI => (Game.UI as UIManager) ?? FindFirstObjectByType<UIManager>();
 
     void Awake()
@@ -59,7 +58,7 @@ public class EnterStageButton : MonoBehaviour
     {
         int idx = GetStageNumber();
         Debug.Log($"[EnterStage] Request enter stage index={idx}");
-        StageManager.Instance?.EnterStageByIndex(idx, "EnterStageButton");
+        StageManager.Instance?.EnterStageByIndex(idx - 1, "EnterStageButton");
     }
 
     /// <summary>버튼 상태에 맞춰 상호작용/스프라이트/텍스트 갱신</summary>

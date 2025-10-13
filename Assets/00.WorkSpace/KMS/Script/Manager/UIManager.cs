@@ -91,7 +91,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         for (int i = 0; i < arr.Length; i++)
             if (arr[i]) arr[i].text = value;
     }
-    private static string FormatScore(int v) => v.ToString("#,0");
+    private static string FormatScore(int v) => v.ToString("#0");
 
     public void PreInit()
     {
@@ -298,7 +298,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (display == _bestShown) return;
         _bestShown = display;
 
-        if (_hudBestText) _hudBestText.text = $"{display:#,0}";
+        if (_hudBestText) _hudBestText.text = $"{display:#0}";
         // 결과 패널 Best 라벨은 GameOverConfirmed에서 다시 세팅하므로 여기선 HUD만
     }
 

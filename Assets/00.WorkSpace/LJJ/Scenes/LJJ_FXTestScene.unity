@@ -409,11 +409,19 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 1517388832}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!222 &680776739
+CanvasRenderer:
+  m_ObjectHideFlags: 8
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_CullTransparentMesh: 1
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -663,11 +671,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fc848dd3f7df0b44ea9b65f58313d72c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1 &1404889112 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8519971829722108501, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
-  m_PrefabInstance: {fileID: 245269211}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1476469465
 GameObject:
   m_ObjectHideFlags: 0
@@ -18800,7 +18803,7 @@ PrefabInstance:
     - target: {fileID: 6316385883739004828, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: _panels.Array.data[1].root
       value: 
-      objectReference: {fileID: 1404889112}
+      objectReference: {fileID: 0}
     - target: {fileID: 6316385883739004828, guid: 675fbc969ace6184e942c80cfb06965c, type: 3}
       propertyPath: _panels.Array.data[2].root
       value: 
