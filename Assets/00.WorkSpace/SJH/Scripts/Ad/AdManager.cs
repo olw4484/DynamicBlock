@@ -22,6 +22,9 @@ public class AdManager : MonoBehaviour, IAdService
     public DateTime NextRewardTime = DateTime.MinValue;        // 첫 판부터 가능
     public DateTime NextInterstitialTime = DateTime.MinValue;
 
+    const float POST_RESUME_DEBOUNCE = 0.8f; // 재진입 직후 자동 노출 방지용
+    float _lastResumeAt = -999f;
+
     // 내부 상태
     bool _adsReady;
     bool _guardsWired;
@@ -97,6 +100,8 @@ public class AdManager : MonoBehaviour, IAdService
         }
 
         // resume
+        _lastResumeAt = Time.realtimeSinceStartup;
+
         if (AdPauseGuard.PausedByAd || Time.timeScale == 0f)
         {
             Debug.LogWarning("[Ads] App resume → ensure resume");
@@ -112,9 +117,12 @@ public class AdManager : MonoBehaviour, IAdService
 
     void OnApplicationFocus(bool focus)
     {
-        if (focus) Refresh();
-        if (focus && Game.IsBound)
-            Game.Bus.PublishImmediate(new AdFinished());
+        if (focus)
+        {
+            _lastResumeAt = Time.realtimeSinceStartup;
+            Refresh();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+        }
     }
 
     // ===== IAdService =====
@@ -129,80 +137,40 @@ public class AdManager : MonoBehaviour, IAdService
 
     public void ShowRewarded(Action onReward, Action onClosed = null, Action onFailed = null)
     {
-        if (_rewardInProgress) { onFailed?.Invoke(); return; }
-        if (Reward == null || !Reward.IsReady) { Debug.LogWarning("[Ads] Reward not ready → Refresh only"); Refresh(); onFailed?.Invoke(); return; }
-        if (!Application.isFocused) { Debug.LogWarning("[Ads] deny show: app not focused"); onFailed?.Invoke(); return; }
-
-        // === 이벤트 구독 & 정리 루틴 ===
-        void Cleanup()
-        {
-            if (Reward != null)
-            {
-                Reward.Opened -= OnOpened;
-                Reward.Closed -= OnClosedInternal;
-                Reward.Failed -= OnFailedInternal;
-                Reward.Rewarded -= OnRewardedInternal;
-            }
-            _rewardInProgress = false;
-            if (_rewardWatchdog != null) { StopCoroutine(_rewardWatchdog); _rewardWatchdog = null; }
-        }
-
-        void OnOpened()
-        {
-            _rewardInProgress = true;
-            AnalyticsManager.Instance?.RewardLog();
-        }
-
-        void OnRewardedInternal()
-        {
-            // 실제 보상 부여는 Revive 버튼 쪽 콜백에서 처리하더라도,
-            // 안전하게 한 번 더 호출해도 무방(멱등)하게 설계했으면 여기서도 onReward 보조 호출 가능
-            try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
-        }
-
-        void OnClosedInternal()
-        {
-            Cleanup();
-            try { onClosed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
-            if (RewardTime > 0) NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
-            Refresh();
-        }
-
-        void OnFailedInternal()
-        {
-            Cleanup();
-            try { onFailed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
-            Refresh();
-        }
-
-        // === 실제 구독 ===
-        Reward.Opened += OnOpened;
-        Reward.Closed += OnClosedInternal;
-        Reward.Failed += OnFailedInternal;
-        Reward.Rewarded += OnRewardedInternal;
-
-        Debug.Log("[Ads] ShowRewarded()");
-        _lastRewardShowAt = Time.realtimeSinceStartup;
-
-        // Rewarded 광고 호출 (보상 시 onReward가 호출되도록 그대로 전달)
-        bool ok = Reward.ShowAd(onReward);
-        if (!ok)
-        {
-            // 즉시 실패 처리
-            OnFailedInternal();
-            return;
-        }
-
-        // 워치독 시작 (닫힘 콜백 누락 대비)
-        _rewardWatchdog = StartCoroutine(Co_Watchdog(isReward: true, timeout: WATCHDOG_SEC));
+        StartCoroutine(Co_ShowRewardedSafely(onReward, onClosed, onFailed));
     }
 
     public void ShowInterstitial(Action onClosed = null)
     {
+        if (_interstitialInProgress) { Debug.LogWarning("[Ads] Already showing interstitial"); return; }
         if (!_adsReady) { Debug.LogWarning("[Ads] Not ready"); return; }
         if (!Application.isFocused) { Debug.LogWarning("[Ads] deny interstitial: not focused"); return; }
         if (Interstitial == null || !Interstitial.IsReady) { Debug.LogWarning("[Ads] Interstitial not ready"); return; }
 
+        StartCoroutine(Co_ShowInterstitialSafely(onClosed));
+    }
+
+    private IEnumerator Co_ShowInterstitialSafely(Action onClosed)
+    {
+        // 0) Resume 직후 디바운스 (Transsion 회피에 도움)
+        if (Time.realtimeSinceStartup - _lastResumeAt < POST_RESUME_DEBOUNCE)
+            yield return new WaitForSeconds(POST_RESUME_DEBOUNCE);
+
+        // 1) 창 포커스/앱 포커스 보장 (최소 0.5s 권장)
+        yield return WaitUntilForeground(0.5f);
+        if (!Application.isFocused || !AndroidHasWindowFocus())
+        {
+            Debug.LogWarning("[Ads] Abort interstitial: no foreground/window focus");
+            yield break;
+        }
+
+        if (Interstitial == null || !Interstitial.IsReady)
+        {
+            Debug.LogWarning("[Ads] Abort interstitial: not ready");
+            yield break;
+        }
+
+        // 2) 이벤트 구독/워치독
         void Cleanup()
         {
             if (Interstitial != null)
@@ -218,7 +186,7 @@ public class AdManager : MonoBehaviour, IAdService
         void OnOpened()
         {
             _interstitialInProgress = true;
-            AnalyticsManager.Instance?.InterstitialLog();   // 전면 광고 노출 로그
+            AnalyticsManager.Instance?.InterstitialLog();
         }
 
         void OnClosedInternal()
@@ -228,31 +196,34 @@ public class AdManager : MonoBehaviour, IAdService
             if (InterstitialTime > 0) NextInterstitialTime = DateTime.UtcNow.AddSeconds(InterstitialTime);
             Refresh();
         }
+
         void OnFailedInternal()
         {
             Cleanup();
             Refresh();
-            // 실패 로깅도 원하면:
-            // AnalyticsManager.Instance?.LogEvent("Interstitial_Failed");
         }
 
-        Cleanup();
+        // 구독 후 Show
         Interstitial.Opened += OnOpened;
         Interstitial.Closed += OnClosedInternal;
         Interstitial.Failed += OnFailedInternal;
 
-        Debug.Log("[Ads] ShowInterstitial()");
+        Debug.Log("[Ads] ShowInterstitial(safe)");
         _lastInterShowAt = Time.realtimeSinceStartup;
 
         Interstitial.ShowAd();
         _interstitialWatchdog = StartCoroutine(Co_Watchdog(isReward: false, timeout: WATCHDOG_SEC));
     }
-
     public void ToggleBanner(bool show)
     {
         if (Banner == null) return;
-        if (show) Banner.ShowAd();
-        else Banner.HideAd();
+        StartCoroutine(Co_ToggleBannerSafely(show));
+    }
+    IEnumerator Co_ToggleBannerSafely(bool show)
+    {
+        yield return WaitUntilForeground(0.1f);
+        if (!Application.isFocused || !AndroidHasWindowFocus()) yield break;
+        if (show) Banner.ShowAd(); else Banner.HideAd();
     }
 
     public void Refresh()
@@ -263,9 +234,10 @@ public class AdManager : MonoBehaviour, IAdService
             return;
         }
 
+        if (Time.realtimeSinceStartup - _lastResumeAt < 0.3f) return;
+
         if (Reward != null && !Reward.IsReady) Reward.Init();
         if (Interstitial != null && !Interstitial.IsReady) Interstitial.Init();
-        // 배너는 필요 시에만
     }
 
     // ===== 내부 =====
@@ -314,10 +286,17 @@ public class AdManager : MonoBehaviour, IAdService
     {
         using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
         using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
-        using (var window   = activity?.Call<AndroidJavaObject>("getWindow"))
-        using (var decor    = window?.Call<AndroidJavaObject>("getDecorView"))
         {
-            return decor?.Call<bool>("hasWindowFocus") ?? false;
+            if (activity == null) return Application.isFocused;
+            using (var window = activity.Call<AndroidJavaObject>("getWindow"))
+            {
+                if (window == null) return Application.isFocused;
+                using (var decor = window.Call<AndroidJavaObject>("getDecorView"))
+                {
+                    if (decor == null) return Application.isFocused;
+                    return decor.Call<bool>("hasWindowFocus");
+                }
+            }
         }
     }
     catch { return Application.isFocused; }
@@ -346,8 +325,17 @@ public class AdManager : MonoBehaviour, IAdService
         const float TIMEOUT = 12f;
         float deadline = Time.realtimeSinceStartup + TIMEOUT;
 
-        // 1) 포그라운드 보장
-        yield return WaitUntilForeground(1.0f);
+        // 0) Resume 직후 디바운스
+        if (Time.realtimeSinceStartup - _lastResumeAt < POST_RESUME_DEBOUNCE)
+            yield return new WaitForSeconds(POST_RESUME_DEBOUNCE);
+
+        // 1) 포커스 보장
+        yield return WaitUntilForeground(0.5f);
+        if (!Application.isFocused || !AndroidHasWindowFocus())
+        {
+            onFailed?.Invoke();
+            yield break;
+        }
 
         // 2) 준비 대기 (필요 시 로드)
         if (rc == null) { onFailed?.Invoke(); yield break; }
