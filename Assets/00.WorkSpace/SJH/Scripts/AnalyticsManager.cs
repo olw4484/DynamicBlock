@@ -8,39 +8,47 @@ public class AnalyticsManager : MonoBehaviour
     public static AnalyticsManager Instance { get; private set; }
 	public FirebaseApp FirebaseApp { get; private set; }
 
+    bool _inited;
+
     void Awake()
     {
         if (Instance && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }
+
     void Start()
-	{
-		Instance = this;
-		Init();
-	}
+    {
+        Init();
+    }
 
-	public void Init()
-	{
-		FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
-			var dependencyStatus = task.Result;
-			if (dependencyStatus == DependencyStatus.Available)
-			{
-				FirebaseApp = FirebaseApp.DefaultInstance;
-				Debug.Log("Analytics 초기화 성공");
-				FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventLogin);
+    public void Init()
+    {
+        if (_inited) return;
+        _inited = true;
 
-				// 파이어베이스 초기화
-				FirestoreManager.Instance.Init();
-			}
-			else
-			{
-				Debug.LogError($"Analytics 초기화 실패 : [{dependencyStatus}]");
-			}
-		});
-	}
+        FirebaseApp
+        .CheckAndFixDependenciesAsync()
+        .ContinueWithOnMainThread(task =>
+        {
+            var status = task.Result;
 
-	public void LogEvent(string eventName)
+            if (status == DependencyStatus.Available)
+            {
+                FirebaseApp = FirebaseApp.DefaultInstance;
+                Debug.Log("Analytics 초기화 성공");
+                FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventLogin);
+                FirestoreManager.EnsureInitialized();
+            }
+            else
+            {
+                Debug.LogError($"Analytics 초기화 실패 : [{status}]");
+            }
+        });
+    }
+
+
+    public void LogEvent(string eventName)
 	{
 		FirebaseAnalytics.LogEvent(eventName);
 		// TODO : 앱러빈 SDK 로깅함수 추가

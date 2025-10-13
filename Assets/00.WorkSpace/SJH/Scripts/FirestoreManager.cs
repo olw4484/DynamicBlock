@@ -95,29 +95,49 @@ public class FirestoreManager : MonoBehaviour
 	public string DataPath => Path.Combine(Application.persistentDataPath, $"SaveFile/{_saveFileName}");
 #endif
 
-	void Awake()
-	{
-		Instance = this;
-	}
+    static bool _inited;
 
-	// 애널리틱스에서 초기화
-	public void Init()
-	{
-		Firestore = FirebaseFirestore.GetInstance(AnalyticsManager.Instance.FirebaseApp);
+    void Awake()
+    {
+        if (Instance && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
 
-		// 1. 로컬 데이터 로드
-		if (!LoadStageData()) StageData = new StageData();
-		// 2. 서버 데이터 캐싱
-		ServerDataCaching();
-	}
+    public static FirestoreManager GetOrCreate()
+    {
+        if (Instance) return Instance;
+        var go = new GameObject(nameof(FirestoreManager));
+        var mgr = go.AddComponent<FirestoreManager>();
+        return mgr;
+    }
 
-	/// <summary>
-	/// 어드벤처 모드 스테이지 클리어 시 실행
-	/// </summary>
-	/// <param name="stageIndex">클리어한 스테이지 번호</param>
-	/// <param name="isClear">클리어 여부</param>
-	/// <param name="stageName">클리어한 스테이지 이름</param>
-	public void WriteStageData(int stageIndex, bool isClear, string stageName = "Stage1")
+    public static void EnsureInitialized()
+    {
+        GetOrCreate().Init();
+    }
+
+    public void Init()
+    {
+        if (_inited) return;
+        _inited = true;
+
+        Firestore = FirebaseFirestore.GetInstance(AnalyticsManager.Instance.FirebaseApp);
+
+        var s = Firestore.Settings;
+        s.PersistenceEnabled = false;
+
+        if (!LoadStageData()) StageData = new StageData();
+        ServerDataCaching();
+    }
+
+    /// <summary>
+    /// 어드벤처 모드 스테이지 클리어 시 실행
+    /// </summary>
+    /// <param name="stageIndex">클리어한 스테이지 번호</param>
+    /// <param name="isClear">클리어 여부</param>
+    /// <param name="stageName">클리어한 스테이지 이름</param>
+    public void WriteStageData(int stageIndex, bool isClear, string stageName = "Stage1")
 	{
 		Debug.Log("데이터 추가 시도");
 
