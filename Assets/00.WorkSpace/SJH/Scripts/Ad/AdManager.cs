@@ -65,17 +65,14 @@ public class AdManager : MonoBehaviour, IAdService
         {
             Debug.Log("[Ads] MobileAds initialized (via gate)");
 
-            // 컨트롤러 생성 & 초기화
             Interstitial = new InterstitialAdController(); Interstitial.Init();
-            Banner = new BannerAdController(); Banner.InitAdaptive(); // ← Adaptive로!
+            Banner = new BannerAdController(); Banner.InitAdaptive();
             Reward = new RewardAdController(); Reward.Init();
 
             WireAdGuards(Interstitial, Reward);
             _adsReady = true;
 
-            // 필요 시 바로 노출할 건 여기서 Show
-            // Banner.ShowAd();  // 전역 상시 노출이면 켜고,
-            // 특정 화면에서만 노출이면 꺼둔 채 ToggleBanner로 제어
+            StartCoroutine(Co_ConsumeReviveTokenAfterBind());
         });
     }
 
@@ -85,37 +82,10 @@ public class AdManager : MonoBehaviour, IAdService
     // 앱 포커스/백그라운드에 따른 강제 복구(콜백 누락 방어)
     void OnApplicationPause(bool pause)
     {
-        if (pause)
+        if (!pause)
         {
-            if (_rewardInProgress || (Time.realtimeSinceStartup - _lastRewardShowAt) < 2f)
-            {
-                Debug.Log("[Ads] App paused near reward show → assume ad opened");
-                if (!AdPauseGuard.IsAdShowing) AdPauseGuard.OnAdOpened();
-                _rewardInProgress = true;
-            }
-            if (_interstitialInProgress || (Time.realtimeSinceStartup - _lastInterShowAt) < 2f)
-            {
-                Debug.Log("[Ads] App paused near interstitial show → assume ad opened");
-                if (!AdPauseGuard.IsAdShowing) AdPauseGuard.OnAdOpened();
-                _interstitialInProgress = true;
-            }
-            return;
+            StartCoroutine(Co_ConsumeReviveTokenSoon());
         }
-
-        // resume
-        _lastResumeAt = Time.realtimeSinceStartup;
-
-        if (AdPauseGuard.PausedByAd || Time.timeScale == 0f)
-        {
-            Debug.LogWarning("[Ads] App resume → ensure resume");
-            AdPauseGuard.OnAdClosedOrFailed();
-            _rewardInProgress = false;
-            _interstitialInProgress = false;
-
-            if (_rewardWatchdog != null) { StopCoroutine(_rewardWatchdog); _rewardWatchdog = null; }
-            if (_interstitialWatchdog != null) { StopCoroutine(_interstitialWatchdog); _interstitialWatchdog = null; }
-        }
-        Refresh();
     }
 
     void OnApplicationFocus(bool focus)
@@ -123,8 +93,9 @@ public class AdManager : MonoBehaviour, IAdService
         if (focus)
         {
             _lastResumeAt = Time.realtimeSinceStartup;
+            if (!AdReviveToken.HasPending() && Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+            StartCoroutine(Co_ConsumeReviveTokenSoon());
             Refresh();
-            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
         }
     }
 
@@ -328,64 +299,77 @@ public class AdManager : MonoBehaviour, IAdService
         const float TIMEOUT = 12f;
         float deadline = Time.realtimeSinceStartup + TIMEOUT;
 
-        // 0) Resume 직후 디바운스
         if (Time.realtimeSinceStartup - _lastResumeAt < POST_RESUME_DEBOUNCE)
             yield return new WaitForSeconds(POST_RESUME_DEBOUNCE);
 
-        // 1) 포커스 보장
         yield return WaitUntilForeground(0.5f);
         if (!Application.isFocused || !AndroidHasWindowFocus())
         {
-            onFailed?.Invoke();
+            try { onFailed?.Invoke(); } catch { }
             yield break;
         }
 
-        // 2) 준비 대기 (필요 시 로드)
-        if (rc == null) { onFailed?.Invoke(); yield break; }
+        if (rc == null) { try { onFailed?.Invoke(); } catch { } yield break; }
         if (!rc.IsReady && !rc.IsLoading) rc.Init();
         while (!rc.IsReady && Time.realtimeSinceStartup < deadline) yield return null;
-        if (!rc.IsReady) { onFailed?.Invoke(); yield break; }
+        if (!rc.IsReady) { try { onFailed?.Invoke(); } catch { } yield break; }
 
-        // 3) 이벤트 릴레이 준비
+        bool rewardGranted = false;
+        void grantOnce()
+        {
+            if (rewardGranted) return;
+            rewardGranted = true;
+            try { onReward?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
+        }
+
         void Cleanup()
         {
             rc.Opened -= OnOpened;
             rc.Closed -= OnClosedInternal;
             rc.Failed -= OnFailedInternal;
+            rc.Rewarded -= OnRewardedInternal;
             _rewardInProgress = false;
             if (_rewardWatchdog != null) { StopCoroutine(_rewardWatchdog); _rewardWatchdog = null; }
         }
+
         void OnOpened()
         {
             _rewardInProgress = true;
-            AnalyticsManager.Instance?.RewardLog(); // 원하면
+            AnalyticsManager.Instance?.RewardLog();
         }
+
+        void OnRewardedInternal()
+        {
+            grantOnce();
+        }
+
         void OnClosedInternal()
         {
             Cleanup();
-            try { onClosed?.Invoke(); } catch { }
             if (RewardTime > 0) NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
-            Refresh(); // 다음 로드 큐
+            try { onClosed?.Invoke(); } catch { }
+            Refresh();
         }
+
         void OnFailedInternal()
         {
             Cleanup();
             try { onFailed?.Invoke(); } catch { }
-            Refresh(); // 다음 로드 큐
+            Refresh();
         }
 
+        // 구독
         rc.Opened += OnOpened;
         rc.Closed += OnClosedInternal;
         rc.Failed += OnFailedInternal;
+        rc.Rewarded += OnRewardedInternal;
 
-        // 4) 실제 노출 (보상 콜백은 rc.ShowAd의 reward 콜백/Rewarded 이벤트에서 발생)
         _lastRewardShowAt = Time.realtimeSinceStartup;
         _rewardWatchdog = StartCoroutine(Co_Watchdog(isReward: true, timeout: WATCHDOG_SEC));
 
-        bool ok = rc.ShowAd(onReward);
+        bool ok = rc.ShowAd(onReward: grantOnce);
         if (!ok)
         {
-            // CanShowAd()가 순간 false였던 케이스 등
             OnFailedInternal();
         }
     }
@@ -399,6 +383,42 @@ public class AdManager : MonoBehaviour, IAdService
     {
         _bannerBlockCount = Mathf.Max(0, _bannerBlockCount - 1);
         if (_bannerBlockCount == 0) ToggleBanner(true);
+    }
+
+    IEnumerator Co_ConsumeReviveTokenAfterBind()
+    {
+        yield return null;
+
+        if (AdReviveToken.ConsumeIfFresh(180.0))
+        {
+            if (!ReviveGate.IsArmed) ReviveGate.Arm(2f); // 과도한 중복 방지
+
+            Game.Bus?.PublishImmediate(new ContinueGranted());
+            Game.Bus?.PublishImmediate(new RevivePerformed());
+
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+        }
+        else
+        {
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+        }
+    }
+    IEnumerator Co_ConsumeReviveTokenSoon()
+    {
+        // Game.BindAds / Game.Bus 준비까지 최대 수 프레임 대기
+        float until = Time.realtimeSinceStartup + 2f;
+        while ((!Game.IsBound || Game.Bus == null) && Time.realtimeSinceStartup < until)
+            yield return null;
+
+        if (AdReviveToken.ConsumeIfFresh(180.0))
+        {
+            if (!ReviveGate.IsArmed) ReviveGate.Arm(2f); // 잠깐 게임오버 체크 억제
+            Game.Bus?.PublishImmediate(new ContinueGranted());
+            Game.Bus?.PublishImmediate(new RevivePerformed());
+            GameOverGate.Reset("revived"); // 다음 사이클 대비
+                                           // 부활을 먼저 끝내고 UI 해제
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+        }
     }
 
     // (필요하면) 생명주기용 훅

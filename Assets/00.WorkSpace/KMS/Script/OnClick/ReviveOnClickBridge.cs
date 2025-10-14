@@ -16,17 +16,13 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
         Game.Audio.PlayButtonClick();
 
         var ads = Game.Ads;
-        if (ads == null) { FallbackOrGiveUp("[ReviveBridge] Ads service missing"); return; }
+        if (ads == null) { FreeReviveOrGiveUp("[ReviveBridge] Ads service missing"); return; }
 
         if (!ads.IsRewardedReady())
         {
             Debug.LogWarning("[ReviveBridge] Reward not ready → refresh & bail");
             ads.Refresh();
-            if (freeReviveWhenAdsUnavailable)
-            {
-                Debug.LogWarning("[ReviveBridge] FREE REVIVE (dev, not ready)");
-                PublishRevive();
-            }
+            FreeReviveOrGiveUp("[ReviveBridge] not ready");
             return;
         }
 
@@ -36,23 +32,21 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
         ads.ShowRewarded(
             onReward: () =>
             {
-                // 즉시 Revive 금지 - 플래그만
                 _rewardFired = true;
-                Debug.Log("[ReviveBridge] Reward granted (flag set). Will revive on Closed.");
+                Debug.Log("[ReviveBridge] Reward granted (flag set). Will act on Closed.");
             },
             onClosed: () =>
             {
                 try
                 {
+                    // ContinueGranted + RevivePerformed 를 발행하므로 여기선 아무것도 발행 X
                     if (_rewardFired)
                     {
-                        Debug.Log("[ReviveBridge] Closed with reward → PublishRevive()");
-                        PublishRevive();
+                        Debug.Log("[ReviveBridge] Closed with reward → handled by RewardAdController");
                     }
-                    else if (freeReviveWhenAdsUnavailable)
+                    else
                     {
-                        Debug.LogWarning("[ReviveBridge] Closed without reward → FREE REVIVE (dev)");
-                        PublishRevive();
+                        FreeReviveOrGiveUp("[ReviveBridge] Closed without reward");
                     }
                 }
                 finally { _waitingAd = false; }
@@ -61,23 +55,23 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
             {
                 Debug.LogWarning("[ReviveBridge] Reward failed");
                 _waitingAd = false;
-                FallbackOrGiveUp("[ReviveBridge] onFailed");
+                FreeReviveOrGiveUp("[ReviveBridge] onFailed");
             }
         );
     }
 
-    void FallbackOrGiveUp(string reasonLog)
+    void FreeReviveOrGiveUp(string reasonLog)
     {
-        if (freeReviveWhenAdsUnavailable)
+        if (!freeReviveWhenAdsUnavailable)
         {
-            Debug.LogWarning($"{reasonLog} → FREE REVIVE (dev)");
-            PublishRevive();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest());
+            return;
         }
-        else if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest());
-    }
 
-    void PublishRevive()
-    {
-        if (Game.IsBound) Game.Bus.PublishImmediate(new ReviveRequest());
+        Debug.LogWarning($"{reasonLog} → FREE REVIVE (dev)");
+
+        if (!ReviveGate.IsArmed) ReviveGate.Arm(2f);
+        Game.Bus?.PublishImmediate(new ContinueGranted());
+        Game.Bus?.PublishImmediate(new RevivePerformed());
     }
 }

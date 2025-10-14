@@ -74,6 +74,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         private Action<GridReady> _classicEnterHandler;
         private Action<GridReady> _onGridReadyTutorial;
+        private Action<GameResetRequest> _onGameReset;
 
         private EventQueue _bus;
 
@@ -157,18 +158,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     Debug.Log("[Map] Classic enter requested (ForceLoadSave via PendingEnterIntent)");
                 }
             }
-            Game.Bus?.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: false);
+            if (_onGameReset == null)
+                _onGameReset = _ => { _shownOnce = false; };
+            Game.Bus?.Subscribe(_onGameReset, replaySticky: false);
 
-            Game.Bus?.Subscribe<GameResetRequest>(_ =>
-            {
-                _shownOnce = false;
-            }, replaySticky: false);
+            Game.Bus?.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: false);
         }
 
         void OnDisable()
         {
+            if (_onGameReset != null) Game.Bus?.Unsubscribe(_onGameReset);
             Game.Bus?.Unsubscribe<GameOverConfirmed>(OnGameOverConfirmed);
-            Game.Bus?.Unsubscribe<GameResetRequest>(null);
         }
 
         private void ApplySavedGameMode(GameData data)
@@ -768,6 +768,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void EnterClassic(ClassicEnterPolicy policy = ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew)
         {
+            _shownOnce = false;
+            GameOverGate.Reset("EnterClassic");
             ClearAdventureListeners();
             DisableAdventureObjects();
             SetGoalKind(MapGoalKind.None);
@@ -903,6 +905,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void StartNewClassicMap()
         {
             Debug.Log("[MM] StartNewClassicMap()");
+            GameOverGate.Reset("EnterClassic");
 
             var gm = GridManager.Instance;
             if (!gm || gm.gridSquares == null)
@@ -1000,6 +1003,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void EnterStage(int stageNumber)
         {
+            GameOverGate.Reset($"EnterAdventure stage={stageNumber}");
             if (stageNumber <= 0)
             {
                 Debug.LogError($"[MapManager] EnterStage expects 1-based, got {stageNumber}");
@@ -1274,22 +1278,28 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
         private void OnGameOverConfirmed(GameOverConfirmed e)
         {
+            Game.Bus?.Unsubscribe<GameOverConfirmed>(OnGameOverConfirmed);
+            if (ReviveGate.IsArmed) { Debug.Log("[Map] Ignore during revive gate"); return; }
             if (_shownOnce) return;
             _shownOnce = true;
 
-            var mm = MapManager.Instance;
-            var sm = Game.Save;
-            var mode = mm?.CurrentMode ?? GameMode.Classic;
-
-            if (mode == GameMode.Adventure)
+            if (CurrentMode == GameMode.Adventure)
             {
-                sm?.ClearRunState(true);
+                saveManager?.ClearRunState(true);
                 return;
             }
 
-            // Classic 경로
-            sm?.UpdateClassicScore(e.score);
-            sm?.ClearRunState(true);
+            // 1) 점수 반영 + 세이브 정리
+            saveManager?.UpdateClassicScore(e.score);
+            saveManager?.ClearRunState(true);
+
+            // 2) 라이브 보드/손패/상태 리셋
+            GridManager.Instance?.ResetBoardToEmpty();
+            UnityEngine.Object.FindFirstObjectByType<BlockStorage>()?.ClearHand();
+
+            // 3) 새 클래식 시작
+            EnterClassic(ClassicEnterPolicy.ForceNew);
+
             Sfx.GameOver();
         }
         public int GetFruitCurrentByCode(int code)
@@ -1318,6 +1328,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         }
         public void EnterAdventureByIndex0(int idx0)
         {
+            GameOverGate.Reset($"EnterAdventure");
             // 0-based 스테이지 인덱스를 안전하게 클램프
             idx0 = Mathf.Clamp(idx0, 0, _mapList.Length - 1);
 

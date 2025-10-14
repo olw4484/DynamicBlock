@@ -27,7 +27,7 @@ public sealed class GameFlowBridge : MonoBehaviour
         bool tieIsNew = false;
         bool isNewBest = tieIsNew ? (score >= prevHi) : (score > prevHi);
 
-        Game.Bus.PublishImmediate(new GameOverConfirmed(score, isNewBest, "AdventureGiveUp"));
+        GameOverUtil.PublishGameOverOnce(score, isNewBest, "AdventureGiveUp");
     }
 }
 

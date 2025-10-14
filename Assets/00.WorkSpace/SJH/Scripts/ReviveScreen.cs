@@ -14,9 +14,13 @@ public class ReviveScreen : MonoBehaviour
     float _remain;
     Coroutine _timerRoutine;
     bool _adRunning;
+    bool _reviveGranted;
+    bool _giveUpFired;
 
     IAdService Ads => Game.Ads as IAdService;
     bool BusReady => Game.IsBound && Game.Bus != null;
+
+    Coroutine _watchReadyRoutine;
 
 #if UNITY_EDITOR
     [SerializeField] bool debugMockReward;
@@ -32,43 +36,29 @@ public class ReviveScreen : MonoBehaviour
 
     void OnEnable()
     {
-        // 중복 등록 방지 후 등록
-        if (_reviveBtn)
-        {
-            _reviveBtn.onClick.RemoveListener(OnClickReviveReward);
-            _reviveBtn.onClick.AddListener(OnClickReviveReward);
-        }
-        if (_giveUpBtn)
-        {
-            _giveUpBtn.onClick.RemoveListener(OnClickGiveUp);
-            _giveUpBtn.onClick.AddListener(OnClickGiveUp);
-        }
+        if (_reviveBtn) { _reviveBtn.onClick.RemoveListener(OnClickReviveReward); _reviveBtn.onClick.AddListener(OnClickReviveReward); }
+        if (_giveUpBtn) { _giveUpBtn.onClick.RemoveListener(OnClickGiveUp); _giveUpBtn.onClick.AddListener(OnClickGiveUp); }
 
         _adRunning = false;
+        _reviveGranted = false;
+        _giveUpFired = false;
+
         _remain = _windowSeconds;
-        if (_reviveBtn) _reviveBtn.interactable = false; // 초기 비활성
+        if (_reviveBtn) _reviveBtn.interactable = false;
         UpdateUI();
 
-        // 1) 패널 열릴 때 로드
         Ads?.Refresh();
-
-        // 2) 준비감시 코루틴 (0.2s 간격으로 3초 감시)
-        StartCoroutine(Co_WatchReady(3f));
-
-        if (_reviveBtn) _reviveBtn.onClick.AddListener(OnClickReviveReward);
-        if (_giveUpBtn) _giveUpBtn.onClick.AddListener(OnClickGiveUp);
-
+        _watchReadyRoutine = StartCoroutine(Co_WatchReady(3f));
         _timerRoutine = StartCoroutine(CoTimer());
     }
 
     void OnDisable()
     {
+        if (_watchReadyRoutine != null) { StopCoroutine(_watchReadyRoutine); _watchReadyRoutine = null; }
+        if (_timerRoutine != null) { StopCoroutine(_timerRoutine); _timerRoutine = null; }
+
         if (_reviveBtn) _reviveBtn.onClick.RemoveListener(OnClickReviveReward);
         if (_giveUpBtn) _giveUpBtn.onClick.RemoveListener(OnClickGiveUp);
-
-        if (_timerRoutine != null) { StopCoroutine(_timerRoutine); _timerRoutine = null; }
-        if (_reviveBtn) _reviveBtn.onClick.RemoveAllListeners();
-        if (_giveUpBtn) _giveUpBtn.onClick.RemoveAllListeners();
     }
 
     IEnumerator CoTimer()
@@ -78,18 +68,22 @@ public class ReviveScreen : MonoBehaviour
             _remain -= Time.unscaledDeltaTime;
             if (_remain < 0f) _remain = 0f;
             UpdateUI();
-            if (_adRunning) yield break; // 광고 시작되면 타이머 종료
+            if (_adRunning) yield break;
             yield return null;
         }
 
-        // 시간 만료 → 포기 이벤트만 발행
-        if (BusReady) Game.Bus.PublishImmediate(new GiveUpRequest());
+        if (_adRunning || _reviveGranted || ReviveGate.IsArmed) yield break;
+
+        if (!_giveUpFired && BusReady)
+        {
+            _giveUpFired = true;
+            Game.Bus.PublishImmediate(new GiveUpRequest());
+        }
 
         CloseSelf();
 
-        // 0초 되면 전면 광고 실행
         if (_remain <= 0f) AdManager.Instance.ShowInterstitial();
-	}
+    }
 
     IEnumerator Co_WatchReady(float duration)
     {
@@ -119,7 +113,12 @@ public class ReviveScreen : MonoBehaviour
 
     void OnClickGiveUp()
     {
-        if (BusReady) Game.Bus.PublishImmediate(new GiveUpRequest());
+        if (_adRunning || _reviveGranted || ReviveGate.IsArmed) return;
+        if (!_giveUpFired && BusReady)
+        {
+            _giveUpFired = true;
+            Game.Bus.PublishImmediate(new GiveUpRequest());
+        }
         CloseSelf();
     }
 
@@ -128,40 +127,34 @@ public class ReviveScreen : MonoBehaviour
 #if UNITY_EDITOR
         if (debugMockReward)
         {
-            // 광고 없이 리바이브 흐름만 테스트
-            if (BusReady) Game.Bus.PublishImmediate(new ReviveRequest());
-            Debug.Log("[Revive] OnClickReviveReward");
-            CloseSelf();
-            return;
+            if (BusReady) { Game.Bus.PublishImmediate(new ContinueGranted()); Game.Bus.PublishImmediate(new RevivePerformed()); }
+            CloseSelf(); return;
         }
 #endif
         if (_adRunning) return;
-        _adRunning = true;
+        _adRunning = true; _reviveGranted = false;
         if (_timerRoutine != null) { StopCoroutine(_timerRoutine); _timerRoutine = null; }
 
-        if (Ads == null)
-        {
-            Debug.LogWarning("[Revive] Ads facade is null");
-            _adRunning = false;
-            return;
-        }
+        if (Ads == null) { _adRunning = false; return; }
+        if (!Ads.IsRewardedReady()) { StartCoroutine(Co_TryOnceAfterRefresh()); return; }
 
-        if (!Ads.IsRewardedReady())
-        {
-            Debug.LogWarning("[Revive] Not ready. Refresh and retry.");
-            StartCoroutine(Co_TryOnceAfterRefresh());
-            return;
-        }
-
-        Debug.Log("[Revive] ShowRewarded()");
         Ads.ShowRewarded(
-            onReward: () => Debug.Log("[Revive] onReward"),
-            onClosed: () => { Debug.Log("[Revive] onClosed"); _adRunning = false; Ads.Refresh(); CloseSelf(); },
-            onFailed: () => { Debug.LogError("[Revive] onFailed"); _adRunning = false; if (BusReady) Game.Bus.PublishImmediate(new GiveUpRequest()); CloseSelf(); }
+            onReward: () => { _reviveGranted = true; },
+            onClosed: () => {
+                _adRunning = false;
+                Ads.Refresh();
+                CloseSelf();
+            },
+            onFailed: () => {
+                _adRunning = false;
+                if (!_reviveGranted && !_giveUpFired && BusReady)
+                {
+                    _giveUpFired = true;
+                    Game.Bus.PublishImmediate(new GiveUpRequest());
+                }
+                CloseSelf();
+            }
         );
-
-        // 보상 수령 이벤트는 ReviveRequest로 이벤트 분리(이전 답변대로)
-        // -> IAdService 구현에서 onReward 시 Game.Bus.Publish(new ReviveRequest()); 호출해도 됨
     }
 
     IEnumerator Co_TryOnceAfterRefresh()
@@ -171,7 +164,19 @@ public class ReviveScreen : MonoBehaviour
 
         if (Ads != null && Ads.IsRewardedReady())
         {
-            ShowRewarded();
+            Ads.ShowRewarded(
+                onReward: () => { _reviveGranted = true; },
+                onClosed: () => { _adRunning = false; Ads.Refresh(); CloseSelf(); },
+                onFailed: () => {
+                    _adRunning = false;
+                    if (!_reviveGranted && !_giveUpFired && BusReady)
+                    {
+                        _giveUpFired = true;
+                        Game.Bus.PublishImmediate(new GiveUpRequest());
+                    }
+                    CloseSelf();
+                }
+            );
         }
         else
         {

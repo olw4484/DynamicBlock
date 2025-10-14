@@ -34,6 +34,7 @@ public class RewardAdController
     public event Action Closed;
     public event Action Failed;
     public event Action Rewarded;
+    private bool _granted;
 
     public static void ConfigureTestDevices(params string[] testDeviceIds)
     {
@@ -79,19 +80,17 @@ public class RewardAdController
         _ad.Destroy();
         _ad = null;
         _externalOnReward = null;
+        _granted = false;
         IsReady = false;
         IsLoading = false;
     }
 
-    // onReward는 AdManager에서 처리하므로 여기서는 null로 넘겨도 됨
     public bool ShowAd(Action onReward = null, bool ignoreCooldown = false)
     {
-        // 자동노출(쿨다운) 정책은 AdManager에서 관리하지만 혹시 남아있다면 방지
         if (!ignoreCooldown && AdManager.Instance != null &&
             AdManager.Instance.NextRewardTime > DateTime.UtcNow)
         {
             Debug.Log("[Rewarded] Skipped due to cooldown");
-            Failed?.Invoke();
             return false;
         }
 
@@ -99,22 +98,27 @@ public class RewardAdController
         {
             Debug.Log("[Rewarded] Not ready → Load");
             Init();
-            Failed?.Invoke();
             return false;
         }
 
         _externalOnReward = onReward;
-        IsReady = false; // 1로딩 1재생 원칙
+        _granted = false;
+        IsReady = false;
 
         _ad.Show(reward =>
         {
             Debug.Log($"[Rewarded] Granted: {reward.Type} x{reward.Amount}");
+            _granted = true;
+
+            AdReviveToken.MarkGranted();
+
             try { Rewarded?.Invoke(); } catch { }
-            try { _externalOnReward?.Invoke(); } catch { }
+            try { onReward?.Invoke(); } catch { }
         });
 
         return true;
     }
+
 
     private void HookEvents(RewardedAd ad)
     {
@@ -122,6 +126,7 @@ public class RewardAdController
 
         ad.OnAdFullScreenContentOpened += () =>
         {
+            ReviveGate.Arm(10f);
             Debug.Log("[Rewarded] Opened");
             try { Opened?.Invoke(); } catch { }
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
@@ -130,14 +135,26 @@ public class RewardAdController
         ad.OnAdFullScreenContentClosed += () =>
         {
             Debug.Log("[Rewarded] Closed");
-            try { Closed?.Invoke(); } catch { }
-            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
 
-            // Game.UI?.ForceMainUIClean();
+            ReviveGate.Disarm();
+
+            try { Closed?.Invoke(); } catch { }
+
+            if (_granted)
+            {
+                _granted = false;
+
+                Game.Save?.TryConsumeDownedPending(out _);
+
+                Game.Bus?.PublishImmediate(new ContinueGranted());
+                Game.Bus?.PublishImmediate(new RevivePerformed());
+            }
+
+            Game.Bus?.PublishImmediate(new AdFinished());
 
             _externalOnReward = null;
             IsReady = false;
-            Init(); // 다음 로드
+            Init();
         };
 
         ad.OnAdFullScreenContentFailed += (AdError e) =>
@@ -145,14 +162,14 @@ public class RewardAdController
             Debug.LogError($"[Rewarded] Show error: {e}");
             try { Failed?.Invoke(); } catch { }
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
-
+            _granted = false;
             _externalOnReward = null;
             IsReady = false;
             Init();
+
+            ReviveGate.Disarm();
         };
     }
-
-
     private IEnumerator RetryAfter(float sec)
     {
         float until = Time.realtimeSinceStartup + sec;

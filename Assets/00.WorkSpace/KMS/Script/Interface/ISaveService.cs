@@ -8,7 +8,7 @@ using UnityEngine;
 public interface ISaveService
 {
     // Core
-    GameData Data { get; }     // 현재 런타임 GameData (read-only 참조)
+    GameData Data { get; }
     bool LoadOrCreate();
     void Save();
     void ResetData();
@@ -21,4 +21,9 @@ public interface ISaveService
     // Events
     event Action<GameData> AfterLoad;
     event Action<GameData> AfterSave;
+
+    bool TryConsumeDownedPending(out int score, double ttlSeconds = 0);
+    void MarkDownedPending(int score);
+    void ClearClassicRun();
+    void SkipNextSnapshot(string reason = null);
 }

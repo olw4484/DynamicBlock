@@ -629,9 +629,17 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void CheckGameOver()
         {
+            if (ReviveGate.IsArmed)
+            {
+                Debug.Log("[GO-CHECK] skip because ReviveGate.IsArmed");
+                return;
+            }
+
             if (_downedPending) { Debug.Log("[GO-CHECK] skip because downedPending"); return; }
-            if (_downedPending) return; // Revive/포기 선택 대기 중이면 재검사 금지
+
             if (_currentBlocks == null || _currentBlocks.Count == 0) return;
+
+
 
             foreach (var block in _currentBlocks)
                 if (BlockSpawnManager.Instance.CanPlaceShapeData(block.GetShapeData()))
@@ -704,9 +712,9 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             // 3) 상태 복구(가드/일시정지) → 손패 적용 전에!
             _reviveUsed = true;
             _gameOverFired = false;
+            _downedPending = false;
             _paused = false;
             Time.timeScale = 1f;
-
             Game.Bus?.PublishImmediate(new InputLock(false, "Revive"));
 
             // 4) 손패 적용
@@ -727,7 +735,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             // 7) 마지막에 UI/상태 이벤트 발행(패널 닫기 등)
             Game.Bus?.PublishImmediate(new RevivePerformed());
-            Game.Bus?.PublishImmediate(new ContinueGranted());
 
             return true;
         }
@@ -861,7 +868,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         public void SetDependencies(EventQueue bus)
         {
             _bus = bus;
-            if (_subscribed) return; // 중복 가드
+            if (_subscribed) return;
 
             Debug.Log($"[Storage] Bind bus={_bus.GetHashCode()}");
 
@@ -872,6 +879,17 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _bus.Subscribe<ReviveRequest>(OnReviveRequest, replaySticky: false);
             //_bus.Subscribe<GiveUpRequest>(OnGiveUpRequest, replaySticky: false);
             _bus.Subscribe<GameDataChanged>(OnGameDataChanged, replaySticky: true);
+
+            if (_onContinue == null)
+            {
+                _onContinue = OnContinueGranted;
+                _bus.Subscribe(_onContinue, replaySticky: true);
+            }
+
+            _bus.Subscribe<RevivePerformed>(_ => {
+                GridManager.Instance?.ValidateGridConsistency();
+                CheckGameOver();
+            }, replaySticky: false);
 
             _subscribed = true;
         }
@@ -925,7 +943,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             Debug.Log($"[GO] final={final}, cachedHigh={_persistedHigh}, isNewBest={isNewBest}");
 
             _downedPending = false;
-            Game.Bus.PublishImmediate(new GameOverConfirmed(final, isNewBest, reason));
+            GameOverUtil.PublishGameOverOnce(final, isNewBest, reason);
         }
 
         #endregion
@@ -1180,6 +1198,23 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             RefillHand();
             yield return null;
             CheckGameOver();
+        }
+
+        void OnContinueGranted(ContinueGranted e)
+        {
+            if (_gameOverFired || _downedPending)
+            {
+                Debug.Log("[Revive] ContinueGranted received → Apply revive wave");
+                if (!GenerateAdRewardWave())
+                {
+                    Debug.LogWarning("[Revive] GenerateAdRewardWave failed → fallback ConfirmGameOver()");
+                    ConfirmGameOver();
+                }
+            }
+            else
+            {
+                Debug.Log("[Revive] ContinueGranted ignored (not downed)");
+            }
         }
 
         #region Tracker (FruitWave)
