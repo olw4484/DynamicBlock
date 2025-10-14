@@ -30,7 +30,6 @@ public sealed class AchievementUIBinder : MonoBehaviour
 
     void Awake()
     {
-        if (!database) Debug.LogWarning("[AchievementUIBinder] Database not set.");
         Loc.DefaultTable = "LanguageTable";
 
         _data = saveManager ? saveManager.gameData : GameData.NewDefault();
@@ -105,8 +104,6 @@ public sealed class AchievementUIBinder : MonoBehaviour
         {
             var def = v ? v.Definition : null;
             var inDb = def && byId.ContainsKey(def.id);
-            Debug.Log($"[ACH-BIND] view={v?.name} def={(def ? def.id.ToString() : "NULL")} inDb={inDb}");
-            Debug.Log($"[LOC-TEST] table={def.table} key={def.titleKey} -> '{def.GetTitle()}'");
         }
 
         // 3) 메달 UI 반영
