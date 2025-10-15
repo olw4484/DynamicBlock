@@ -281,6 +281,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         {
             CancelCloseDelay(key);
             StopFade(key);
+            if (key == "Main") DumpCanvasTree("Main AFTER ON", p.root);
+            if (key == "Game") DumpCanvasTree("Game AFTER ON", p.root);
+            if (key == "Main" || key == "Game")
+            {
+                EnforceSingleScaler(p.root);
+                DumpCanvasTree($"After Enforce {key}", p.root);
+            }
         }
 
         if (p.isModal)
@@ -440,7 +447,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
                 yield break;
 
             // 스케일이 모두 1.0 근처로 돌아왔으면 즉시 닫기
-            if (AllChildScalesAreOne(p.root)) break;
+            if (AreChildScalesAtInitial(p.root)) break;
 
             t += Time.unscaledDeltaTime;
             yield return null;
@@ -683,9 +690,9 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         ClosePanelImmediate(offKey);
 
         SetPanel(onKey, true, ignoreDelay: true);
+        if (TryGetPanelRoot(onKey, out var onRoot))
+            EnforceSingleScaler(onRoot);
 
-        // ★ 핵심 2: offKey는 이벤트 토글 안 쏨(리스너가 다시 켤 수 있음)
-        // _bus.PublishImmediate(new PanelToggle(offKey, false));
         var onEvt = new PanelToggle(onKey, true);
         _bus.PublishSticky(onEvt, alsoEnqueue: false);
         _bus.PublishImmediate(onEvt);
@@ -749,7 +756,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
                 var cg = EnsureCanvasGroup(p.root);
                 StopFade(key);
                 // ���� ���� ����
-                if (p.restoreScaleOnClose) SnapScalesToOne(p.root);
+                if (p.restoreScaleOnClose) RestoreInitialScales(p.root);
                 cg.alpha = 0f;
                 cg.blocksRaycasts = false;
                 cg.interactable = false;
@@ -912,7 +919,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         UpdateDimByStack();
 
         var cg = EnsureCanvasGroup(p.root);
-        if (p.restoreScaleOnClose) SnapScalesToOne(p.root);
+        if (p.restoreScaleOnClose) RestoreInitialScales(p.root);
         cg.alpha = 0f;
         cg.blocksRaycasts = false;
         cg.interactable = false;
@@ -947,7 +954,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _fadeJobs[key] = StartCoroutine(FadeRoutine(key, p, cg, 0f, 0.12f, false));
         else
         {
-            if (p.restoreScaleOnClose) SnapScalesToOne(p.root);
+            if (p.restoreScaleOnClose) RestoreInitialScales(p.root);
             p.root.SetActive(false);
         }
 
@@ -979,9 +986,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     static void EnsureAllCanvasEnabled(GameObject root)
     {
         if (!root) return;
-        var canvases = root.GetComponentsInChildren<Canvas>(includeInactive: true);
-        for (int i = 0; i < canvases.Length; i++)
-            if (canvases[i]) canvases[i].enabled = true;
+        if (root.TryGetComponent<Canvas>(out var cv))
+            cv.enabled = true;
     }
     private void OnGameOverConfirmed_Classic(GameOverConfirmed e)
     {
@@ -1016,6 +1022,46 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         SetPanel("Revive", false, ignoreDelay: true);
         SetPanel("GameOver", !e.isNewBest);
         SetPanel("NewRecord", e.isNewBest);
+    }
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    void DumpCanvasTree(string tag, GameObject root)
+    {
+        if (!root) { Debug.Log($"[Dump] {tag}: root=null"); return; }
+
+        var cvs = root.GetComponentsInChildren<Canvas>(true);
+        var scals = root.GetComponentsInChildren<CanvasScaler>(true);
+
+        int en = 0;
+        for (int i = 0; i < cvs.Length; i++) if (cvs[i].enabled) en++;
+
+        Debug.Log($"[Dump] {tag}: canvases={cvs.Length} (enabled={en}), scalers={scals.Length}");
+
+        for (int i = 0; i < scals.Length; i++)
+        {
+            var go = scals[i].gameObject;
+            var cv = go.GetComponent<Canvas>();
+            var rt = go.GetComponent<RectTransform>();
+            Debug.Log(
+                $"  - {go.name}  scaler.enabled={scals[i].enabled}  canvas.enabled={cv?.enabled}  " +
+                $"localScale={rt.localScale}  size={rt.rect.size}"
+            );
+        }
+    }
+    static void EnforceSingleScaler(GameObject root)
+    {
+        if (!root) return;
+
+        // 루트의 CanvasScaler만 켜고 나머지는 전부 비활성화
+        var rootScaler = root.GetComponent<CanvasScaler>();
+        var scalers = root.GetComponentsInChildren<CanvasScaler>(true);
+
+        for (int i = 0; i < scalers.Length; i++)
+            scalers[i].enabled = (scalers[i] == rootScaler);
+
+        // (선택) 루트 스케일러가 없으면 경고만 찍고 아무것도 안함
+        if (!rootScaler)
+            Debug.LogWarning($"[UI] {root.name} has no CanvasScaler on root. " +
+                             "Nested scalers will be disabled if present.");
     }
 }
 
