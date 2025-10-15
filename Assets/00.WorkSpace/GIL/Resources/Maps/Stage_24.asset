@@ -18,11 +18,11 @@ MonoBehaviour:
   cols: 8
   fruitWhitelist: 
   fruitImages:
-  - {fileID: 21300000, guid: 41f66eb96ee7a56439e3392a7f40176c, type: 3}
-  - {fileID: 21300000, guid: a2b7e8b5a7211ca4d9a3bdebd4402576, type: 3}
-  - {fileID: 21300000, guid: c986ed67cf205e0409bf1e1daeabb7d2, type: 3}
-  - {fileID: 21300000, guid: 15ad8d2c5f888814381b16104f221be9, type: 3}
-  - {fileID: 21300000, guid: 3737f5f8495636342ad8c3208439d43f, type: 3}
+  - {fileID: 21300000, guid: 5ff9dde9122230d43b91456502831aa7, type: 3}
+  - {fileID: 21300000, guid: 9c21765a206af524ab07d13b49fa0363, type: 3}
+  - {fileID: 21300000, guid: 6d6f0c1c988fcc64e9bb08b2bdd433e6, type: 3}
+  - {fileID: 21300000, guid: 0d9650f7ea890644eb402d62cf1b3f39, type: 3}
+  - {fileID: 21300000, guid: e174776233a161b48a8b57d1ad36d529, type: 3}
   blockImages:
   - {fileID: 21300000, guid: 7f30fe0933401ae4fb928402a66fed79, type: 3}
   - {fileID: 21300000, guid: ff88fb88e0441364c9d0e53545f9f9b7, type: 3}
@@ -42,5 +42,5 @@ MonoBehaviour:
   fruitGoals: 0000000000000000000000000000000000000000
   alphaMin: 0.3
   alphaMax: 0.5
-  charlieMin: 0.3
-  charlieMax: 0.5
+  charlieMin: 0.1
+  charlieMax: 0.3
