@@ -15,12 +15,23 @@ public sealed class GameOverResultRouter : MonoBehaviour
     [SerializeField] private bool hideAllOnEnable = true;
 
     private EventQueue _bus;
+
+    private System.Action<GameOverConfirmed> _onGoc;
+    private System.Action<ContinueGranted> _onCont;
+    private System.Action<AdventureStageCleared> _onCleared;
+    private System.Action<AdventureStageFailed> _onFailed;
+    private System.Action<GameResetRequest> _onReset;
+
     private bool _shownOnce;
     private bool _revived;
+    bool _handledThisDeath;
 
     private void OnEnable()
     {
         _shownOnce = false;
+        _revived = false;
+        _handledThisDeath = false;
+
         if (hideAllOnEnable)
         {
             if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
@@ -31,40 +42,38 @@ public sealed class GameOverResultRouter : MonoBehaviour
         {
             _bus = Game.Bus;
 
-            _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: false);
-            _bus.Subscribe<AdventureStageCleared>(OnAdventureCleared, replaySticky: false);
-            _bus.Subscribe<AdventureStageFailed>(OnAdventureFailed, replaySticky: false);
-
-            _bus.Subscribe<GameResetRequest>(r => {
+            _onGoc = OnGameOverConfirmed;
+            _onCont = _ => { _handledThisDeath = false; _revived = true; };
+            _onCleared = OnAdventureCleared;
+            _onFailed = OnAdventureFailed;
+            _onReset = r =>
+            {
                 _shownOnce = false;
-                _revived = (r.reason == ResetReason.Restart);
+                _handledThisDeath = false;
+                _revived = (r.reason == ResetReason.Restart) || _revived;
                 _bus.ClearSticky<GameOver>();
                 _bus.ClearSticky<GameOverConfirmed>();
                 _bus.ClearSticky<AdventureStageCleared>();
                 _bus.ClearSticky<AdventureStageFailed>();
-            }, replaySticky: false);
+            };
+
+            _bus.Subscribe(_onGoc, replaySticky: true);
+            _bus.Subscribe(_onCont, replaySticky: false);
+            _bus.Subscribe(_onCleared, replaySticky: false);
+            _bus.Subscribe(_onFailed, replaySticky: false);
+            _bus.Subscribe(_onReset, replaySticky: false);
         }));
     }
 
     private void OnDisable()
     {
         if (_bus == null) return;
-        _bus.Unsubscribe<GameOverConfirmed>(OnGameOverConfirmed);
-        _bus.Unsubscribe<AdventureStageCleared>(OnAdventureCleared);
-        _bus.Unsubscribe<AdventureStageFailed>(OnAdventureFailed);
-        _bus.Unsubscribe<GameResetRequest>(OnGameResetRequest);
+        if (_onGoc != null) _bus.Unsubscribe(_onGoc);
+        if (_onCont != null) _bus.Unsubscribe(_onCont);
+        if (_onCleared != null) _bus.Unsubscribe(_onCleared);
+        if (_onFailed != null) _bus.Unsubscribe(_onFailed);
+        if (_onReset != null) _bus.Unsubscribe(_onReset);
     }
-
-    private void OnGameResetRequest(GameResetRequest _)
-    {
-        // 새 게임 진입 직전 항상 깨끗이
-        _shownOnce = false;
-        _bus.ClearSticky<AdventureStageCleared>();
-        _bus.ClearSticky<AdventureStageFailed>();
-        _bus.ClearSticky<GameOverConfirmed>();
-        _bus.ClearSticky<GameOver>();
-    }
-
     private void OnAdventureCleared(AdventureStageCleared e)
     {
         if (_shownOnce) return;
@@ -89,67 +98,39 @@ public sealed class GameOverResultRouter : MonoBehaviour
     // 공통: 부활/연출이 끝나고 확정될 때(최종 분기)
     private void OnGameOverConfirmed(GameOverConfirmed e)
     {
+        if (_handledThisDeath) return;
+        _handledThisDeath = true;
+
         if (_revived) { _revived = false; return; }
+
+        var mode = MapManager.Instance?.CurrentMode ?? GameMode.Classic;
+
+        if (mode != GameMode.Adventure) return;
+
         var mm = MapManager.Instance;
         var sm = Game.Save;
-        var mode = mm?.CurrentMode ?? GameMode.Classic;
-        Debug.Log($"[ResultRouter] GOC: mode={mode}, score={e.score}, reason={e.reason}, newBest={e.isNewBest}");
+        var md = mm?.CurrentMapData;
 
-        if (mode == GameMode.Adventure)
+        MapGoalKind kind = md ? md.goalKind : (mm != null ? mm.CurrentGoalKind : MapGoalKind.Score);
+        bool cleared = ComputeAdventureCleared(kind, md);
+
+        if (cleared)
         {
-            var md = mm?.CurrentMapData;
-            MapGoalKind kind = MapGoalKind.Score;
-             if (md != null) kind = md.goalKind;
-             else if (mm != null) kind = mm.CurrentGoalKind;
-
-            bool cleared = ComputeAdventureCleared(kind, md);
-
-            // Sticky 로 발행 (놓쳐도 재생)
-            if (cleared)
-            {
-                var ev = new AdventureStageCleared(kind, e.score);
-                _bus.PublishSticky(ev, alsoEnqueue: false);
-                _bus.PublishImmediate(ev);
-            }
-            else
-            {
-                var ev = new AdventureStageFailed(kind, e.score);
-                _bus.PublishSticky(ev, alsoEnqueue: false);
-                _bus.PublishImmediate(ev);
-            }
-            if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
-            // 사운드
-            if (cleared) Sfx.StageClear();
-            else Sfx.Stagefail();
-
-            sm?.ClearRunState(true);
-            return;
-        }
-
-        // ===== Classic =====
-        sm?.UpdateClassicScore(e.score);
-        sm?.ClearRunState(true);
-        // 1) UI 분기
-        if (classicNewBestRoot != null)
-        {
-            classicNewBestRoot.SetActive(e.isNewBest);
-            if (classicGameOverRoot) classicGameOverRoot.SetActive(!e.isNewBest);
+            var ev = new AdventureStageCleared(kind, e.score);
+            _bus.PublishSticky(ev, alsoEnqueue: false);
+            _bus.PublishImmediate(ev);
+            Sfx.StageClear();
         }
         else
         {
-            // 신기록 루트가 없다면 기존 게임오버 루트만 ON (프로젝트 상황에 맞게 프리젠터 호출로 바꿔도 OK)
-            if (classicGameOverRoot) classicGameOverRoot.SetActive(true);
+            var ev = new AdventureStageFailed(kind, e.score);
+            _bus.PublishSticky(ev, alsoEnqueue: false);
+            _bus.PublishImmediate(ev);
+            Sfx.Stagefail();
         }
 
-        // 2) 사운드도 분기
-        if (e.isNewBest) Sfx.NewRecord();
-        else Sfx.GameOver();
-
-        // 3) 저장/런상태 정리 (UI 켠 뒤에 해도 무방)
-        sm?.UpdateClassicScore(e.score);
+        if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
         sm?.ClearRunState(true);
-
-        Sfx.GameOver();
     }
 
     private bool ComputeAdventureCleared(MapGoalKind kind, MapData md)

@@ -17,7 +17,7 @@ public class ReviveScreen : MonoBehaviour
     bool _reviveGranted;
     bool _giveUpFired;
 
-    IAdService Ads => Game.Ads as IAdService;
+    IAdService Ads => Game.Ads;
     bool BusReady => Game.IsBound && Game.Bus != null;
 
     Coroutine _watchReadyRoutine;
@@ -28,7 +28,7 @@ public class ReviveScreen : MonoBehaviour
 
     void Awake()
     {
-        if (!_reviveBtn) _reviveBtn = transform.GetComponentInChildren<Button>(true); 
+        if (!_reviveBtn) _reviveBtn = transform.GetComponentInChildren<Button>(true);
         if (!_giveUpBtn) _giveUpBtn = transform.Find("GiveUpButton")?.GetComponent<Button>();
 
         Debug.Log($"[Revive] Wire buttons: revive={_reviveBtn}, giveUp={_giveUpBtn}");
@@ -80,6 +80,9 @@ public class ReviveScreen : MonoBehaviour
             Game.Bus.PublishImmediate(new GiveUpRequest());
         }
 
+        var ui = FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
+        if (ui) ui.OpenResultNowBecauseNoRevive();
+
         CloseSelf();
 
         if (_remain <= 0f) AdManager.Instance.ShowInterstitial();
@@ -114,11 +117,16 @@ public class ReviveScreen : MonoBehaviour
     void OnClickGiveUp()
     {
         if (_adRunning || _reviveGranted || ReviveGate.IsArmed) return;
+
         if (!_giveUpFired && BusReady)
         {
             _giveUpFired = true;
             Game.Bus.PublishImmediate(new GiveUpRequest());
         }
+
+        var ui = FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
+        if (ui) ui.OpenResultNowBecauseNoRevive();
+
         CloseSelf();
     }
 
@@ -139,22 +147,36 @@ public class ReviveScreen : MonoBehaviour
         if (!Ads.IsRewardedReady()) { StartCoroutine(Co_TryOnceAfterRefresh()); return; }
 
         Ads.ShowRewarded(
-            onReward: () => { _reviveGranted = true; },
-            onClosed: () => {
-                _adRunning = false;
-                Ads.Refresh();
-                CloseSelf();
-            },
-            onFailed: () => {
-                _adRunning = false;
-                if (!_reviveGranted && !_giveUpFired && BusReady)
-                {
-                    _giveUpFired = true;
-                    Game.Bus.PublishImmediate(new GiveUpRequest());
-                }
-                CloseSelf();
-            }
-        );
+    onReward: () => { _reviveGranted = true; },
+    onClosed: () =>
+    {
+        _adRunning = false;
+        Ads.Refresh();
+
+        if (_reviveGranted && BusReady)
+        {
+            Game.Bus.PublishImmediate(new ContinueGranted());
+            Game.Bus.PublishImmediate(new RevivePerformed());
+        }
+        else if (!_giveUpFired && BusReady)
+        {
+            _giveUpFired = true;
+            Game.Bus.PublishImmediate(new GiveUpRequest());
+        }
+
+        CloseSelf();
+    },
+    onFailed: () =>
+    {
+        _adRunning = false;
+        if (!_giveUpFired && BusReady)
+        {
+            _giveUpFired = true;
+            Game.Bus.PublishImmediate(new GiveUpRequest());
+        }
+        CloseSelf();
+    }
+);
     }
 
     IEnumerator Co_TryOnceAfterRefresh()
@@ -167,7 +189,8 @@ public class ReviveScreen : MonoBehaviour
             Ads.ShowRewarded(
                 onReward: () => { _reviveGranted = true; },
                 onClosed: () => { _adRunning = false; Ads.Refresh(); CloseSelf(); },
-                onFailed: () => {
+                onFailed: () =>
+                {
                     _adRunning = false;
                     if (!_reviveGranted && !_giveUpFired && BusReady)
                     {

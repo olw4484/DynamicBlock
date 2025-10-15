@@ -120,11 +120,13 @@ public class InterstitialAdController
 
         ad.OnAdFullScreenContentOpened += () => {
             Debug.Log("[Interstitial] Opened");
+            AdStateProbe.IsFullscreenShowing = true;
             Opened?.Invoke();
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
         };
         ad.OnAdFullScreenContentClosed += () => {
             Debug.Log("[Interstitial] Closed");
+            AdStateProbe.IsFullscreenShowing = false;
             IsReady = false;
             Closed?.Invoke();
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
@@ -132,12 +134,14 @@ public class InterstitialAdController
         };
         ad.OnAdFullScreenContentFailed += (AdError e) => {
             Debug.LogError($"[Interstitial] Show error: {e}");
+            AdStateProbe.IsFullscreenShowing = false;
             IsReady = false;
             Failed?.Invoke();
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
             Init();
         };
     }
+
 
     private IEnumerator RetryAfter(float sec)
     {

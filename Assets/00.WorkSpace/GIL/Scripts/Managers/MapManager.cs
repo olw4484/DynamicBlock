@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -161,14 +162,11 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (_onGameReset == null)
                 _onGameReset = _ => { _shownOnce = false; };
             Game.Bus?.Subscribe(_onGameReset, replaySticky: false);
-
-            Game.Bus?.Subscribe<GameOverConfirmed>(OnGameOverConfirmed, replaySticky: false);
         }
 
         void OnDisable()
         {
             if (_onGameReset != null) Game.Bus?.Unsubscribe(_onGameReset);
-            Game.Bus?.Unsubscribe<GameOverConfirmed>(OnGameOverConfirmed);
         }
 
         private void ApplySavedGameMode(GameData data)
@@ -196,6 +194,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             var prev = CurrentGoalKind;
             CurrentGoalKind = kind;
+
+            StageManager.Instance?.SetObjectsByGameModeNGoalKind(CurrentMode, CurrentGoalKind);
 
             Debug.Log($"[MapManager] 어드벤쳐 입장 모드 변경 : {prev} -> {CurrentGoalKind}");
         }
@@ -1275,32 +1275,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 Array.Clear(fruitCurrentsRuntime, 0, fruitCurrentsRuntime.Length);
 
             _fruitUI?.SetCurrents(fruitCurrentsRuntime);
-        }
-        private void OnGameOverConfirmed(GameOverConfirmed e)
-        {
-            Game.Bus?.Unsubscribe<GameOverConfirmed>(OnGameOverConfirmed);
-            if (ReviveGate.IsArmed) { Debug.Log("[Map] Ignore during revive gate"); return; }
-            if (_shownOnce) return;
-            _shownOnce = true;
-
-            if (CurrentMode == GameMode.Adventure)
-            {
-                saveManager?.ClearRunState(true);
-                return;
-            }
-
-            // 1) 점수 반영 + 세이브 정리
-            saveManager?.UpdateClassicScore(e.score);
-            saveManager?.ClearRunState(true);
-
-            // 2) 라이브 보드/손패/상태 리셋
-            GridManager.Instance?.ResetBoardToEmpty();
-            UnityEngine.Object.FindFirstObjectByType<BlockStorage>()?.ClearHand();
-
-            // 3) 새 클래식 시작
-            EnterClassic(ClassicEnterPolicy.ForceNew);
-
-            Sfx.GameOver();
         }
         public int GetFruitCurrentByCode(int code)
         {

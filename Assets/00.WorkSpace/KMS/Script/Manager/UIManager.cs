@@ -54,6 +54,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     private Coroutine _reviveDelayJob;
     [SerializeField] private CanvasGroup _preReviveBlocker;
 
+    [Header("Revive Limits")]
+    [SerializeField] private bool _reviveOncePerRun = true;
+    private bool _reviveConsumedThisRun = false;
+
     private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
@@ -174,55 +178,41 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         {
             _pendingDownedScore = e.score;
             CancelCloseDelay("Revive");
+
+            Debug.Log($"[UI] PlayerDowned: reviveOnce={_reviveOncePerRun}, consumed={_reviveConsumedThisRun}");
+
+            if (_reviveOncePerRun && _reviveConsumedThisRun)
+            {
+                Debug.Log("[UI] No revive left → publish GiveUpRequest");
+                _bus?.PublishImmediate(new GiveUpRequest("no_revive_left"));
+                return;
+            }
+
             if (_reviveDelayJob != null) StopCoroutine(_reviveDelayJob);
             _reviveDelayJob = StartCoroutine(Co_OpenReviveAfterDelay(_reviveDelaySec));
         }, replaySticky: false);
 
         void CancelReviveDelay()
         {
-            if (_reviveDelayJob != null) { StopCoroutine(_reviveDelayJob); _reviveDelayJob = null; }
+            if (_reviveDelayJob != null)
+            {
+                StopCoroutine(_reviveDelayJob);
+                _reviveDelayJob = null;
+            }
             SetPreReviveBlock(false);
-            _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
             Time.timeScale = 1f;
+
+            _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
         }
 
-        _bus.Subscribe<GameOverConfirmed>(e =>
-        {
-            CancelReviveDelay();
-            Game.Audio.StopContinueTimeCheckSE();
-
-            var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
-            bool isAdventure = mm?.CurrentMode == GameMode.Adventure;
-
-            int bestNow = isAdventure ? _lastBestAdventure : _lastBestClassic;
-
-            if (!isAdventure && e.isNewBest)
-            {
-                bestNow = e.score;
-                _lastBestClassic = Mathf.Max(_lastBestClassic, e.score);
-                UpdateBestHUD();
-            }
-
-            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
-            SetAll(_goBestTexts, $"{FormatScore(bestNow)}");
-
-            SetPanel("Revive", false, ignoreDelay: true);
-
-            if (!isAdventure && e.isNewBest && _lastLoggedClassicBest != e.score)
-            {
-                AnalyticsManager.Instance?.ClassicBestLog(e.score);
-                _lastLoggedClassicBest = e.score;
-            }
-
-            if (isAdventure) return;
-
-            SetPanel("GameOver", !e.isNewBest);
-            SetPanel("NewRecord", e.isNewBest);
-
-        }, replaySticky: false);
+        _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed_Classic, replaySticky: false);
 
         _bus.Subscribe<ContinueGranted>(_ =>
         {
+            GameOverGate.Reset("ContinueGranted");
+
+            _reviveConsumedThisRun = true;
+
             CancelReviveDelay();
             Game.Audio.StopContinueTimeCheckSE();
 
@@ -237,6 +227,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             StartCoroutine(CoPostContinueSanity());
         }, replaySticky: false);
 
+
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
 
@@ -247,6 +238,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _lastBestAdventure = data.adventureHighScore;
             UpdateBestHUD();
         }
+
+        _bus.Subscribe<RevivePerformed>(_ =>
+        {
+            _reviveConsumedThisRun = true;
+            GameOverGate.Reset("RevivePerformed");
+            Debug.Log("[UI] RevivePerformed → reviveConsumed = true; GameOverGate reset");
+        }, replaySticky: false);
     }
 
     private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);
@@ -269,6 +267,14 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     public void SetPanel(string key, bool on, bool ignoreDelay = false)
     {
         Debug.Log($"SetPanel {key} -> {on}");
+
+        if (key == "Revive" && on && _reviveOncePerRun && _reviveConsumedThisRun)
+        {
+            Debug.Log("[UI] Block Revive open (revive consumed) → publish GiveUpRequest");
+            _bus?.PublishImmediate(new GiveUpRequest("revive_consumed"));
+            return;
+        }
+
         if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
 
         if (on)
@@ -336,38 +342,36 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     IEnumerator GraceClosePanel(string key, GameObject root, float timeout, bool useCanvasToggle)
     {
         if (!root) yield break;
-
         var cg = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
         cg.blocksRaycasts = false;
         cg.interactable = false;
-        // cg.alpha = 0f;  // <- 주석
 
-        Canvas canvas = null;
-        // if (useCanvasToggle && root.TryGetComponent(out canvas)) canvas.enabled = false;
-
-        // 1) 복귀 대기
         float t = 0f;
         while (t < timeout)
         {
+            if (cg.interactable || cg.blocksRaycasts)
+            {
+                _closeDelayJobs.Remove(key);
+                yield break;
+            }
             if (AreChildScalesAtInitial(root)) break;
             t += Time.unscaledDeltaTime;
             yield return null;
         }
-        if (!AreChildScalesAtInitial(root))
-            RestoreInitialScales(root);
 
+        if (cg.interactable || cg.blocksRaycasts)
+        { _closeDelayJobs.Remove(key); yield break; }
 
+        if (!AreChildScalesAtInitial(root)) RestoreInitialScales(root);
 
-        // 2) 보이는 상태에서 캡처
-        UISnapshotter.Capture(root, key);
-
-        // 3) 이제 가린다 (렌더 비용 절감)
         cg.alpha = 0f;
-        if (useCanvasToggle && root.TryGetComponent(out canvas)) canvas.enabled = false;
+        if (useCanvasToggle && root.TryGetComponent(out Canvas canvas))
+            canvas.enabled = false;
 
-        // 4) 종료
         root.SetActive(false);
+        _closeDelayJobs.Remove(key);
     }
+
 
     private void StartCloseDelay(string key, PanelEntry p)
     {
@@ -442,13 +446,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             yield return null;
         }
 
-        if (!_closeDelayJobs.ContainsKey(key) || !p.root.activeSelf) yield break;
+        if (!_closeDelayJobs.ContainsKey(key) || !p.root) yield break;
 
         StopFade(key);
         if (p.restoreScaleOnClose && !AreChildScalesAtInitial(p.root))
             RestoreInitialScales(p.root);
 
-        _closeDelayJobs[key] = StartCoroutine(GraceClosePanel(key, p.root, 0.0f, true));
+        yield return GraceClosePanel(key, p.root, 0.0f, true);
         _closeDelayJobs.Remove(key);
     }
 
@@ -642,6 +646,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     public void ResetRuntime()
     {
+        _reviveConsumedThisRun = false;
         ForceCloseAllModals();
         SetPanel("GameOver", false);
         SetPanel("NewRecord", false);
@@ -672,12 +677,15 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _bus.PublishImmediate(new ScoreChanged(0));
         }
 
-        SetPanel("GameOver", false, ignoreDelay: true);
-        SetPanel("NewRecord", false, ignoreDelay: true);
-        SetPanel(offKey, false, ignoreDelay: true);
+        ClosePanelImmediate("GameOver");
+        ClosePanelImmediate("NewRecord");
+
+        ClosePanelImmediate(offKey);
+
         SetPanel(onKey, true, ignoreDelay: true);
 
-        _bus.PublishImmediate(new PanelToggle(offKey, false));
+        // ★ 핵심 2: offKey는 이벤트 토글 안 쏨(리스너가 다시 켤 수 있음)
+        // _bus.PublishImmediate(new PanelToggle(offKey, false));
         var onEvt = new PanelToggle(onKey, true);
         _bus.PublishSticky(onEvt, alsoEnqueue: false);
         _bus.PublishImmediate(onEvt);
@@ -693,11 +701,35 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         }
         if (!toGame) _runStartLogged = false;
 
-        NormalizeAllPanelsAlpha();
-        ForceMainUIClean();
+        if (dimOverlay)
+        {
+            if (_dimJob != null) { StopCoroutine(_dimJob); _dimJob = null; }
+            var c = dimOverlay.color; c.a = 0f; dimOverlay.color = c;
+            dimOverlay.enabled = false;
+        }
+
+        if (TryGetPanelRoot("Main", out var mainRoot) && !mainRoot.activeSelf)
+        {
+            if (mainGroup)
+            {
+                mainGroup.alpha = 0f;
+                mainGroup.interactable = false;
+                mainGroup.blocksRaycasts = false;
+            }
+        }
+        else
+        {
+            if (mainGroup)
+            {
+                mainGroup.alpha = 1f;
+                mainGroup.interactable = true;
+                mainGroup.blocksRaycasts = true;
+            }
+        }
 
         _bus.PublishImmediate(new GameResetDone());
     }
+
 
     private void ForceCloseAllModals()
     {
@@ -807,13 +839,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     void CancelReviveDelay()
     {
-        if (_reviveDelayJob != null)
-        {
-            StopCoroutine(_reviveDelayJob);
-            _reviveDelayJob = null;
-        }
+        if (_reviveDelayJob != null) { StopCoroutine(_reviveDelayJob); _reviveDelayJob = null; }
         SetPreReviveBlock(false);
         Time.timeScale = 1f;
+        _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
     }
 
     void SetPreReviveBlock(bool on)
@@ -840,11 +869,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     {
         SetPreReviveBlock(true);
         CancelCloseDelay("Revive");
-
         _bus?.PublishImmediate(new InputLock(true, "PreRevive"));
 
         Time.timeScale = 0f;
         yield return new WaitForSecondsRealtime(Mathf.Max(0f, delay));
+
+        if (_reviveOncePerRun && _reviveConsumedThisRun)
+        {
+            OpenResultNowBecauseNoRevive();
+            yield break;
+        }
 
         SetPreReviveBlock(false);
         SetPanel("Revive", true, ignoreDelay: true);
@@ -927,6 +961,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _closeDelayJobs.Remove(key);
     }
 
+    public void OpenResultNowBecauseNoRevive()
+    {
+        Debug.Log("[UI] OpenResultNowBecauseNoRevive → redirect to GiveUpRequest (no direct UI toggle)");
+        _bus?.PublishImmediate(new GiveUpRequest("ui_bypass"));
+    }
+
+
     // === Utilities ===
     static void SnapScalesToOne(GameObject root)
     {
@@ -942,54 +983,39 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         for (int i = 0; i < canvases.Length; i++)
             if (canvases[i]) canvases[i].enabled = true;
     }
-
-    // Animator/DOTween/Scale �ϵ� ����
-    private static void HardResetVisuals(GameObject root)
+    private void OnGameOverConfirmed_Classic(GameOverConfirmed e)
     {
-        if (!root) return;
+        // ★ 클래식에서만 처리 (어드벤처는 라우터가 처리)
+        var mode = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance?.CurrentMode ?? GameMode.Classic;
+        if (mode != GameMode.Classic) return;
 
-        // Animator: ���� ���� ���� + �����ε�
-        var anims = root.GetComponentsInChildren<Animator>(true);
-        for (int i = 0; i < anims.Length; i++)
+        Debug.Log($"[UI] (Classic) GameOverConfirmed score={e.score} isNewBest={e.isNewBest}");
+
+        CancelReviveDelay();
+        Game.Audio.StopContinueTimeCheckSE();
+
+        // 베스트/텍스트 갱신
+        int bestNow = _lastBestClassic;
+        if (e.isNewBest)
         {
-            var a = anims[i];
-            if (!a) continue;
-            a.updateMode = AnimatorUpdateMode.UnscaledTime;
-            a.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-            a.keepAnimatorStateOnDisable = false; // ��Ȱ�� �� �� ���� X
-            a.Rebind();   // ���ε� �ʱ�ȭ
-            a.Update(0f); // ��� �ݿ�
+            bestNow = e.score;
+            _lastBestClassic = Mathf.Max(_lastBestClassic, e.score);
+            UpdateBestHUD();
+
+            if (_lastLoggedClassicBest != e.score)
+            {
+                AnalyticsManager.Instance?.ClassicBestLog(e.score);
+                _lastLoggedClassicBest = e.score;
+            }
         }
 
-        // DOTween: ������ ���� Kill(complete=true)
-#if DOTWEEN
-    var trs = root.GetComponentsInChildren<Transform>(true);
-    for (int i = 0; i < trs.Length; i++)
-        if (trs[i]) trs[i].DOKill(complete: true);
-#endif
+        SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
+        SetAll(_goBestTexts, $"{FormatScore(bestNow)}");
 
-        // ���� ����
-        SnapScalesToOne(root);
-    }
-
-    // �� ���� 1������ ����(���� ����)
-    private IEnumerator CoOpenPostFix(GameObject root)
-    {
-        yield return null; // ���� ������
-        SnapScalesToOne(root);
-#if DOTWEEN
-    var trs = root.GetComponentsInChildren<Transform>(true);
-    for (int i = 0; i < trs.Length; i++)
-        if (trs[i]) trs[i].DOKill(complete: true);
-#endif
-        var anims = root.GetComponentsInChildren<Animator>(true);
-        for (int i = 0; i < anims.Length; i++)
-        {
-            var a = anims[i]; if (!a) continue;
-            a.keepAnimatorStateOnDisable = false;
-            a.Rebind();
-            a.Update(0f);
-        }
+        // 패널: 클래식 결과창만
+        SetPanel("Revive", false, ignoreDelay: true);
+        SetPanel("GameOver", !e.isNewBest);
+        SetPanel("NewRecord", e.isNewBest);
     }
 }
 

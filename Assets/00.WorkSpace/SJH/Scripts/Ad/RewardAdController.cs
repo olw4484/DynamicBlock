@@ -105,20 +105,19 @@ public class RewardAdController
         _granted = false;
         IsReady = false;
 
+        AdStateProbe.IsRevivePending = true;
+
         _ad.Show(reward =>
         {
             Debug.Log($"[Rewarded] Granted: {reward.Type} x{reward.Amount}");
             _granted = true;
-
             AdReviveToken.MarkGranted();
-
             try { Rewarded?.Invoke(); } catch { }
             try { onReward?.Invoke(); } catch { }
         });
 
         return true;
     }
-
 
     private void HookEvents(RewardedAd ad)
     {
@@ -128,6 +127,8 @@ public class RewardAdController
         {
             ReviveGate.Arm(10f);
             Debug.Log("[Rewarded] Opened");
+            AdStateProbe.IsFullscreenShowing = true;
+            AdStateProbe.IsRevivePending = true;
             try { Opened?.Invoke(); } catch { }
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
         };
@@ -135,8 +136,8 @@ public class RewardAdController
         ad.OnAdFullScreenContentClosed += () =>
         {
             Debug.Log("[Rewarded] Closed");
-
             ReviveGate.Disarm();
+            AdStateProbe.IsFullscreenShowing = false;
 
             try { Closed?.Invoke(); } catch { }
 
@@ -150,6 +151,8 @@ public class RewardAdController
                 Game.Bus?.PublishImmediate(new RevivePerformed());
             }
 
+            AdStateProbe.IsRevivePending = false;
+
             Game.Bus?.PublishImmediate(new AdFinished());
 
             _externalOnReward = null;
@@ -162,12 +165,16 @@ public class RewardAdController
             Debug.LogError($"[Rewarded] Show error: {e}");
             try { Failed?.Invoke(); } catch { }
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+
             _granted = false;
             _externalOnReward = null;
-            IsReady = false;
-            Init();
 
             ReviveGate.Disarm();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+
+            IsReady = false;
+            Init();
         };
     }
     private IEnumerator RetryAfter(float sec)

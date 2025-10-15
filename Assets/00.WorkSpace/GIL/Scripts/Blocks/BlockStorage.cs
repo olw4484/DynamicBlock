@@ -64,8 +64,11 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         private bool _initialized;
         bool _handRestoredTried = false;
         private bool _subscribed;
-        private bool _downedPending; // PlayerDowned 이후 Revive 선택 대기 상태
+        private bool _downedPending;
         bool _skipRestoreThisBoot;
+        bool _gameOverActivated;  
+        bool _downedSent;         
+        bool _gameOverLocked;     
         #endregion
 
         #region Block Image Load
@@ -102,7 +105,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
                 _bus.Unsubscribe<GameResetting>(OnGameResetting);
                 _bus.Unsubscribe<GameResetRequest>(OnGameResetRequest);
                 _bus.Unsubscribe<ReviveRequest>(OnReviveRequest);
-                //_bus.Unsubscribe<GiveUpRequest>(OnGiveUpRequest);
+                _bus.Unsubscribe<GiveUpRequest>(OnGiveUpRequest);
                 _bus.Unsubscribe<GameDataChanged>(OnGameDataChanged);
                 _subscribed = false;
             }
@@ -629,17 +632,20 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         private void CheckGameOver()
         {
-            if (ReviveGate.IsArmed)
+            if (ReviveGate.IsArmed && _downedPending)
             {
-                Debug.Log("[GO-CHECK] skip because ReviveGate.IsArmed");
+                Debug.Log("[GO-CHECK] skip (ReviveGate armed & downedPending)");
                 return;
+            }
+            else if (ReviveGate.IsArmed && !_downedPending)
+            {
+                Debug.LogWarning("[GO-CHECK] stale ReviveGate arm detected → disarm");
+                ReviveGate.Disarm();
             }
 
             if (_downedPending) { Debug.Log("[GO-CHECK] skip because downedPending"); return; }
 
             if (_currentBlocks == null || _currentBlocks.Count == 0) return;
-
-
 
             foreach (var block in _currentBlocks)
                 if (BlockSpawnManager.Instance.CanPlaceShapeData(block.GetShapeData()))
@@ -658,11 +664,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         void FireGameOver(string reason = "NoPlace")
         {
             if (_gameOverFired) { Debug.Log("[Downed] blocked by guard"); return; }
-
             if (oneRevivePerRun && _reviveUsed) { ConfirmGameOverImmediate(reason); return; }
 
             _gameOverFired = true;
             _downedPending = true;
+
+            ReviveGate.Arm();
 
             _lastScore = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
             _lastReason = reason;
@@ -716,6 +723,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _paused = false;
             Time.timeScale = 1f;
             Game.Bus?.PublishImmediate(new InputLock(false, "Revive"));
+
+            ReviveGate.Disarm();
 
             // 4) 손패 적용
             var previews = ApplyReviveWave(wave);
@@ -877,7 +886,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _bus.Subscribe<GridReady>(OnGridReady, replaySticky: true);
             _bus.Subscribe<GameEntered>(OnGameEntered, replaySticky: false);
             _bus.Subscribe<ReviveRequest>(OnReviveRequest, replaySticky: false);
-            //_bus.Subscribe<GiveUpRequest>(OnGiveUpRequest, replaySticky: false);
+            _bus.Subscribe<GiveUpRequest>(OnGiveUpRequest, replaySticky: false);
             _bus.Subscribe<GameDataChanged>(OnGameDataChanged, replaySticky: true);
 
             if (_onContinue == null)
@@ -939,10 +948,12 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
         {
             int final = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
             bool isNewBest = _tieIsNew ? (final >= _persistedHigh) : (final > _persistedHigh);
-
-            Debug.Log($"[GO] final={final}, cachedHigh={_persistedHigh}, isNewBest={isNewBest}");
+            Debug.Log($"[GO] ConfirmGameOverImmediate → publish GameOverConfirmed (final={final}, isNewBest={isNewBest})");
 
             _downedPending = false;
+
+            ReviveGate.Disarm();
+
             GameOverUtil.PublishGameOverOnce(final, isNewBest, reason);
         }
 
@@ -1151,6 +1162,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _gameOverFired = false;
             Time.timeScale = 1f;
             _downedPending = false;
+            ReviveGate.Disarm();
         }
 
 
@@ -1168,10 +1180,10 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             if (!GenerateAdRewardWave()) ConfirmGameOver();
         }
 
-        //private void OnGiveUpRequest(GiveUpRequest _)
-        //{
-        //    ConfirmGameOver();
-        //}
+        private void OnGiveUpRequest(GiveUpRequest _)
+        {
+            if (_gameOverFired) ConfirmGameOver();
+        }
 
         private void OnGameDataChanged(GameDataChanged e)
         {
