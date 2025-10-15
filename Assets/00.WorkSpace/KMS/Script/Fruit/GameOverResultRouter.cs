@@ -23,13 +23,13 @@ public sealed class GameOverResultRouter : MonoBehaviour
     private System.Action<GameResetRequest> _onReset;
 
     private bool _shownOnce;
-    private bool _revived;
+    //private bool _revived;
     bool _handledThisDeath;
 
     private void OnEnable()
     {
         _shownOnce = false;
-        _revived = false;
+        //_revived = false;
         _handledThisDeath = false;
 
         if (hideAllOnEnable)
@@ -43,14 +43,14 @@ public sealed class GameOverResultRouter : MonoBehaviour
             _bus = Game.Bus;
 
             _onGoc = OnGameOverConfirmed;
-            _onCont = _ => { _handledThisDeath = false; _revived = true; };
+            _onCont = _ => { _handledThisDeath = false; Debug.Log("[ResultRouter] ContinueGranted → reset handled flag"); };
             _onCleared = OnAdventureCleared;
             _onFailed = OnAdventureFailed;
             _onReset = r =>
             {
                 _shownOnce = false;
                 _handledThisDeath = false;
-                _revived = (r.reason == ResetReason.Restart) || _revived;
+                //_revived = (r.reason == ResetReason.Restart) || _revived;
                 _bus.ClearSticky<GameOver>();
                 _bus.ClearSticky<GameOverConfirmed>();
                 _bus.ClearSticky<AdventureStageCleared>();
@@ -98,10 +98,11 @@ public sealed class GameOverResultRouter : MonoBehaviour
     // 공통: 부활/연출이 끝나고 확정될 때(최종 분기)
     private void OnGameOverConfirmed(GameOverConfirmed e)
     {
+        Debug.Log($"[ResultRouter] GOC recv handled={_handledThisDeath} score={e.score} newBest={e.isNewBest} reason={e.reason}");
         if (_handledThisDeath) return;
         _handledThisDeath = true;
 
-        if (_revived) { _revived = false; return; }
+        //if (_revived) { _revived = false; return; }
 
         var mode = MapManager.Instance?.CurrentMode ?? GameMode.Classic;
 
