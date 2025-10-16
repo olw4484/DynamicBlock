@@ -46,7 +46,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     private EventQueue _bus;
     private Coroutine _scoreTween;
     private System.Action<GameResetRequest> _onReset;
-
+    private bool _wroteResultThisRun = false;
     private void Awake() => HideAll();
 
     private void OnEnable()
@@ -62,7 +62,6 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     private void OnDisable()
     {
         if (_bus == null) return;
-        if (_onReset != null) _bus.Unsubscribe(_onReset);
         _bus.Unsubscribe<AdventureStageCleared>(OnCleared);
         _bus.Unsubscribe<AdventureStageFailed>(OnFailed);
         _bus.Unsubscribe<GameResetRequest>(OnGameReset);
@@ -75,6 +74,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         _bus.ClearSticky<GameOverConfirmed>();
         _bus.ClearSticky<GameOver>();
         HideAll();
+        _wroteResultThisRun = false;
     }
 
     private void OpenPanel()
@@ -112,6 +112,15 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (Clear_Button) Clear_Button.SetActive(true);
         if (ADResult_ClearPanel) ADResult_ClearPanel.SetActive(true);
         if (Clear_ResultScore) Clear_ResultScore.text = score.ToString("N0");
+        // Firestore 기록 (성공)
+        if (!_wroteResultThisRun)
+        {
+            int idx0 = StageManager.Instance ? StageManager.Instance.GetCurrentStage() : 0; // 0-based
+            string stageName = StageManager.Instance?.GetCurrentStageName() ?? $"Stage_{idx0}";
+            FirestoreManager.EnsureInitialized();
+            FirestoreManager.Instance?.WriteStageData(idx0, true, stageName);
+            _wroteResultThisRun = true;
+        }
 
         // 결과 노출 로깅
         AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "clear");
@@ -151,6 +160,16 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (Fail_Button) Fail_Button.SetActive(true);
         if (ADResult_FailPanel) ADResult_FailPanel.SetActive(true);
         if (Fail_ResultScore) Fail_ResultScore.text = score.ToString("N0");
+
+        // Firestore 기록(실패)
+        if (!_wroteResultThisRun)
+        {
+            int idx0 = StageManager.Instance ? StageManager.Instance.GetCurrentStage() : 0; // 0-based
+            string stageName = StageManager.Instance?.GetCurrentStageName() ?? $"Stage_{idx0}";
+            FirestoreManager.EnsureInitialized();
+            FirestoreManager.Instance?.WriteStageData(idx0, false, stageName);
+            _wroteResultThisRun = true;
+        }
 
         // 결과 노출 로깅
         AnalyticsManager.Instance?.LogEvent("Result_Shown", "result", "fail");
@@ -247,6 +266,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (scoreProgressText) scoreProgressText.text = "";
         if (Clear_ResultScore) Clear_ResultScore.text = "";
         if (Fail_ResultScore) Fail_ResultScore.text = "";
+        _wroteResultThisRun = false;
     }
 
     // 핵심: 모드별 UI 세팅 & 슬라이더/라벨 채우기

@@ -10,6 +10,7 @@ using UnityEngine;
 /// <summary>
 /// 스테이지 데이터 저장 클래스
 /// </summary>
+[JsonObject(MemberSerialization.Fields)]
 public class StageData
 {
 	/// <summary>
@@ -206,6 +207,65 @@ public class FirestoreManager : MonoBehaviour
         if (saveTask.Exception != null) Debug.LogException(saveTask.Exception);
 
         Debug.Log($"총 {cnt}개의 스테이지 데이터 캐싱 완료 : {tempData.Count}");
+    }
+
+    /// <summary>
+    /// 스테이지 결과를 파이어스토어에 적재합니다.
+    /// - 성공이면 Success++, 실패면 Failed++
+    /// - 로컬 StageData에는 첫 클리어 여부를 기록(성공 시)
+    /// </summary>
+    public void WriteStageData(int stageIndex, bool isClear, string stageName = "Stage1")
+    {
+        // 초기화 보장
+        EnsureInitialized();
+
+        if (Firestore == null)
+        {
+            Debug.LogWarning("[Firestore] 초기화되지 않아 기록을 건너뜁니다.");
+            return;
+        }
+        if (stageIndex < 0 || string.IsNullOrEmpty(stageName))
+        {
+            Debug.LogWarning("[Firestore] 잘못된 파라미터로 기록을 건너뜁니다.");
+            return;
+        }
+
+        var docRef = Firestore
+            .Collection("StageData")
+            .Document(stageName)
+            .Collection("Stages")
+            .Document(stageIndex.ToString());
+
+        var updates = new Dictionary<string, object>
+        {
+            { isClear ? "Success" : "Failed", FieldValue.Increment(1) },
+            { "UpdatedAt", FieldValue.ServerTimestamp }
+        };
+
+        docRef.SetAsync(updates, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsFaulted || task.IsCanceled)
+            {
+                Debug.LogWarning($"[Firestore] WriteStageData 실패: stage={stageName}#{stageIndex}, clear={isClear}\n{task.Exception}");
+                return;
+            }
+
+            Debug.Log($"[Firestore] 기록 완료: stage={stageName}#{stageIndex} => {(isClear ? "Success+1" : "Failed+1")}");
+        });
+
+        // 로컬 첫 클리어 기록(성공시에만)
+        if (isClear)
+        {
+            if (StageData == null) StageData = new StageData();
+            StageData.IsClear(stageIndex, stageName);
+            _ = SaveStageDataAsync();
+        }
+    }
+
+    public void TryWriteStageData(int stageIndex, bool? isClearNullable, string stageName = "Stage1")
+    {
+        if (isClearNullable.HasValue)
+            WriteStageData(stageIndex, isClearNullable.Value, stageName);
     }
 
     public async Task SaveStageDataAsync()

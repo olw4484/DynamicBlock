@@ -252,10 +252,10 @@ public class StageManager : MonoBehaviour
             if (goalKind == MapGoalKind.Score) ToggleAll(adventureScoreModeObjects, true);
             else if (goalKind == MapGoalKind.Fruit) ToggleAll(adventureFruitModeObjects, true);
         }
-
-        Debug.Log($"[Stage.Apply] OUT AdvScore={(adventureScoreModeObjects?.Any(go => go && go.activeSelf) == true ? "ON" : "OFF")} " +
-                  $"AdvFruit={(adventureFruitModeObjects?.Any(go => go && go.activeSelf) == true ? "ON" : "OFF")} " +
-                  $"Classic={(classicModeObjects?.Any(go => go && go.activeSelf) == true ? "ON" : "OFF")}");
+        else if (gameMode == GameMode.Tutorial)
+        {
+            ToggleAll(classicModeObjects, true);
+        }
     }
 
 
@@ -316,6 +316,16 @@ public class StageManager : MonoBehaviour
     {
         int idx = (lastPlayedStageIndex >= 0) ? lastPlayedStageIndex : currentStage;
         EnterStageByIndex(idx, "RetryLastStage");
+    }
+
+    /// <summary>
+    /// 현재(방금 플레이/결과 표시 중인) 스테이지의 "이름"을 반환.
+    /// MapData에 이름 필드가 있다면 우선 사용하고, 없으면 "Stage{1-based}"로 폴백.
+    /// </summary>
+    public string GetCurrentStageName()
+    {
+        string name = MapManager.Instance?.CurrentMapData?.stageName;
+        return string.IsNullOrEmpty(name) ? $"Stage_{currentStage}" : name;
     }
 
     #region // Test / QA Debug Button Events
