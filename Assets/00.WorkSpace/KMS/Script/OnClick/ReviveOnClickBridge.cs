@@ -18,11 +18,11 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
         var ads = Game.Ads;
         if (ads == null) { FreeReviveOrGiveUp("[ReviveBridge] Ads service missing"); return; }
 
-        if (!ads.IsRewardedReady())
+        if (!ads.CanOfferReviveNow())
         {
-            Debug.LogWarning("[ReviveBridge] Reward not ready → refresh & bail");
+            Debug.LogWarning("[ReviveBridge] Revive not offerable (cooldown or not ready)");
             ads.Refresh();
-            FreeReviveOrGiveUp("[ReviveBridge] not ready");
+            FreeReviveOrGiveUp("[ReviveBridge] not offerable");
             return;
         }
 
@@ -39,15 +39,11 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
             {
                 try
                 {
-                    // ContinueGranted + RevivePerformed 를 발행하므로 여기선 아무것도 발행 X
+                    // ContinueGranted + RevivePerformed 는 RewardAdController가 발행
                     if (_rewardFired)
-                    {
                         Debug.Log("[ReviveBridge] Closed with reward → handled by RewardAdController");
-                    }
                     else
-                    {
                         FreeReviveOrGiveUp("[ReviveBridge] Closed without reward");
-                    }
                 }
                 finally { _waitingAd = false; }
             },

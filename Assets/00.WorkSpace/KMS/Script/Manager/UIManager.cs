@@ -58,6 +58,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] private bool _reviveOncePerRun = true;
     private bool _reviveConsumedThisRun = false;
 
+    [Header("Result Suppress After Revive")]
+    [SerializeField] private float _resultSuppressAfterReviveSec = 1.0f;
+    private float _resultSuppressUntil = -999f;
+
     private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
@@ -176,14 +180,22 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _bus.Subscribe<PlayerDowned>(e =>
         {
+            Debug.Log($"[UI] PlayerDowned: once={_reviveOncePerRun}, consumed={_reviveConsumedThisRun}, gateArmed={ReviveGate.IsArmed}");
+
             _pendingDownedScore = e.score;
             CancelCloseDelay("Revive");
 
-            Debug.Log($"[UI] PlayerDowned: reviveOnce={_reviveOncePerRun}, consumed={_reviveConsumedThisRun}");
+            ClosePanelImmediate("GameOver");
+            ClosePanelImmediate("NewRecord");
+
+            AdStateProbe.IsRevivePending = true;
+            ReviveGate.Arm(10f);
 
             if (_reviveOncePerRun && _reviveConsumedThisRun)
             {
-                Debug.Log("[UI] No revive left → publish GiveUpRequest");
+                Debug.Log("[UI] Bypass revive (consumed this run) → GiveUpRequest");
+                AdStateProbe.IsRevivePending = false;
+                ReviveGate.Disarm();
                 _bus?.PublishImmediate(new GiveUpRequest("no_revive_left"));
                 return;
             }
@@ -192,41 +204,44 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _reviveDelayJob = StartCoroutine(Co_OpenReviveAfterDelay(_reviveDelaySec));
         }, replaySticky: false);
 
-        void CancelReviveDelay()
-        {
-            if (_reviveDelayJob != null)
-            {
-                StopCoroutine(_reviveDelayJob);
-                _reviveDelayJob = null;
-            }
-            SetPreReviveBlock(false);
-            Time.timeScale = 1f;
-
-            _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
-        }
-
         _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed_Classic, replaySticky: false);
 
         _bus.Subscribe<ContinueGranted>(_ =>
         {
             GameOverGate.Reset("ContinueGranted");
-
-            _reviveConsumedThisRun = true;
+            GameOverUtil.ResetAll("continue_granted");
 
             CancelReviveDelay();
-            Game.Audio.StopContinueTimeCheckSE();
+            AdPauseGuard.OnAdClosedOrFailed();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
 
-            SetPanel("Revive", false, ignoreDelay: true);
-            SetPanel("GameOver", false, ignoreDelay: true);
-            SetPanel("NewRecord", false, ignoreDelay: true);
+            Time.timeScale = 1f;
+            _bus?.PublishImmediate(new InputLock(false, "ContinueGranted"));
+
+            SetPanel("Revive", false, true);
+            SetPanel("GameOver", false, true);
+            SetPanel("NewRecord", false, true);
 
             ForceCloseAllModals();
             NormalizeAllPanelsAlpha();
             ForceMainUIClean();
 
+            // 결과 억제/그레이스
+            _resultSuppressUntil = Time.realtimeSinceStartup + _resultSuppressAfterReviveSec;
+            UIStateProbe.ArmResultGuard(_resultSuppressAfterReviveSec);
+            UIStateProbe.ArmReviveGrace(2.0f);
+            StartCoroutine(CoReviveGrace(2.0f));
+
             StartCoroutine(CoPostContinueSanity());
         }, replaySticky: false);
 
+        _bus.Subscribe<RevivePerformed>(_ =>
+        {
+            _reviveConsumedThisRun = true;
+            GameOverGate.Reset("RevivePerformed");
+            Debug.Log("[UI] RevivePerformed → reviveConsumed = true");
+        }, replaySticky: false);
 
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
@@ -238,16 +253,14 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _lastBestAdventure = data.adventureHighScore;
             UpdateBestHUD();
         }
-
-        _bus.Subscribe<RevivePerformed>(_ =>
-        {
-            _reviveConsumedThisRun = true;
-            GameOverGate.Reset("RevivePerformed");
-            Debug.Log("[UI] RevivePerformed → reviveConsumed = true; GameOverGate reset");
-        }, replaySticky: false);
+        _bus.Subscribe<GameResetDone>(_ => ResetReviveFlags("GameResetDone"), replaySticky: false);
     }
 
-    private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);
+    private void OnPanelToggle(PanelToggle e)
+    {
+        SetPanel(e.key, e.on);
+        if (e.key == "Game" && e.on) ResetReviveFlags("PanelToggle(Game on)");
+    }
 
     private void UpdateBestHUD()
     {
@@ -266,6 +279,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     public void SetPanel(string key, bool on, bool ignoreDelay = false)
     {
+        // --- 부활 래치 중 결과창 열림 차단 ---
+        if ((key == "GameOver" || key == "NewRecord") && on && ReviveLatch.Active)
+        {
+            Debug.Log($"[UI] Block '{key}' open while ReviveLatch active");
+            GameOverUtil.CancelPending("ui_setpanel_block");
+            GameOverGate.Reset("ui_setpanel_block");
+            UpdateProbes();
+            return;
+        }
+
         Debug.Log($"SetPanel {key} -> {on}");
 
         if (key == "Revive" && on && _reviveOncePerRun && _reviveConsumedThisRun)
@@ -300,6 +323,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
                 else
                     PopModalInternal(key);
             }
+            UpdateProbes();
             return;
         }
 
@@ -344,6 +368,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _fadeJobs[key] = StartCoroutine(FadeRoutine(key, p, cg, 1f, 0.15f, true));
 
         if (key == "Revive") Game.Ads?.Refresh();
+        UpdateProbes();
     }
 
     IEnumerator GraceClosePanel(string key, GameObject root, float timeout, bool useCanvasToggle)
@@ -561,6 +586,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         ReorderModals();
         UpdateDimByStack();
+        UpdateProbes();
     }
 
     private void PopModalInternal(string key)
@@ -586,6 +612,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         ReorderModals();
         UpdateDimByStack();
+        UpdateProbes();
     }
 
     private void ReorderModals()
@@ -665,6 +692,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     private void OnGameResetRequest(GameResetRequest req)
     {
+
+        _reviveConsumedThisRun = false;
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
+        UIStateProbe.IsResultOpen = false;
+        UIStateProbe.IsReviveOpen = false;
+
         CancelReviveDelay();
 
         Time.timeScale = 1f;
@@ -850,6 +884,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         SetPreReviveBlock(false);
         Time.timeScale = 1f;
         _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
     }
 
     void SetPreReviveBlock(bool on)
@@ -970,17 +1006,43 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     public void OpenResultNowBecauseNoRevive()
     {
-        Debug.Log("[UI] OpenResultNowBecauseNoRevive → redirect to GiveUpRequest (no direct UI toggle)");
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
+
+        Debug.Log("[UI] OpenResultNowBecauseNoRevive → redirect to GiveUpRequest");
         _bus?.PublishImmediate(new GiveUpRequest("ui_bypass"));
     }
 
 
     // === Utilities ===
-    static void SnapScalesToOne(GameObject root)
+
+    private IEnumerator CoReviveGrace(float sec)
     {
-        if (!root) return;
-        var rts = root.GetComponentsInChildren<RectTransform>(true);
-        for (int i = 0; i < rts.Length; i++) rts[i].localScale = Vector3.one;
+        ReviveGate.Arm(sec);
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.1f, sec));
+    }
+
+    private bool IsPanelActuallyOpen(string key)
+    {
+        if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return false;
+
+        // GameObject가 켜져있고(계층 반영) + (CanvasGroup를 쓰면 알파 1 근처/인터랙티브)
+        bool active = p.root.activeInHierarchy;
+        if (!active) return false;
+
+        if (!p.useCanvasGroup) return true;
+
+        var cg = p.root.GetComponent<CanvasGroup>();
+        if (!cg) return true; // CG 없으면 on으로 간주
+                              // 알파와 Raycast/Interactable로 "실사용 가능" 상태 판정
+        return cg.alpha > 0.99f && cg.blocksRaycasts && cg.interactable;
+    }
+
+    private void UpdateProbes()
+    {
+        UIStateProbe.IsReviveOpen = IsPanelActuallyOpen("Revive");
+        UIStateProbe.IsResultOpen = IsPanelActuallyOpen("GameOver") || IsPanelActuallyOpen("NewRecord");
+        UIStateProbe.IsAnyModalOpen = _modalOrder.Count > 0;
     }
 
     static void EnsureAllCanvasEnabled(GameObject root)
@@ -991,23 +1053,35 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     }
     private void OnGameOverConfirmed_Classic(GameOverConfirmed e)
     {
-        // ★ 클래식에서만 처리 (어드벤처는 라우터가 처리)
-        var mode = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance?.CurrentMode ?? GameMode.Classic;
-        if (mode != GameMode.Classic) return;
+        if (Time.realtimeSinceStartup < _resultSuppressUntil)
+        {
+            Debug.Log("[UI] Suppress GameOverConfirmed (recent revive guard)");
+            GameOverUtil.CancelPending("ui_suppress_recent_revive");
+            GameOverGate.Reset("ui_suppress_recent_revive");
+            UpdateProbes();
+            return;
+        }
 
+        if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed || ReviveLatch.Active)
+        {
+            Debug.Log("[UI] Suppress GameOverConfirmed (router/gate state)");
+            GameOverUtil.CancelPending("ui_suppress_router_gate");
+            GameOverGate.Reset("ui_suppress_router_gate");
+            UpdateProbes();
+            return;
+        }
+
+        // 기존 로직
         Debug.Log($"[UI] (Classic) GameOverConfirmed score={e.score} isNewBest={e.isNewBest}");
-
         CancelReviveDelay();
         Game.Audio.StopContinueTimeCheckSE();
 
-        // 베스트/텍스트 갱신
         int bestNow = _lastBestClassic;
         if (e.isNewBest)
         {
             bestNow = e.score;
             _lastBestClassic = Mathf.Max(_lastBestClassic, e.score);
             UpdateBestHUD();
-
             if (_lastLoggedClassicBest != e.score)
             {
                 AnalyticsManager.Instance?.ClassicBestLog(e.score);
@@ -1018,7 +1092,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
         SetAll(_goBestTexts, $"{FormatScore(bestNow)}");
 
-        // 패널: 클래식 결과창만
         SetPanel("Revive", false, ignoreDelay: true);
         SetPanel("GameOver", !e.isNewBest);
         SetPanel("NewRecord", e.isNewBest);
@@ -1051,17 +1124,26 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     {
         if (!root) return;
 
-        // 루트의 CanvasScaler만 켜고 나머지는 전부 비활성화
-        var rootScaler = root.GetComponent<CanvasScaler>();
         var scalers = root.GetComponentsInChildren<CanvasScaler>(true);
+        if (scalers == null || scalers.Length == 0) return;
+
+        var rootScaler = root.GetComponent<CanvasScaler>();
+        if (!rootScaler) rootScaler = scalers[0];
 
         for (int i = 0; i < scalers.Length; i++)
-            scalers[i].enabled = (scalers[i] == rootScaler);
+            scalers[i].enabled = scalers[i] == rootScaler;
+    }
+    void ResetReviveFlags(string why)
+    {
+        _reviveConsumedThisRun = false;
+        _resultSuppressUntil = -999f;
+        UIStateProbe.ReviveGraceActive = false;
 
-        // (선택) 루트 스케일러가 없으면 경고만 찍고 아무것도 안함
-        if (!rootScaler)
-            Debug.LogWarning($"[UI] {root.name} has no CanvasScaler on root. " +
-                             "Nested scalers will be disabled if present.");
+        // 혹시 남아있을 수 있는 라우터 상태 정리
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
+
+        Debug.Log($"[UI] ResetReviveFlags: {why}");
     }
 }
 

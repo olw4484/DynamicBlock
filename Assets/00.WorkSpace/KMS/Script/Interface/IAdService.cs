@@ -15,4 +15,7 @@ public interface IAdService : IManager
 
     void ToggleBanner(bool show);
     void Refresh();
+
+    bool IsRewardCooldownActive(out float remainSec);
+    bool CanOfferReviveNow();
 }

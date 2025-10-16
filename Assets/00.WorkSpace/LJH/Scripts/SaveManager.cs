@@ -165,20 +165,42 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         }, replaySticky: false);
 
         // ---- 클래식 입장: '대기'만 설정 ----
-        _bus.Subscribe<GameEnterRequest>(e =>
+        _bus.Subscribe<GameEnterIntent>(e =>
         {
             if (e.mode != GameMode.Classic) return;
-            if (AdPauseGuard.IsAdShowing) { Debug.Log("[Save] EnterRequest blocked: ad showing"); return; }
-            if (ReviveGate.IsArmed) { Debug.Log("[Save] EnterRequest blocked by ReviveGate"); return; }
 
-            if (_justRestarted || _skipNextEnterSnapshotApply)
+            if (AdPauseGuard.IsAdShowing
+                || AdStateProbe.IsRevivePending
+                || ReviveGate.IsArmed
+                || UIStateProbe.ReviveGraceActive
+                || UIStateProbe.ResultGuardActive
+                || UIStateProbe.IsReviveOpen
+                || UIStateProbe.IsResultOpen)
             {
-                Debug.Log("[Save] EnterRequest during Restart guard -> skip");
+                Debug.Log($"[Save] EnterIntent blocked by context: " +
+                          $"ad={AdPauseGuard.IsAdShowing}, revivePend={AdStateProbe.IsRevivePending}, " +
+                          $"gate={ReviveGate.IsArmed}, grace={UIStateProbe.ReviveGraceActive}, " +
+                          $"resultGuard={UIStateProbe.ResultGuardActive}, reviveOpen={UIStateProbe.IsReviveOpen}, " +
+                          $"resultOpen={UIStateProbe.IsResultOpen}");
                 return;
             }
 
+            if (_justRestarted || _skipNextEnterSnapshotApply)
+            {
+                Debug.Log("[Save] EnterIntent during Restart/Enter guard -> skip pending consume");
+                return;
+            }
+
+            if (TryConsumeDownedPending(out var lastScore))
+            {
+                Debug.Log("[Save] EnterIntent consumed pending → GameOverConfirmed");
+                ClearClassicRun();
+                bool isNewBest = lastScore > (gameData?.classicHighScore ?? 0);
+                GameOverUtil.PublishGameOverOnce(lastScore, isNewBest, "PendingFinalizedOnEnter");
+                return;
+            }
             SuppressSnapshotsFor(0.5f);
-            ArmSnapshotApply("EnterRequest");
+            ArmSnapshotApply(e.forceLoadSave ? "EnterIntent(force)" : "EnterIntent");
         }, false);
 
         _bus.Subscribe<GameEnterIntent>(e =>
@@ -233,28 +255,41 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         _bus.Subscribe<LoadRequested>(_ => { LoadGame(); /* TryApplyRunSnapshot(); */ }, replaySticky: false);
         _bus.Subscribe<ResetRequested>(_ => { gameData = GameData.NewDefault(DefaultStages); SaveGame(); }, replaySticky: false);
         _bus.Subscribe<GameOverConfirmed>(e =>
-                {
-                    var mm = MapManager.Instance;
-                    bool isAdventure = mm?.CurrentMode == GameMode.Adventure;
-                    if (isAdventure)
-                        UpdateAdventureScore(e.score);
-                    else
-                        UpdateClassicScore(e.score);
-                    if (gameData != null)
-                    {
-                        gameData.bestCombo = Mathf.Max(gameData.bestCombo, _runMaxCombo);
-                        SaveGame();
-                    }
+        {
+            if (AdStateProbe.IsRevivePending ||
+                ReviveGate.IsArmed ||
+                UIStateProbe.ReviveGraceActive ||
+                UIStateProbe.ResultGuardActive ||
+                UIStateProbe.IsReviveOpen)
+            {
+                Debug.Log($"[Save] Skip GameOverConfirmed during revive guard. " +
+                          $"revivePending={AdStateProbe.IsRevivePending}, " +
+                          $"gate={ReviveGate.IsArmed}, grace={UIStateProbe.ReviveGraceActive}, " +
+                          $"resultGuard={UIStateProbe.ResultGuardActive}, reviveOpen={UIStateProbe.IsReviveOpen}");
+                return;
+            }
 
-                    if (e.isNewBest) { Game.Fx.PlayNewScoreAt(); Sfx.NewRecord(); }
-                    else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
+            var mm = MapManager.Instance;
+            bool isAdventure = mm?.CurrentMode == GameMode.Adventure;
+            if (isAdventure)
+                UpdateAdventureScore(e.score);
+            else
+                UpdateClassicScore(e.score);
 
-                    ClearRunState(save: true);
+            if (gameData != null)
+            {
+                gameData.bestCombo = Mathf.Max(gameData.bestCombo, _runMaxCombo);
+                SaveGame();
+            }
 
-                    _runMaxCombo = 0;
+            if (e.isNewBest) { Game.Fx.PlayNewScoreAt(); Sfx.NewRecord(); }
+            else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
 
-                    Debug.Log($"[Save] FINAL total={e.score}, persistedHigh={gameData?.highScore}");
-                }, replaySticky: false);
+            ClearRunState(save: true);
+            _runMaxCombo = 0;
+
+            Debug.Log($"[Save] FINAL total={e.score}, persistedHigh={gameData?.highScore}");
+        }, replaySticky: false);
         _bus.Subscribe<LanguageChangeRequested>(e => SetLanguageIndex(e.index), replaySticky: false);
         _bus.Subscribe<AllClear>(_ => Debug.Log("[Save] ALL CLEAR!"), replaySticky: false);
 
@@ -283,6 +318,27 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
             // 혹시 모를 중복 호출 대비해도 모두 idempotent
         }, replaySticky: true);
+        _bus.Subscribe<ContinueGranted>(_ =>
+        {
+            // 1) 리바이브 컨텍스트에서 즉시 Pending 제거
+            if (gameData != null && gameData.classicDownedPending)
+            {
+                gameData.classicDownedPending = false;
+                gameData.classicDownedScore = 0;
+                gameData.classicDownedUtc = 0;
+                SaveGame();
+                Debug.Log("[Save] ContinueGranted → clear classicDownedPending immediately");
+            }
+
+            // 2) 재진입 스냅샷/적용 가드
+            SkipNextSnapshot("ContinueGranted");
+            SuppressSnapshotsFor(0.5f);
+            _skipNextEnterSnapshotApply = true;
+            StartCoroutine(CoReleaseEnterGuard());
+
+            // 3) 혹시 모를 잔여 발행 차단
+            GameOverGate.Reset("ContinueGranted");
+        }, replaySticky: false);
     }
 
     // ------------- Public Save/Load -------------

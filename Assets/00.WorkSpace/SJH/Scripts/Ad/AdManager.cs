@@ -1,8 +1,9 @@
-﻿using GoogleMobileAds.Api;
+﻿// AdManager.cs
+using _00.WorkSpace.GIL.Scripts.Messages;
+using GoogleMobileAds.Api;
 using System;
 using System.Collections;
 using System.Reflection;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class AdManager : MonoBehaviour, IAdService
@@ -19,28 +20,25 @@ public class AdManager : MonoBehaviour, IAdService
     public int RewardTime = 90;
     public int InterstitialTime = 120;
 
-    public DateTime NextRewardTime = DateTime.MinValue;        // 첫 판부터 가능
+    public DateTime NextRewardTime = DateTime.MinValue;
     public DateTime NextInterstitialTime = DateTime.MinValue;
 
-    const float POST_RESUME_DEBOUNCE = 0.8f; // 재진입 직후 자동 노출 방지용
+    const float POST_RESUME_DEBOUNCE = 0.8f;
     float _lastResumeAt = -999f;
 
-    // 내부 상태
     bool _adsReady;
     bool _guardsWired;
 
     bool _rewardInProgress;
     bool _interstitialInProgress;
 
-    // 광고 시도 시각(초) - realtimeSinceStartup 기준
     float _lastRewardShowAt = -999f;
     float _lastInterShowAt = -999f;
 
     const float WATCHDOG_SEC = 12f;
     Coroutine _rewardWatchdog;
     Coroutine _interstitialWatchdog;
-    
-    // 업적창 배너 광고 숨기기
+
     int _bannerBlockCount = 0;
 
     // ===== Unity =====
@@ -50,7 +48,6 @@ public class AdManager : MonoBehaviour, IAdService
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // 메인스레드 이벤트
         try
         {
             var prop = typeof(MobileAds).GetProperty("RaiseAdEventsOnUnityMainThread",
@@ -59,7 +56,6 @@ public class AdManager : MonoBehaviour, IAdService
         }
         catch { }
 
-        // MobileAds.Initialize는 여기서 직접 호출하지 않고 Gate를 사용
         AdsInitGate.EnsureInit();
         AdsInitGate.WhenReady(() =>
         {
@@ -79,32 +75,42 @@ public class AdManager : MonoBehaviour, IAdService
     void OnEnable() { Game.BindAds(this); }
     void OnDisable() { Game.UnbindAds(this); }
 
-    // 앱 포커스/백그라운드에 따른 강제 복구(콜백 누락 방어)
     void OnApplicationPause(bool pause)
     {
         if (!pause)
         {
-            StartCoroutine(Co_ConsumeReviveTokenSoon());
+            if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed)
+                StartCoroutine(Co_ConsumeReviveTokenSoon());
         }
     }
+
 
     void OnApplicationFocus(bool focus)
     {
         if (focus)
         {
             _lastResumeAt = Time.realtimeSinceStartup;
-            if (!AdReviveToken.HasPending() && Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
-            StartCoroutine(Co_ConsumeReviveTokenSoon());
+
+            AdPauseGuard.OnAdClosedOrFailed();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+            ReviveLatch.Disarm("app focus");
+            Time.timeScale = 1f;
+
+            if (!AdReviveToken.HasPending() && Game.IsBound)
+                Game.Bus.PublishImmediate(new AdFinished());
+            if (!UIStateProbe.IsResultOpen && !UIStateProbe.IsReviveOpen
+                && (AdStateProbe.IsRevivePending || ReviveGate.IsArmed))
+            {
+                StartCoroutine(Co_ConsumeReviveTokenSoon());
+            }
+
             Refresh();
         }
     }
 
     // ===== IAdService =====
-    public void InitAds(bool userConsent)
-    {
-        // 필요시 동의 설정 반영
-        Refresh();
-    }
+    public void InitAds(bool userConsent) => Refresh();
 
     public bool IsRewardedReady() => Reward != null && Reward.IsReady;
     public bool IsInterstitialReady() => Interstitial != null && Interstitial.IsReady;
@@ -126,11 +132,9 @@ public class AdManager : MonoBehaviour, IAdService
 
     private IEnumerator Co_ShowInterstitialSafely(Action onClosed)
     {
-        // 0) Resume 직후 디바운스 (Transsion 회피에 도움)
         if (Time.realtimeSinceStartup - _lastResumeAt < POST_RESUME_DEBOUNCE)
             yield return new WaitForSeconds(POST_RESUME_DEBOUNCE);
 
-        // 1) 창 포커스/앱 포커스 보장 (최소 0.5s 권장)
         yield return WaitUntilForeground(0.5f);
         if (!Application.isFocused || !AndroidHasWindowFocus())
         {
@@ -144,7 +148,6 @@ public class AdManager : MonoBehaviour, IAdService
             yield break;
         }
 
-        // 2) 이벤트 구독/워치독
         void Cleanup()
         {
             if (Interstitial != null)
@@ -177,7 +180,6 @@ public class AdManager : MonoBehaviour, IAdService
             Refresh();
         }
 
-        // 구독 후 Show
         Interstitial.Opened += OnOpened;
         Interstitial.Closed += OnClosedInternal;
         Interstitial.Failed += OnFailedInternal;
@@ -188,11 +190,13 @@ public class AdManager : MonoBehaviour, IAdService
         Interstitial.ShowAd();
         _interstitialWatchdog = StartCoroutine(Co_Watchdog(isReward: false, timeout: WATCHDOG_SEC));
     }
+
     public void ToggleBanner(bool show)
     {
         if (Banner == null) return;
         StartCoroutine(Co_ToggleBannerSafely(show));
     }
+
     IEnumerator Co_ToggleBannerSafely(bool show)
     {
         yield return WaitUntilForeground(0.1f);
@@ -248,32 +252,37 @@ public class AdManager : MonoBehaviour, IAdService
         {
             Debug.LogWarning("[Ads] Watchdog fired → Forcing resume");
             AdPauseGuard.OnAdClosedOrFailed();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+            ReviveGate.Disarm();
+            ReviveLatch.Disarm("watchdog");
+
             if (isReward) _rewardInProgress = false;
             else _interstitialInProgress = false;
         }
     }
 
-    static bool AndroidHasWindowFocus()
+    public static bool AndroidHasWindowFocus()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
-    try
-    {
-        using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
-        using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+        try
         {
-            if (activity == null) return Application.isFocused;
-            using (var window = activity.Call<AndroidJavaObject>("getWindow"))
+            using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
             {
-                if (window == null) return Application.isFocused;
-                using (var decor = window.Call<AndroidJavaObject>("getDecorView"))
+                if (activity == null) return Application.isFocused;
+                using (var window = activity.Call<AndroidJavaObject>("getWindow"))
                 {
-                    if (decor == null) return Application.isFocused;
-                    return decor.Call<bool>("hasWindowFocus");
+                    if (window == null) return Application.isFocused;
+                    using (var decor = window.Call<AndroidJavaObject>("getDecorView"))
+                    {
+                        if (decor == null) return Application.isFocused;
+                        return decor.Call<bool>("hasWindowFocus");
+                    }
                 }
             }
         }
-    }
-    catch { return Application.isFocused; }
+        catch { return Application.isFocused; }
 #else
         return Application.isFocused;
 #endif
@@ -282,19 +291,24 @@ public class AdManager : MonoBehaviour, IAdService
     IEnumerator WaitUntilForeground(float timeoutSec = 1.0f)
     {
         float end = Time.realtimeSinceStartup + timeoutSec;
-        // 최소 한 프레임은 넘긴다 (UI 전환/터치 처리 완료용)
         yield return new WaitForEndOfFrame();
 
         while (Time.realtimeSinceStartup < end)
         {
             if (Application.isFocused && AndroidHasWindowFocus())
-                yield break; // OK, 포그라운드 확정
+                yield break;
             yield return null;
         }
     }
 
     private IEnumerator Co_ShowRewardedSafely(Action onReward, Action onClosed, Action onFailed)
     {
+        if (!CanOfferReviveNow())
+        {
+            try { onFailed?.Invoke(); } catch { }
+            yield break;
+        }
+
         var rc = Reward;
         const float TIMEOUT = 12f;
         float deadline = Time.realtimeSinceStartup + TIMEOUT;
@@ -315,6 +329,9 @@ public class AdManager : MonoBehaviour, IAdService
         if (!rc.IsReady) { try { onFailed?.Invoke(); } catch { } yield break; }
 
         bool rewardGranted = false;
+        bool closed = false;
+        bool committed = false;
+
         void grantOnce()
         {
             if (rewardGranted) return;
@@ -330,11 +347,51 @@ public class AdManager : MonoBehaviour, IAdService
             rc.Rewarded -= OnRewardedInternal;
             _rewardInProgress = false;
             if (_rewardWatchdog != null) { StopCoroutine(_rewardWatchdog); _rewardWatchdog = null; }
+            ReviveLatch.Disarm("cleanup");
         }
+
+        void CommitNow(string reason)
+        {
+            if (committed) return;
+            committed = true;
+
+            Cleanup();
+            grantOnce();
+
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+            ReviveGate.Disarm();
+            GameOverGate.Reset($"revive commit ({reason})");
+
+            // 실제 부활 처리
+            Game.Save?.TryConsumeDownedPending(out _);
+            Game.Bus?.PublishImmediate(new ContinueGranted());
+            Game.Bus?.PublishImmediate(new RevivePerformed());
+            if (Game.IsBound)
+            {
+                Game.Bus.ClearSticky<GameOver>();
+                Game.Bus.ClearSticky<GameOverConfirmed>();
+                Game.Bus.ClearSticky<AdventureStageCleared>();
+                Game.Bus.ClearSticky<AdventureStageFailed>();
+            }
+
+            AdReviveToken.ConsumeIfFresh(double.MaxValue);
+
+            if (RewardTime > 0) NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
+            try { onClosed?.Invoke(); } catch { }
+            Game.Bus?.PublishImmediate(new AdFinished());
+            Debug.Log($"[Ads] Commit revive ({reason})");
+            Refresh();
+        }
+
 
         void OnOpened()
         {
             _rewardInProgress = true;
+            // 보수적으로 전면/대기 켜두기 (플랫폼 콜백 순서 차이 방지)
+            AdStateProbe.IsFullscreenShowing = true;
+            AdStateProbe.IsRevivePending = true;
+            Game.Audio?.StopContinueTimeCheckSE();
             AnalyticsManager.Instance?.RewardLog();
         }
 
@@ -345,16 +402,43 @@ public class AdManager : MonoBehaviour, IAdService
 
         void OnClosedInternal()
         {
+            closed = true;
+
+            // 닫힘 전에 이미 보상 확정이라면 여기서 커밋
+            if (rewardGranted && !committed)
+            {
+                CommitNow("closed_cb");
+                return;
+            }
+
+            // 보상 미지급 케이스
             Cleanup();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+            ReviveGate.Disarm();
+
             if (RewardTime > 0) NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
             try { onClosed?.Invoke(); } catch { }
+            Game.Bus?.PublishImmediate(new AdFinished());
             Refresh();
         }
 
         void OnFailedInternal()
         {
+            // 실패 후라도 보상이 이미 찍혔다면 커밋
+            if (rewardGranted && !committed)
+            {
+                CommitNow("failed_after_granted");
+                return;
+            }
+
             Cleanup();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+            ReviveGate.Disarm();
+
             try { onFailed?.Invoke(); } catch { }
+            Game.Bus?.PublishImmediate(new AdFinished());
             Refresh();
         }
 
@@ -367,12 +451,38 @@ public class AdManager : MonoBehaviour, IAdService
         _lastRewardShowAt = Time.realtimeSinceStartup;
         _rewardWatchdog = StartCoroutine(Co_Watchdog(isReward: true, timeout: WATCHDOG_SEC));
 
+        // ★ Show 직전: 부활 락 + revive pending 켜기
+        ReviveLatch.Arm(20f, "before ShowAd");
+        AdStateProbe.IsRevivePending = true;
+
+        // 커밋 폴백 (닫힘 콜백 누락/지연 방지)
+        IEnumerator CoCommitFallback()
+        {
+            float t = 0f;
+            while (!rewardGranted && t < 8f)
+            {
+                t += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            if (!rewardGranted) yield break;
+
+            t = 0f;
+            while (!closed && AdStateProbe.IsFullscreenShowing && t < 1.5f)
+            {
+                t += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            if (!committed) CommitNow("fallback_timeout");
+        }
+        StartCoroutine(CoCommitFallback());
+
         bool ok = rc.ShowAd(onReward: grantOnce);
         if (!ok)
         {
             OnFailedInternal();
         }
     }
+
     public void PushBannerBlock()
     {
         _bannerBlockCount++;
@@ -391,7 +501,7 @@ public class AdManager : MonoBehaviour, IAdService
 
         if (AdReviveToken.ConsumeIfFresh(180.0))
         {
-            if (!ReviveGate.IsArmed) ReviveGate.Arm(2f); // 과도한 중복 방지
+            if (!ReviveGate.IsArmed) ReviveGate.Arm(2f);
 
             Game.Bus?.PublishImmediate(new ContinueGranted());
             Game.Bus?.PublishImmediate(new RevivePerformed());
@@ -403,25 +513,54 @@ public class AdManager : MonoBehaviour, IAdService
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
         }
     }
+
     IEnumerator Co_ConsumeReviveTokenSoon()
     {
-        // Game.BindAds / Game.Bus 준비까지 최대 수 프레임 대기
         float until = Time.realtimeSinceStartup + 2f;
         while ((!Game.IsBound || Game.Bus == null) && Time.realtimeSinceStartup < until)
             yield return null;
 
+        if (!(AdStateProbe.IsRevivePending || ReviveGate.IsArmed || UIStateProbe.IsReviveOpen))
+            yield break;
+
+        if (UIStateProbe.IsResultOpen)
+            yield break;
+
+        if (UIStateProbe.ResultGuardActive || UIStateProbe.ReviveGraceActive)
+            yield break;
+
+        if (UIStateProbe.IsReviveOpen)
+            yield break;
+
+        if (!AdReviveToken.HasPending()) yield break;
+
         if (AdReviveToken.ConsumeIfFresh(180.0))
         {
-            if (!ReviveGate.IsArmed) ReviveGate.Arm(2f); // 잠깐 게임오버 체크 억제
-            Game.Bus?.PublishImmediate(new ContinueGranted());
+            if (!ReviveGate.IsArmed) ReviveGate.Arm(2f);
             Game.Bus?.PublishImmediate(new RevivePerformed());
-            GameOverGate.Reset("revived"); // 다음 사이클 대비
-                                           // 부활을 먼저 끝내고 UI 해제
+            Game.Bus?.PublishImmediate(new ContinueGranted());
+            GameOverGate.Reset("revived");
             if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
         }
     }
+    public bool IsRewardCooldownActive(out float remainSec)
+    {
+        if (RewardTime <= 0) { remainSec = 0f; return false; }
+        var now = DateTime.UtcNow;
+        if (now < NextRewardTime)
+        {
+            remainSec = (float)(NextRewardTime - now).TotalSeconds;
+            return true;
+        }
+        remainSec = 0f; return false;
+    }
 
-    // (필요하면) 생명주기용 훅
+    public bool CanOfferReviveNow()
+    {
+        float _;
+        return _adsReady && IsRewardedReady() && !IsRewardCooldownActive(out _);
+    }
+
     public void PreInit() { }
     public void Init() { }
     public void PostInit() { }
