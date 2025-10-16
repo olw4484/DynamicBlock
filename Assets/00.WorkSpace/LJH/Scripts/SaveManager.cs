@@ -42,6 +42,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
     // 런타임 상태
     public GameData gameData;
+
     public GameData Data => gameData;
     [NonSerialized] public bool skipNextGridSnapshot = false;
     [SerializeField] private AchievementDatabase achievementDb;
@@ -740,32 +741,28 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     {
         if (gameData == null || storage == null) return false;
 
+        var mode = MapManager.Instance?.CurrentMode ?? GameMode.Classic;
+        // 튜토리얼 & 클래식은 손패 복원 자체를 금지
+        if (mode == GameMode.Tutorial || mode == GameMode.Classic) return false;
+
         var shapes = gameData.currentShapes;
         var sprites = gameData.currentShapeSprites;
         var slots = gameData.currentBlockSlots;
 
-        // 필요시 이름→객체 복원
-        if ((shapes == null || shapes.Count == 0)
-            && (gameData.currentShapeNames?.Count ?? 0) > 0)
+        if ((shapes == null || shapes.Count == 0) && (gameData.currentShapeNames?.Count ?? 0) > 0)
         {
-            shapes = gameData.currentShapeNames.Select(n => GDS.I.GetShapeByName(n)).ToList();
-            sprites = (gameData.currentSpriteNames ?? new List<string>())
-                        .Select(n => GDS.I.GetBlockSpriteByName(n)).ToList();
+            shapes = (gameData.currentShapeNames ?? new List<string>()).Select(n => GDS.I.GetShapeByName(n)).ToList();
+            sprites = (gameData.currentSpriteNames ?? new List<string>()).Select(n => GDS.I.GetBlockSpriteByName(n)).ToList();
+
+            shapes = shapes.Where(s => s != null).ToList();
+            sprites = sprites.Where(s => s != null).ToList();
 
             gameData.currentShapes = shapes;
             gameData.currentShapeSprites = sprites;
         }
 
-        int nShapes = shapes?.Count ?? 0;
-        int nSprites = sprites?.Count ?? 0;
-
-        if (nShapes == 0 || nSprites == 0)
-        {
-            Debug.Log("[Save] TryRestoreBlocksToStorage: empty -> false");
-            return false;
-        }
-
-        int n = Mathf.Min(nShapes, nSprites);
+        int n = Mathf.Min(shapes?.Count ?? 0, sprites?.Count ?? 0);
+        if (n == 0) { Debug.Log("[Save] TryRestoreBlocksToStorage: empty -> false"); return false; }
 
         if (slots != null && slots.Count == n)
             return storage.RebuildBlocksFromLists(shapes, sprites, slots);

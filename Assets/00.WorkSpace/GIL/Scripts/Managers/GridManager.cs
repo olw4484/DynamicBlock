@@ -217,7 +217,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public bool CanPlaceShape(List<Transform> shapeBlocks)
         {
             ClearHoverPreview();
-            // 블록 이미지/점유 처리
             Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>()?.sprite;
 
             if (!TryGetPlacement(shapeBlocks, out var targetSquares))
@@ -227,27 +226,25 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             for (int i = 0; i < shapeBlocks.Count; i++)
             {
                 var t = shapeBlocks[i];
-                if (!t.gameObject.activeSelf) continue;   // 비활성 칸 스킵
+                if (!t.gameObject.activeSelf) continue;
 
-                var sq = targetSquares[j++];              // 타깃 셀 매칭
+                var sq = targetSquares[j++];
 
-                // 손패 셀의 과일 상태 읽기
                 var ss = t.GetComponent<ShapeSquare>();
                 bool hasFruit = ss != null && ss.HasFruit && ss.FruitSprite != null;
 
-                if (hasFruit)
-                {
-                    // 과일 칸: 과일 스프라이트 + isFruit = true
-                    SetCellOccupied(sq.RowIndex, sq.ColIndex, true, ss.FruitSprite, true);
-                }
-                else
-                {
-                    // 일반 칸: 베이스만
-                    SetCellOccupied(sq.RowIndex, sq.ColIndex, true, targetImage, false);
-                }
+                if (hasFruit) SetCellOccupied(sq.RowIndex, sq.ColIndex, true, ss.FruitSprite, true);
+                else SetCellOccupied(sq.RowIndex, sq.ColIndex, true, targetImage, false);
             }
 
             CheckForCompletedLines(targetSquares.Count);
+
+            if (MapManager.Instance?.CurrentMode == GameMode.Tutorial && !TutorialFlags.WasFirstPlacement())
+            {
+                TutorialFlags.MarkFirstPlacement();
+                MapManager.Instance.PromoteTutorialToClassic();
+            }
+
             return true;
         }
 

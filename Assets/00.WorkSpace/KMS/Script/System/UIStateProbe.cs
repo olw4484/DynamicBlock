@@ -17,7 +17,7 @@ public static class UIStateProbe
     }
     public static void DisarmResultGuard()
     {
-        _resultGuardUntil = 0f;
+        _resultGuardUntil = -1f;
     }
 
     public static void ArmOrExtendResultGuard(float seconds)
@@ -36,4 +36,13 @@ public static class UIStateProbe
         yield return new WaitForSecondsRealtime(Mathf.Max(0.2f, sec));
         ReviveGraceActive = false;
     }
+    public static void ResetAllShields()
+    {
+        IsResultOpen = false;
+        IsReviveOpen = false;
+        IsAnyModalOpen = false;
+        ReviveGraceActive = false;
+        DisarmResultGuard();
+    }
 }
+

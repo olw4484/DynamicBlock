@@ -67,7 +67,7 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         {
             PlayInvokeSfx();
 
-            // 0) 공통: 모달/스티키 정리 (리셋 전에!)
+            // 0) 공통: 모달/스티키 정리
             if (closeModalFirst && modalsToClose != null)
             {
                 var bus = Game.Bus;
@@ -79,8 +79,6 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                     bus.PublishImmediate(off);
                     if (k == "GameOver") bus.ClearSticky<GameOver>();
                 }
-
-                // 스티키 이벤트도 선정리 (어드벤처/GO 관련)
                 bus.ClearSticky<AdventureStageCleared>();
                 bus.ClearSticky<AdventureStageFailed>();
                 bus.ClearSticky<GameOverConfirmed>();
@@ -90,9 +88,9 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
             // 1) 게임으로 진입
             if (targetPanel == "Game" || targetPanel == "Score" || targetPanel == "Fruit")
             {
-                var chosenMode = enterMode;
+                var requested = enterMode;
+                var chosenMode = ResolveEffectiveMode(requested);
 
-                // GameResetDone 1회성 구독
                 bool fired = false;
                 System.Action<GameResetDone> handler = null;
                 handler = _ =>
@@ -102,9 +100,8 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                     Game.Bus.Unsubscribe(handler);
                     EnterGameImmediately(chosenMode);
                 };
-                Game.Bus.Subscribe(handler, replaySticky: false);
 
-                // 리셋 요청(패널 전환)
+                Game.Bus.Subscribe(handler, replaySticky: false);
                 Game.Bus.PublishImmediate(new GameResetRequest(targetPanel, ResetReason.ToGame));
                 return;
             }
@@ -120,7 +117,10 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
                 if (!clearRunStateOnClick)
                 {
-                    MapManager.Instance?.saveManager?.SaveRunSnapshot(saveBlocksToo: true, src: SaveManager.SnapshotSource.Manual);
+                    bool saveBlocks = MapManager.Instance?.CurrentMode != GameMode.Classic;
+                    MapManager.Instance?.saveManager?.SaveRunSnapshot(
+                        saveBlocksToo: saveBlocks,
+                        src: SaveManager.SnapshotSource.Manual);
                 }
                 else
                 {
@@ -152,9 +152,12 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         }
     }
 
+
     /// <summary>리셋 완료 후 즉시 모드별 초기화</summary>
     private void EnterGameImmediately(GameMode mode)
     {
+        mode = ResolveEffectiveMode(mode);
+
         var map = MapManager.Instance;
         var stage = StageManager.Instance;
         if (!map)
@@ -166,15 +169,14 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         switch (mode)
         {
             case GameMode.Classic:
-                // 어드벤처 잔재 정리
                 map.ClearAdventureListeners();
                 map.DisableAdventureObjects();
-
                 map.SetGameMode(GameMode.Classic);
                 map.SetGoalKind(MapGoalKind.None);
                 stage?.SetObjectsByGameModeNGoalKind(GameMode.Classic, MapGoalKind.None);
 
-                map.RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceLoadSave);
+                var policy = MapManager.ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew;
+                map.RequestClassicEnter(policy);
                 break;
 
             case GameMode.Adventure:
@@ -194,18 +196,23 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 break;
 
             case GameMode.Tutorial:
-                // 어드벤처 잔재 정리
                 map.ClearAdventureListeners();
                 map.DisableAdventureObjects();
-
                 map.SetGameMode(GameMode.Tutorial);
                 map.SetGoalKind(MapGoalKind.None);
                 stage?.SetObjectsByGameModeNGoalKind(GameMode.Tutorial, MapGoalKind.None);
-
                 map.RequestTutorialApply();
                 break;
         }
     }
+
+    private static GameMode ResolveEffectiveMode(GameMode requested)
+    {
+        return (requested == GameMode.Tutorial && TutorialFlags.WasFirstPlacement())
+            ? GameMode.Classic
+            : requested;
+    }
+
 
     void PlayInvokeSfx()
     {

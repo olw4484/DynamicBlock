@@ -21,6 +21,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public List<ShapeData> GenerateWaveV170(int count = 3)
         {
+            Debug.Log($"[V170/CALL] GenerateWaveV170 enter, mode={MapManager.Instance?.CurrentMode}, injected={TutorialFlags.WasTutorialHandInjected()} count={count}");
+
+            //if (MapManager.Instance?.CurrentMode == GameMode.Tutorial && !TutorialFlags.WasTutorialHandInjected())
+            //{
+            //    var tutWave = new List<ShapeData>(count);
+            //    for (int i = 0; i < count; i++) tutWave.Add(null);
+            //    int center = Mathf.Clamp(count / 2, 0, count - 1);
+            //    tutWave[center] = MakeSquare2x2();
+            //
+            //    Debug.Log($"[V170/TUTORIAL] override inject 2x2 at center={center}");
+            //    TutorialFlags.MarkHandInjected();
+            //    return tutWave;
+            //}
+
             TBegin("GenerateWaveV170 : 문서 탭3 기반 웨이브 생성 시작");
 
             var gm = GridManager.Instance;
@@ -43,9 +57,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             var wave = new List<ShapeData>(count);
             var fits = new List<FitInfo>(count);
-            var perShapeCount     = new Dictionary<string, int>();
+            var perShapeCount = new Dictionary<string, int>();
             var excludedByPenalty = new HashSet<string>();
-            var excludedByDupes   = new HashSet<string>();
+            var excludedByDupes = new HashSet<string>();
 
             for (int i = 0; i < count; i++)
             {
@@ -74,7 +88,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                         list.Add((s, fit));
                     }
                 }
-                
+
                 int totalPlaceables = 0;
                 foreach (var kv in groups) totalPlaceables += kv.Value.Count;
                 TDo($"배치 가능한 블록 {totalPlaceables} 개 발견");            // b 요약
@@ -102,8 +116,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 foreach (var kv in groups)
                 {
                     int tileCount = Mathf.Max(1, kv.Key);
-                    int cnt   = Mathf.Max(1, kv.Value.Count);
-                    float w   = Mathf.Pow(1f / tileCount, Mathf.Max(0.0001f, v170_exponentA)) * Mathf.Pow(cnt, v170_exponentBeta);
+                    int cnt = Mathf.Max(1, kv.Value.Count);
+                    float w = Mathf.Pow(1f / tileCount, Mathf.Max(0.0001f, v170_exponentA)) * Mathf.Pow(cnt, v170_exponentBeta);
                     groupWeights.Add((tileCount, w));
                 }
 
@@ -112,7 +126,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 T("b.ii. 타일 수 가중치 계산을 통해 블록 그룹 선택 / 기획서");
                 TDo($"{groups.Count} 개 그룹중 {chosenTile} 그룹 선정");
 
-                var inGroup   = groups[chosenTile];
+                var inGroup = groups[chosenTile];
                 var inWeights = new List<(int idx, float w)>(inGroup.Count);
                 for (int k = 0; k < inGroup.Count; k++)
                 {
@@ -123,7 +137,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
 
                 int chosenIdx = WeightedPickIndex(inWeights, out _);
-                var chosen    = inGroup[chosenIdx];
+                var chosen = inGroup[chosenIdx];
 
                 T("b.iii. 그룹 내 난이도 가중치 계산을 통해 블록 선정 / 기획서");
                 TDo($"{inGroup.Count} 그룹 내부에서 {chosen.s.Id} 선정");
@@ -148,9 +162,9 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 {
                     // b.iv. 게이트
                     T($"b.iv. 블록의 타일수가 {chosenTiles} 개이기 때문에 추가 확률 진행 / 기획서");
-                    float gateProb  = Mathf.Pow(1f / chosenTiles, Mathf.Max(0.0001f, alpha));
-                    float gateRoll  = Random.value;
-                    bool  gatePassed = gateRoll <= gateProb;
+                    float gateProb = Mathf.Pow(1f / chosenTiles, Mathf.Max(0.0001f, alpha));
+                    float gateRoll = Random.value;
+                    bool gatePassed = gateRoll <= gateProb;
                     T(gatePassed ? "b.iv.1. 확률 통과 성공, c로 이동"
                                  : "b.iv.1. 확률 통과 실패, b.iv.2 이동");
 
@@ -159,7 +173,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                     if (!gatePassed || !slotSuccess)
                     {
                         if (!slotSuccess) TDo("슬롯 성공/실패 롤: 실패 → b.iv.2 이동");
-                        if (!gatePassed)  TDo("게이트 실패 → b.iv.2 이동");
+                        if (!gatePassed) TDo("게이트 실패 → b.iv.2 이동");
 
                         // b.iv.2: 라인 보정 진입
                         if (TryApplyLineCorrectionOnce(board, excludedByPenalty, excludedByDupes, out var sLC, out var fLC))
@@ -238,11 +252,34 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 for (int c = 0; c < cols; c++)
                     if (!board[r, c]) zeros++;
 
-            if      (zeros >= 40) return 1.2f;
+            if (zeros >= 40) return 1.2f;
             else if (zeros >= 30) return 1.1f;
             else if (zeros >= 20) return 1.0f;
             else if (zeros >= 10) return 0.9f;
-            else                  return 0.8f;
+            else return 0.8f;
+        }
+        private ShapeData MakeSquare2x2()
+        {
+            var sd = ScriptableObject.CreateInstance<ShapeData>();
+            if (sd.rows == null || sd.rows.Length != 5) sd.rows = new ShapeRow[5];
+
+            for (int r = 0; r < 5; r++)
+            {
+                if (sd.rows[r] == null) sd.rows[r] = new ShapeRow();
+                if (sd.rows[r].columns == null || sd.rows[r].columns.Length != 5)
+                    sd.rows[r].columns = new bool[5];
+
+                for (int c = 0; c < 5; c++) sd.rows[r].columns[c] = false;
+            }
+
+            sd.rows[2].columns[2] = true; sd.rows[2].columns[3] = true;
+            sd.rows[3].columns[2] = true; sd.rows[3].columns[3] = true;
+
+            sd.activeBlockCount = 4;
+            sd.chanceForSpawn = 4;
+            sd.difficulty = 0;
+            sd.Id = "TUTORIAL_2x2";
+            return sd;
         }
     }
 }

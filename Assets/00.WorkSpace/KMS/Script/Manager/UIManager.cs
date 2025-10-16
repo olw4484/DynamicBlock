@@ -1071,7 +1071,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             return;
         }
 
-        // 기존 로직
         Debug.Log($"[UI] (Classic) GameOverConfirmed score={e.score} isNewBest={e.isNewBest}");
         CancelReviveDelay();
         Game.Audio.StopContinueTimeCheckSE();

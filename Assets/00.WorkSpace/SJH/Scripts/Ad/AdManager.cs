@@ -41,6 +41,12 @@ public class AdManager : MonoBehaviour, IAdService
 
     int _bannerBlockCount = 0;
 
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+    [Header("DEV / QA")]
+    public bool ForceDevSimulateReward = true;
+    public float DevSimDelay = 0.2f;
+#endif
+
     // ===== Unity =====
     void Awake()
     {
@@ -112,7 +118,13 @@ public class AdManager : MonoBehaviour, IAdService
     // ===== IAdService =====
     public void InitAds(bool userConsent) => Refresh();
 
-    public bool IsRewardedReady() => Reward != null && Reward.IsReady;
+    public bool IsRewardedReady()
+    {
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        if (ForceDevSimulateReward) return true;
+#endif
+        return Reward != null && Reward.IsReady;
+    }
     public bool IsInterstitialReady() => Interstitial != null && Interstitial.IsReady;
 
     public void ShowRewarded(Action onReward, Action onClosed = null, Action onFailed = null)
@@ -303,6 +315,23 @@ public class AdManager : MonoBehaviour, IAdService
 
     private IEnumerator Co_ShowRewardedSafely(Action onReward, Action onClosed, Action onFailed)
     {
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        // Dev/Editor: 시뮬레이터 켜져 있으면 실제 SDK 호출 없이 즉시 성공 커밋
+        if (ForceDevSimulateReward)
+        {
+            Debug.Log("[Ads] DEV simulate rewarded flow");
+            Game.Audio?.StopContinueTimeCheckSE(); // 패널 타임체크음 끄기
+            yield return new WaitForSecondsRealtime(Mathf.Max(0.05f, DevSimDelay));
+
+            // 실제 보상 콜백과 동일하게 동작
+            try { onReward?.Invoke(); } catch { }
+
+            // CommitNow와 동일한 효과를 별도 함수로 추출해서 사용하면 깔끔
+            DevCommitRevive("dev_simulated", onClosed);
+            yield break;
+        }
+#endif
         if (!CanOfferReviveNow())
         {
             try { onFailed?.Invoke(); } catch { }
@@ -355,12 +384,16 @@ public class AdManager : MonoBehaviour, IAdService
             if (committed) return;
             committed = true;
 
+            UIStateProbe.ResetAllShields();
+
             Cleanup();
             grantOnce();
 
+            AdPauseGuard.OnAdClosedOrFailed();
             AdStateProbe.IsFullscreenShowing = false;
             AdStateProbe.IsRevivePending = false;
             ReviveGate.Disarm();
+            ReviveLatch.Disarm("commit");
             GameOverGate.Reset($"revive commit ({reason})");
 
             // 실제 부활 처리
@@ -451,7 +484,7 @@ public class AdManager : MonoBehaviour, IAdService
         _lastRewardShowAt = Time.realtimeSinceStartup;
         _rewardWatchdog = StartCoroutine(Co_Watchdog(isReward: true, timeout: WATCHDOG_SEC));
 
-        // ★ Show 직전: 부활 락 + revive pending 켜기
+        // Show 직전: 부활 락 + revive pending 켜기
         ReviveLatch.Arm(20f, "before ShowAd");
         AdStateProbe.IsRevivePending = true;
 
@@ -480,6 +513,21 @@ public class AdManager : MonoBehaviour, IAdService
         if (!ok)
         {
             OnFailedInternal();
+            yield break;
+        }
+
+        float openDeadline = Time.realtimeSinceStartup + 1.2f;
+        while (Time.realtimeSinceStartup < openDeadline
+               && !_rewardInProgress
+               && !AdStateProbe.IsFullscreenShowing)
+        {
+            yield return null;
+        }
+        if (!_rewardInProgress && !AdStateProbe.IsFullscreenShowing)
+        {
+            Debug.LogWarning("[Ads] Open-timeout → treating as failed");
+            OnFailedInternal();
+            yield break;
         }
     }
 
@@ -558,8 +606,52 @@ public class AdManager : MonoBehaviour, IAdService
     public bool CanOfferReviveNow()
     {
         float _;
-        return _adsReady && IsRewardedReady() && !IsRewardCooldownActive(out _);
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        if (ForceDevSimulateReward && !IsRewardCooldownActive(out _))
+        {
+            Debug.Log("[Ads] gate=OK (DEV simulate)");
+            return true;
+        }
+#endif
+
+        if (!_adsReady) return false;
+        if (IsRewardCooldownActive(out _)) return false;
+        return IsRewardedReady();
     }
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+    private void DevCommitRevive(string reason, Action onClosed)
+    {
+        if (_rewardWatchdog != null) { StopCoroutine(_rewardWatchdog); _rewardWatchdog = null; }
+        _rewardInProgress = false;
+        AdPauseGuard.OnAdClosedOrFailed();
+        AdStateProbe.IsFullscreenShowing = false;
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
+        ReviveLatch.Disarm("dev-commit");
+        GameOverGate.Reset($"revive commit ({reason})");
+
+        UIStateProbe.ResetAllShields();
+
+        Game.Save?.TryConsumeDownedPending(out _);
+        Game.Bus?.PublishImmediate(new ContinueGranted());
+        Game.Bus?.PublishImmediate(new RevivePerformed());
+        if (Game.IsBound)
+        {
+            Game.Bus.ClearSticky<GameOver>();
+            Game.Bus.ClearSticky<GameOverConfirmed>();
+            Game.Bus.ClearSticky<AdventureStageCleared>();
+            Game.Bus.ClearSticky<AdventureStageFailed>();
+        }
+        AdReviveToken.ConsumeIfFresh(double.MaxValue);
+
+        if (RewardTime > 0) NextRewardTime = DateTime.UtcNow.AddSeconds(RewardTime);
+
+        try { onClosed?.Invoke(); } catch { }
+        Game.Bus?.PublishImmediate(new AdFinished());
+        Refresh();
+    }
+#endif
 
     public void PreInit() { }
     public void Init() { }

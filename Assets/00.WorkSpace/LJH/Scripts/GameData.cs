@@ -90,6 +90,10 @@ public class GameData
     public List<UnlockedAchievement> unlocked = new();
     public List<AchievementTierStamp> achievementTierStamps = new();
 
+    // ===== 튜토리얼 =====
+    public bool tutorialDone;
+    public bool tutorialHandInjected;
+
     // ---------- 팩토리 ----------
     public static GameData NewDefault(int stages = 200)
     {

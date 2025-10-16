@@ -203,8 +203,17 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         // 튜토리얼 종료시 호출 지점에서:
         public void OnTutorialCompleted()
         {
+            // 1) 플래그
+            TutorialFlags.MarkTutorialDone();
+
+            // 2) 런/손패/점수 클리어 (핸드 복원 방지)
+            saveManager?.ClearRunState(true);
+            ScoreManager.Instance?.ResetAll();
+            UnityEngine.Object.FindFirstObjectByType<BlockStorage>()?.ClearHand();
+
+            // 3) 클래식 진입(새 게임)
             SetGameMode(GameMode.Classic);
-            // TODO : 튜토리얼을 진행하고 나서 원하는 진입 로직 호출
+            RequestClassicEnter(MapManager.ClassicEnterPolicy.ForceNew);
         }
 
         public void PostInit() { }
@@ -730,7 +739,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             try { if (_onGridReadyTutorial != null) Game.Bus?.Unsubscribe(_onGridReadyTutorial); } catch { }
             _onGridReadyTutorial = null;
 
-            SetMapDataToGrid(index, publishGridReady: false);
+            ClearAdventureListeners();
+            DisableAdventureObjects();
+            SetGameMode(GameMode.Tutorial);
+            SetGoalKind(MapGoalKind.None);
+            StageManager.Instance?.SetObjectsByGameModeNGoalKind(GameMode.Tutorial, MapGoalKind.None);
+
+            saveManager?.ClearRunState(true);
+            saveManager?.SkipNextSnapshot("EnterTutorial");
+            saveManager?.SuppressSnapshotsFor(1.0f);
+            if (saveManager?.gameData != null) saveManager.gameData.isClassicModePlaying = false;
+
+            TutorialRuntime.Reset();
+
+            SetMapDataToGrid(index, publishGridReady: true);
             StartCoroutine(Co_PostEnterSignals(GameMode.Tutorial));
         }
 
@@ -739,7 +761,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _tutorialApplyTicket++;
             int myTicket = _tutorialApplyTicket;
 
-            if (_onGridReadyTutorial != null) { try { Game.Bus?.Unsubscribe(_onGridReadyTutorial); } catch { } _onGridReadyTutorial = null; }
+            if (_onGridReadyTutorial != null) { try { Game.Bus?.Unsubscribe(_onGridReadyTutorial); } catch { } }
+            _onGridReadyTutorial = null;
 
             _pendingTutorialApply = true;
             _pendingIndex = index;
@@ -754,15 +777,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 ApplyTutorialNow(_pendingIndex);
             };
             Game.Bus?.Subscribe(_onGridReadyTutorial, replaySticky: true);
-        }
-
-        IEnumerator Co_PostGridReadyOnce(int rows, int cols)
-        {
-            // 동기 재귀 끊기 위해 다음 프레임에 한 번만
-            yield return null;
-            Game.Bus?.PublishSticky(new GridReady(rows, cols), alsoEnqueue: false);
-            // Immediate는 되도록 생략 (필요 시 한 줄만)
-            // Game.Bus?.PublishImmediate(new GridReady(rows, cols));
         }
 
         public void EnterClassic(ClassicEnterPolicy policy = ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew)
@@ -1363,6 +1377,34 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             }
             ToggleAll(stage.adventureScoreModeObjects, false);
             ToggleAll(stage.adventureFruitModeObjects, false);
+        }
+
+        public void PromoteTutorialToClassic()
+        {
+            if (CurrentMode != GameMode.Tutorial) return;
+
+            SetGameMode(GameMode.Classic);
+            SetGoalKind(MapGoalKind.None);
+            StageManager.Instance?.SetObjectsByGameModeNGoalKind(GameMode.Classic, MapGoalKind.None);
+
+            var gm = GridManager.Instance;
+            var sm = saveManager;
+            var sc = ScoreManager.Instance;
+            var bs = UnityEngine.Object.FindFirstObjectByType<BlockStorage>();
+
+            if (gm != null && sm != null && sc != null)
+            {
+                if (sm.gameData != null)
+                {
+                    sm.gameData.isClassicModePlaying = true;
+                    sm.gameData.currentMapLayout = gm.ExportLayoutCodes();
+                    sm.gameData.currentScore = sc.Score;
+                    sm.gameData.currentCombo = sc.comboCount;
+                }
+                sm.SaveGame();
+            }
+
+            StartCoroutine(Co_PostEnterSignals(GameMode.Classic));
         }
     }
 }

@@ -20,9 +20,9 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
 
         if (!ads.CanOfferReviveNow())
         {
-            Debug.LogWarning("[ReviveBridge] Revive not offerable (cooldown or not ready)");
+            Debug.LogWarning("[ReviveBridge] Revive not offerable now ¡æ refresh & bail");
             ads.Refresh();
-            FreeReviveOrGiveUp("[ReviveBridge] not offerable");
+            FreeReviveOrGiveUp("[ReviveBridge] gate denied");
             return;
         }
 
