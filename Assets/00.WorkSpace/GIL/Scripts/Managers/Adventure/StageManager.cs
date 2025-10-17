@@ -1,3 +1,4 @@
+using _00.WorkSpace.GIL.Scripts.Blocks;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using System;
@@ -9,6 +10,14 @@ using UnityEngine;
 using UnityEngine.Localization.Settings;
 using UnityEngine.UI;
 using UnityEngine.UIElements.Experimental;
+
+public enum AdventureEnterPolicy
+{
+    ResumeOrLoad,
+    ForceLoadSave,
+    ForceNew
+}
+
 public class StageManager : MonoBehaviour
 {
     public static StageManager Instance;
@@ -270,9 +279,12 @@ public class StageManager : MonoBehaviour
     }
 
     public void EnterStageByIndex(int idx, string source = "EnterStageByIndex")
+    => EnterStageByIndex(idx, AdventureEnterPolicy.ResumeOrLoad, source);
+
+    public void EnterStageByIndex(int idx, AdventureEnterPolicy policy, string source = "EnterStageByIndex")
     {
         var id = StageFlowTrace.NewSeq(source);
-        StageFlowTrace.Log(id, $"Request idx={idx}, currentStage={currentStage}, lastPlayed={lastPlayedStageIndex}, total={generator.stageButtons.Count}", this);
+        StageFlowTrace.Log(id, $"Request idx={idx}, policy={policy}, currentStage={currentStage}, lastPlayed={lastPlayedStageIndex}, total={generator.stageButtons.Count}", this);
 
         if (idx < 0 || idx >= generator.stageButtons.Count)
         {
@@ -300,22 +312,49 @@ public class StageManager : MonoBehaviour
         ui?.ClosePanelImmediate(MainPanelKey);
         ui?.ClosePanelImmediate(StagePanelKey);
 
-        // 3) Game 켜기(Sticky + Immediate + 실제 SetPanel)
+        // 3) 정책 적용: ForceNew면 완전 초기화
+        if (policy == AdventureEnterPolicy.ForceNew)
+            ForceCleanRunStateAndBoard();
+        else if (policy == AdventureEnterPolicy.ForceLoadSave)
+        {
+            // 필요하면 강제 저장 복원 로직
+        }
+
+        // 4) Game 켜기(Sticky + Immediate + 실제 SetPanel)
         bus?.PublishSticky(new PanelToggle(GamePanelKey, true), alsoEnqueue: false);
         bus?.PublishImmediate(new PanelToggle(GamePanelKey, true));
         ui?.SetPanel(GamePanelKey, true);
 
-        // 4) 실제 어드벤처 진입
+        // 5) 실제 어드벤처 진입
         MapManager.Instance.SetGameMode(GameMode.Adventure);
         MapManager.Instance.EnterAdventureByIndex0(idx);
 
-        StageFlowTrace.Log(id, $"Go Adventure idx0={idx}");
+        StageFlowTrace.Log(id, $"Go Adventure idx0={idx} (policy={policy})");
     }
 
     public void RetryLastStage()
     {
         int idx = (lastPlayedStageIndex >= 0) ? lastPlayedStageIndex : currentStage;
-        EnterStageByIndex(idx, "RetryLastStage");
+        EnterStageByIndex(idx, AdventureEnterPolicy.ForceNew, "RetryLastStage");
+    }
+
+    public static void ForceCleanRunStateAndBoard()
+    {
+        var sm = MapManager.Instance?.saveManager;
+        sm?.ClearRunState(save: true);
+        sm?.SkipNextSnapshot("AdventureForceNew");
+        sm?.SuppressSnapshotsFor(1.0f);
+
+        GridManager.Instance?.ResetBoardToEmpty();
+        ScoreManager.Instance?.ResetRuntime();
+
+        var bs = UnityEngine.Object.FindFirstObjectByType<BlockStorage>();
+        if (bs) bs.ClearHand();
+
+        ReviveGate.Disarm();
+        AdStateProbe.IsRevivePending = false;
+        UIStateProbe.ResetAllShields();
+        GameOverUtil.ResetAll("adventure-force-new");
     }
 
     /// <summary>

@@ -7,9 +7,9 @@ using UnityEngine;
 public sealed class GameOverResultRouter : MonoBehaviour
 {
     [Header("Refs")]
-    [SerializeField] private GameObject classicGameOverRoot;        // Classic_Game_Over 루트
+    [SerializeField] private GameObject classicGameOverRoot;
     [SerializeField] private GameObject classicNewBestRoot;
-    [SerializeField] private AdventureResultPresenter adventurePresenter; // ADResult_Canvas가 붙은 프리팹
+    [SerializeField] private AdventureResultPresenter adventurePresenter;
 
     [Header("Options")]
     [SerializeField] private bool hideAllOnEnable = true;
@@ -26,11 +26,16 @@ public sealed class GameOverResultRouter : MonoBehaviour
     private bool _handledThisDeath;
     private bool _suppressResults;
     private float _suppressUntil = 0f;
+
+    // 막힌 GOC를 잠시 보관
+    private GameOverConfirmed? _queuedGoc;
+
     private void OnEnable()
     {
         _shownOnce = false;
         _handledThisDeath = false;
         _suppressResults = false;
+        _queuedGoc = null;
 
         if (hideAllOnEnable)
         {
@@ -43,7 +48,13 @@ public sealed class GameOverResultRouter : MonoBehaviour
             _bus = Game.Bus;
 
             _onGoc = OnGameOverConfirmed;
-            _onCont = _ => { _handledThisDeath = false; _suppressResults = false; Debug.Log("[ResultRouter] ContinueGranted → handled=false, suppress=OFF"); };
+            _onCont = _ =>
+            {
+                _handledThisDeath = false;
+                // 부활 재개 직후엔 결과 노출 금지 (별도 시간 가드는 ContinueGranted쪽에서 셋)
+                _suppressResults = false;
+                Debug.Log("[ResultRouter] ContinueGranted → handled=false, suppress=OFF");
+            };
             _onCleared = OnAdventureCleared;
             _onFailed = OnAdventureFailed;
             _onReset = r =>
@@ -51,6 +62,7 @@ public sealed class GameOverResultRouter : MonoBehaviour
                 _shownOnce = false;
                 _handledThisDeath = false;
                 _suppressResults = false;
+                _queuedGoc = null;
 
                 _bus.ClearSticky<GameOver>();
                 _bus.ClearSticky<GameOverConfirmed>();
@@ -77,29 +89,32 @@ public sealed class GameOverResultRouter : MonoBehaviour
                 Debug.Log("[ResultRouter] AdPlaying → suppress=ON");
             }, replaySticky: false);
 
-            // 부활 확정 시: 해제
+            // 부활 확정 시: 결과 라우팅 해제 + 큐 폐기(부활 시 결과창 X)
             _bus.Subscribe<RevivePerformed>(_ =>
             {
                 _suppressResults = false;
                 _handledThisDeath = false;
-                Debug.Log("[ResultRouter] RevivePerformed → suppress=OFF, handled=false");
+                _queuedGoc = null;
+                Debug.Log("[ResultRouter] RevivePerformed → suppress=OFF, handled=false, queued GOC cleared");
             }, replaySticky: false);
 
+            // 부활 재개 직후 잠깐 시간 가드 + 강제 닫기 + 스티키 청소
             _bus.Subscribe<ContinueGranted>(_ =>
             {
                 _handledThisDeath = false;
                 _suppressResults = true;
                 _suppressUntil = Time.realtimeSinceStartup + 1.5f;
+                _queuedGoc = null;
                 HardCloseAllResults();
-                // 스티키 이벤트도 정리
+
                 _bus.ClearSticky<GameOver>();
                 _bus.ClearSticky<GameOverConfirmed>();
                 _bus.ClearSticky<AdventureStageCleared>();
                 _bus.ClearSticky<AdventureStageFailed>();
-                Debug.Log("[ResultRouter] ContinueGranted → suppress ON + hard close + clear stickies");
+                Debug.Log("[ResultRouter] ContinueGranted → suppress ON + hard close + clear stickies + clear queue");
             }, replaySticky: false);
 
-            // 포기(결과로 가는 루트): 해제
+            // 포기(결과로 가는 루트): 가드가 없으면 즉시 해제하고 플러시
             _bus.Subscribe<GiveUpRequest>(_ =>
             {
                 if (AdStateProbe.IsFullscreenShowing || AdStateProbe.IsRevivePending || ReviveGate.IsArmed)
@@ -109,16 +124,17 @@ public sealed class GameOverResultRouter : MonoBehaviour
                 }
                 _suppressResults = false;
                 Debug.Log("[ResultRouter] GiveUpRequest → suppress OFF (no revive/ad)");
+                TryFlushQueuedGoc();
             }, replaySticky: false);
 
-
-            // 광고 종료: 토큰(보상) 없으면 결과 허용, 있으면(부활) 그대로 막힘 유지 로직은 RevivePerformed에서 해제
+            // 광고 종료: 토큰(보상)이 없으면 결과 허용 → 플러시
             _bus.Subscribe<AdFinished>(_ =>
             {
                 if (!AdReviveToken.HasPending())
                 {
                     _suppressResults = false;
                     Debug.Log("[ResultRouter] AdFinished (no token) → suppress=OFF");
+                    TryFlushQueuedGoc(); // 플러시
                 }
                 else
                 {
@@ -126,7 +142,7 @@ public sealed class GameOverResultRouter : MonoBehaviour
                 }
             }, replaySticky: false);
 
-            _bus.Subscribe(_onGoc, replaySticky: false); // ★ 스티키 재생 금지
+            _bus.Subscribe(_onGoc, replaySticky: false); // 스티키 재생 금지
             _bus.Subscribe(_onCont, replaySticky: false);
             _bus.Subscribe(_onCleared, replaySticky: false);
             _bus.Subscribe(_onFailed, replaySticky: false);
@@ -151,7 +167,6 @@ public sealed class GameOverResultRouter : MonoBehaviour
         _shownOnce = false;
     }
 
-
     private void OnAdventureCleared(AdventureStageCleared e)
     {
         if (_shownOnce) return;
@@ -172,46 +187,46 @@ public sealed class GameOverResultRouter : MonoBehaviour
         StartCoroutine(Co_ShowAdResultNextFrame(false, e.kind, e.finalScore));
     }
 
-    // 부활/연출이 끝나고 확정될 때(최종 분기)
+    // =======================
+    // 핵심: GOC 진입점
+    // =======================
     private void OnGameOverConfirmed(GameOverConfirmed e)
     {
-        if (Time.realtimeSinceStartup < _suppressUntil)
+        Debug.Log($"[Router] GOC arrive mode={MapManager.Instance?.CurrentMode} " +
+          $"sup={_suppressResults} until={_suppressUntil - Time.realtimeSinceStartup:F2} " +
+          $"full={AdStateProbe.IsFullscreenShowing} revivePend={AdStateProbe.IsRevivePending} gate={ReviveGate.IsArmed} token={AdReviveToken.HasPending()} handled={_handledThisDeath}");
+
+        bool blocked = _suppressResults || AdStateProbe.IsFullscreenShowing ||
+                       AdStateProbe.IsRevivePending || ReviveGate.IsArmed ||
+                       AdReviveToken.HasPending();
+
+        if (Time.realtimeSinceStartup < _suppressUntil || blocked)
         {
-            Debug.Log("[ResultRouter] Suppress by time-guard after revive");
             _handledThisDeath = false;
+            _queuedGoc = e;
+            Debug.Log("[ResultRouter] GOC queued");
             return;
         }
-
-        if (_suppressResults || AdStateProbe.IsFullscreenShowing || AdStateProbe.IsRevivePending || ReviveGate.IsArmed)
-        {
-            Debug.Log($"[ResultRouter] Suppress GOC: sup={_suppressResults} full={AdStateProbe.IsFullscreenShowing} revive={AdStateProbe.IsRevivePending} gate={ReviveGate.IsArmed}");
-            _handledThisDeath = false;
-            return;
-        }
-
-        // 결과 라우팅 차단 조건(광고/부활/게이트/토큰/수동 suppress)
-        bool blocked =
-            _suppressResults ||
-            AdStateProbe.IsFullscreenShowing ||
-            AdStateProbe.IsRevivePending ||
-            ReviveGate.IsArmed ||
-            AdReviveToken.HasPending();
-
-        Debug.Log($"[ResultRouter] GOC recv handled={_handledThisDeath} score={e.score} newBest={e.isNewBest} reason={e.reason} " +
-                  $"blocked={blocked} sup={_suppressResults} full={AdStateProbe.IsFullscreenShowing} revive={AdStateProbe.IsRevivePending} " +
-                  $"gate={ReviveGate.IsArmed} token={AdReviveToken.HasPending()}");
-
-        if (blocked) return;           // 광고/부활 관련 상태면 무조건 무시
-        if (_handledThisDeath) return; // 중복 방지
+        if (_handledThisDeath) return;
         _handledThisDeath = true;
+        RouteFor(e);
+    }
 
+    // 공용 라우팅: 현재 모드에 맞춰 결과 분기
+    private void RouteFor(GameOverConfirmed e)
+    {
         var mode = MapManager.Instance?.CurrentMode ?? GameMode.Classic;
-        if (mode != GameMode.Adventure) return;
+
+        if (mode == GameMode.Classic)
+        {
+            adventurePresenter?.HideAllPublic();
+            if (classicGameOverRoot) classicGameOverRoot.SetActive(!e.isNewBest);
+            if (classicNewBestRoot) classicNewBestRoot.SetActive(e.isNewBest);
+            return;
+        }
 
         var mm = MapManager.Instance;
-        var sm = Game.Save;
         var md = mm?.CurrentMapData;
-
         var kind = (md != null) ? md.goalKind : (mm != null ? mm.CurrentGoalKind : MapGoalKind.Score);
         bool cleared = ComputeAdventureCleared(kind, md);
 
@@ -231,7 +246,22 @@ public sealed class GameOverResultRouter : MonoBehaviour
         }
 
         if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
-        sm?.ClearRunState(true);
+        Game.Save?.ClearRunState(true);
+    }
+
+    // 가드 해제 시 큐 플러시
+    private void TryFlushQueuedGoc()
+    {
+        if (!_queuedGoc.HasValue) return;
+        if (_suppressResults || AdStateProbe.IsFullscreenShowing ||
+            AdStateProbe.IsRevivePending || ReviveGate.IsArmed ||
+            AdReviveToken.HasPending()) return;
+
+        var e = _queuedGoc.Value;
+        _queuedGoc = null;
+        _handledThisDeath = false;
+        Debug.Log("[ResultRouter] Flushing queued GOC");
+        RouteFor(e);
     }
 
     private bool ComputeAdventureCleared(MapGoalKind kind, MapData md)

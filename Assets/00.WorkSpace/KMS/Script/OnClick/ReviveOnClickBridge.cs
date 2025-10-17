@@ -2,7 +2,7 @@ using UnityEngine;
 
 public sealed class ReviveOnClickBridge : MonoBehaviour
 {
-    [SerializeField] bool freeReviveWhenAdsUnavailable = true;
+    [SerializeField] bool freeReviveWhenAdsUnavailable = false;
     bool _rewardFired;
     bool _waitingAd;
 
@@ -60,12 +60,18 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
     {
         if (!freeReviveWhenAdsUnavailable)
         {
-            if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest());
+            ReviveGate.Disarm();
+            AdStateProbe.IsRevivePending = false;
+
+            if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest("revive_closed"));
+
+            var ui = FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
+            ui?.OpenResultNowBecauseNoRevive();
+
             return;
         }
 
         Debug.LogWarning($"{reasonLog} ¡æ FREE REVIVE (dev)");
-
         if (!ReviveGate.IsArmed) ReviveGate.Arm(2f);
         Game.Bus?.PublishImmediate(new ContinueGranted());
         Game.Bus?.PublishImmediate(new RevivePerformed());

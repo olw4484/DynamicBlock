@@ -35,6 +35,9 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
     [SerializeField] GameMode enterMode = GameMode.Classic;
     [Tooltip("어드벤쳐일 경우 어떤 모드로 진입하냐?")]
     [SerializeField] MapGoalKind goalKind = MapGoalKind.Score;
+    [Header("Enter Fresh Flags")]
+    [SerializeField] bool forceFreshClassicOnEnter = false;
+    [SerializeField] bool forceFreshAdventureOnEnter = false;
 
     float _cool;
     bool _invoking; // 재진입 방지
@@ -91,6 +94,10 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                 var requested = enterMode;
                 var chosenMode = ResolveEffectiveMode(requested);
 
+                // 재시작(완전 초기화) 여부 결정
+                bool wantFreshClassic = (clearRunStateOnClick || forceFreshClassicOnEnter) && chosenMode == GameMode.Classic;
+                bool wantFreshAdventure = (clearRunStateOnClick || forceFreshAdventureOnEnter) && chosenMode == GameMode.Adventure;
+
                 bool fired = false;
                 System.Action<GameResetDone> handler = null;
                 handler = _ =>
@@ -98,6 +105,10 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
                     if (fired) return;
                     fired = true;
                     Game.Bus.Unsubscribe(handler);
+
+                    if (wantFreshClassic || wantFreshAdventure)
+                        WipeRunStateForFreshEnter();
+
                     EnterGameImmediately(chosenMode);
                 };
 
@@ -169,15 +180,21 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
         switch (mode)
         {
             case GameMode.Classic:
-                map.ClearAdventureListeners();
-                map.DisableAdventureObjects();
-                map.SetGameMode(GameMode.Classic);
-                map.SetGoalKind(MapGoalKind.None);
-                stage?.SetObjectsByGameModeNGoalKind(GameMode.Classic, MapGoalKind.None);
+                {
+                    map.ClearAdventureListeners();
+                    map.DisableAdventureObjects();
+                    map.SetGameMode(GameMode.Classic);
+                    map.SetGoalKind(MapGoalKind.None);
+                    stage?.SetObjectsByGameModeNGoalKind(GameMode.Classic, MapGoalKind.None);
 
-                var policy = MapManager.ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew;
-                map.RequestClassicEnter(policy);
-                break;
+                    var policy =
+                        (forceFreshClassicOnEnter || clearRunStateOnClick)
+                        ? MapManager.ClassicEnterPolicy.ForceNew
+                        : MapManager.ClassicEnterPolicy.ResumeIfAliveElseLoadSaveElseNew;
+
+                    map.RequestClassicEnter(policy);
+                    break;
+                }
 
             case GameMode.Adventure:
                 map.SetGameMode(GameMode.Adventure);
@@ -223,5 +240,21 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
             case InvokeSfxMode.ClassicStart: Sfx.StageEnter(); return;
             case InvokeSfxMode.CustomId: Sfx.PlayId((int)customId); return;
         }
+    }
+
+    private static void WipeRunStateForFreshEnter()
+    {
+        // 1) 런 스냅샷/손패 복원 경로 차단
+        MapManager.Instance?.saveManager?.ClearRunState(true);
+
+        // 2) 보드/스코어/손패 초기화
+        GridManager.Instance?.ResetBoardToEmpty();
+        ScoreManager.Instance?.ResetRuntime();
+        UnityEngine.Object.FindFirstObjectByType<BlockStorage>()?.ClearHand();
+
+        ReviveGate.Disarm();
+        AdStateProbe.IsRevivePending = false;
+        UIStateProbe.ResetAllShields();
+        GameOverUtil.ResetAll("adventure-fresh-enter");
     }
 }

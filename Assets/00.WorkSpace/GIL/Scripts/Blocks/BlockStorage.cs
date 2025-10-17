@@ -118,7 +118,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         #region Block Generation
 
-        private void GenerateAllBlocks()
+        public void GenerateAllBlocks()
         {
             Debug.Log($"[Storage] GenerateAllBlocks: paused={_paused}, mode={MapManager.Instance?.CurrentMode}");
 

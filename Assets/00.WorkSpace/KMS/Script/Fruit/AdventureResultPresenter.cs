@@ -1,3 +1,4 @@
+using _00.WorkSpace.GIL.Scripts.Blocks;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Messages;
@@ -145,6 +146,8 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (EventSystem.current && btn) EventSystem.current.SetSelectedGameObject(btn.gameObject);
 
         ApplyModeUI(kind, score);
+
+        StartCoroutine(Co_ShowInterstitialAfterOpen());
     }
 
     private void ShowFail(MapGoalKind kind, int score)
@@ -194,6 +197,8 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         if (EventSystem.current && btn) EventSystem.current.SetSelectedGameObject(btn.gameObject);
 
         ApplyModeUI(kind, score);
+
+        StartCoroutine(Co_ShowInterstitialAfterOpen());
     }
 
     // =======================
@@ -201,52 +206,65 @@ public sealed class AdventureResultPresenter : MonoBehaviour
     // =======================
     private IEnumerator Co_RetryAdventure(int idx0)
     {
-        // 같은 프레임 클릭스루 방지
         yield return null;
 
-        var ui = Object.FindFirstObjectByType<UIManager>();
-        var sm = MapManager.Instance?.saveManager;
+        // 완전 초기화
+        StageManager.ForceCleanRunStateAndBoard();
+
+        // Reset 전에 모드/골세팅/리바이브 정책 '선지정'
+        var mm = MapManager.Instance;
+        if (mm)
+        {
+            mm.SetGameMode(GameMode.Adventure);
+            var kind = mm.CurrentMapData ? mm.CurrentMapData.goalKind : MapGoalKind.Score;
+            mm.SetGoalKind(kind);
+        }
+        ReviveRouter.I?.SetPolicyFromMode(GameMode.Adventure);
+
+        // Reset 실행 및 완료 대기
         var bus = Game.Bus;
-
-        // 런타임/스냅샷 정리
-        sm?.ClearRunState(save: true);
-        sm?.SkipNextSnapshot("Restart");
-        sm?.SuppressSnapshotsFor(1.0f);
-
-        // 게임 리셋: UIManager가 내부에서 Game/Main 토글
+        bool resetDone = false;
+        System.Action<GameResetDone> onDone = null;
+        onDone = _ => { resetDone = true; Game.Bus.Unsubscribe(onDone); };
+        Game.Bus.Subscribe(onDone, replaySticky: false);
         bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
+        while (!resetDone) yield return null;
 
-        // 한 프레임 기다려 전환 파이프라인이 끝나도록
-        yield return null;
-
-        // 결과 패널만 확실히 끄고, Game 패널은 확실히 켠다(안전망)
+        // Adventure 결과 패널 닫고 게임 진입
+        var ui = UnityEngine.Object.FindFirstObjectByType<UIManager>();
         ui?.SetPanel(panelKey, false);   // "Adventure_Result"
-        ui?.SetPanel("Game", true);      // 패널 키 철자 확인!
+        ui?.SetPanel("Game", true);
 
-        // 다음 스테이지로 진입
-        MapManager.Instance.EnterAdventureByIndex0(idx0);
+        StageManager.Instance.EnterStageByIndex(idx0, AdventureEnterPolicy.ForceNew, "RetryFromResult");
     }
 
     private IEnumerator Co_GoNextAdventure(int nextIdx0, int prevIdx0)
     {
         yield return null;
 
-        var ui = Object.FindFirstObjectByType<UIManager>();
-        var sm = MapManager.Instance?.saveManager;
+        StageManager.ForceCleanRunStateAndBoard();
+
         var bus = Game.Bus;
-
-        sm?.ClearRunState(save: true);
-        sm?.SkipNextSnapshot("Restart");
-        sm?.SuppressSnapshotsFor(1.0f);
-
+        bool resetDone = false;
+        System.Action<GameResetDone> onDone = null;
+        onDone = _ => { resetDone = true; Game.Bus.Unsubscribe(onDone); };
+        Game.Bus.Subscribe(onDone, replaySticky: false);
         bus.PublishImmediate(new GameResetRequest("Game", ResetReason.Restart));
-        yield return null;
+        while (!resetDone) yield return null;
 
+        var ui = UnityEngine.Object.FindFirstObjectByType<UIManager>();
         ui?.SetPanel(panelKey, false);
         ui?.SetPanel("Game", true);
 
         StageManager.Instance.SetStageClearAndActivateNext();
-        MapManager.Instance.EnterAdventureByIndex0(nextIdx0);
+        StageManager.Instance.EnterStageByIndex(nextIdx0, AdventureEnterPolicy.ForceNew, "NextFromResult");
+    }
+
+    private IEnumerator Co_ShowInterstitialAfterOpen()
+    {
+        yield return null;
+        yield return new WaitForEndOfFrame();
+        AdManager.Instance.ShowInterstitial();
     }
 
     private void HideAll()
@@ -372,5 +390,24 @@ public sealed class AdventureResultPresenter : MonoBehaviour
             list.Add(new FruitReq { sprite = icon, count = remain, achieved = done });
         }
         fruitLayout.Show(list.ToArray());
+    }
+
+    private static void ForceCleanRunStateAndBoard()
+    {
+        var sm = MapManager.Instance?.saveManager;
+        sm?.ClearRunState(save: true);
+        sm?.SkipNextSnapshot("AdventureForceNew");
+        sm?.SuppressSnapshotsFor(1.0f);
+
+        GridManager.Instance?.ResetBoardToEmpty();
+        ScoreManager.Instance?.ResetRuntime();
+
+        var bs = UnityEngine.Object.FindFirstObjectByType<BlockStorage>();
+        if (bs) bs.ClearHand();
+
+        ReviveGate.Disarm();
+        AdStateProbe.IsRevivePending = false;
+        UIStateProbe.ResetAllShields();
+        GameOverUtil.ResetAll("adventure-force-new");
     }
 }

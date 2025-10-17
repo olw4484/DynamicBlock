@@ -476,6 +476,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e86760cc45f0254db78d9385f064111, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &530448604
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 530448605}
+  - component: {fileID: 530448606}
+  m_Layer: 0
+  m_Name: AdventureReviveHandReset
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &530448605
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 530448604}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7252772808081392200}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &530448606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 530448604}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64587581a9066f746a2c9371171deea8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &586121122 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7395557856294494870, guid: 5f9853db0d813b9429066dd542322aeb, type: 3}
@@ -1148,6 +1192,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fc848dd3f7df0b44ea9b65f58313d72c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &1331684332
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1331684333}
+  - component: {fileID: 1331684334}
+  m_Layer: 0
+  m_Name: ReviveRouter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1331684333
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1331684332}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7252772808081392200}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1331684334
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1331684332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26a6075dc11a4714ca7369ccb13611b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  reviveDelaySec: 1
+  panelWindowSec: 5
+  reviveOncePerRun: 1
 --- !u!21 &1372275441
 Material:
   serializedVersion: 8
@@ -1398,6 +1489,50 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 3000
   m_TargetDisplay: 0
+--- !u!1 &1669631397
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1669631398}
+  - component: {fileID: 1669631399}
+  m_Layer: 0
+  m_Name: ReviveResultProbe
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1669631398
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1669631397}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7252772808081392200}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1669631399
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1669631397}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65919d151ff9ca04bbb22465acf1c29b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1775520675
 GameObject:
   m_ObjectHideFlags: 0
@@ -6110,6 +6245,18 @@ PrefabInstance:
       propertyPath: _panels.Array.data[12].useCanvasGroup
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[2].closeDelaySeconds
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[7].closeDelaySeconds
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[2].restoreScaleOnClose
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6837704552208090548, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: scoreText
       value: 
@@ -10574,6 +10721,9 @@ Transform:
   - {fileID: 68308982}
   - {fileID: 836764098}
   - {fileID: 854061923}
+  - {fileID: 1331684333}
+  - {fileID: 530448605}
+  - {fileID: 1669631398}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &7276703951194650341

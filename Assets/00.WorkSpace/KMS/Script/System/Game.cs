@@ -82,6 +82,7 @@ public static class Game
         var scene = options.IncludeScene ? group.Resolve<SceneFlowManager>() : null;
         var save = group.Resolve<ISaveService>();
 
+
         // 2) 필수 타입 집합 구성
         var requiredTypes = new System.Collections.Generic.List<Type>
         {
@@ -137,7 +138,11 @@ public static class Game
         Scene = scene;
         Save = save;
 
-        IsBound = true; 
+        IsBound = true;
+
+        var rr = ReviveRouter.CreateIfNeeded();
+        rr.BindToGameBus();
+
         return report;
     }
 
