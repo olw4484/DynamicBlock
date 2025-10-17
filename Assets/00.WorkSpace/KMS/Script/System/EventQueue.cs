@@ -416,3 +416,9 @@ public readonly struct AdventureBestUpdated
     { this.prevIndex = prevIndex; this.newIndex = newIndex; this.stageName = stageName; }
 }
 public readonly struct ServiceNoticeCheck { }
+
+public readonly struct ResultDelay
+{
+    public readonly float seconds;
+    public ResultDelay(float seconds) { this.seconds = seconds; }
+}

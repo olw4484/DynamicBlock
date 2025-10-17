@@ -9,6 +9,21 @@ using UnityEngine.UI;
 [AddComponentMenu("Game/UIManager")]
 public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 {
+    // Treat these as "result" panels that must retry after ReviveLatch
+    static readonly HashSet<string> __ResultKeys =
+        new() { "GameOver", "NewRecord", "Adventure_Result" };
+
+    private IEnumerator CoRetryOpenAfterLatch(string key)
+    {
+        float deadline = Time.realtimeSinceStartup + 6f;
+        while (ReviveLatch.Active && Time.realtimeSinceStartup < deadline) yield return null;
+        if (!ReviveLatch.Active)
+        {
+            SetPanel(key, true, ignoreDelay: true);
+        }
+    }
+
+
     [System.Serializable]
     public class PanelEntry
     {
@@ -185,45 +200,45 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         // ReviveRouter가 PlayerDowned를 처리하므로 UIManager는 더 이상 관여하지 않음
 
-        // _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed_Classic, replaySticky: false);
+        _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed_Classic, replaySticky: false);
 
-        //_bus.Subscribe<ContinueGranted>(_ =>
-        //{
-        //    GameOverGate.Reset("ContinueGranted");
-        //    GameOverUtil.ResetAll("continue_granted");
-        //
-        //    CancelReviveDelay();
-        //    AdPauseGuard.OnAdClosedOrFailed();
-        //    AdStateProbe.IsFullscreenShowing = false;
-        //    AdStateProbe.IsRevivePending = false;
-        //
-        //    Time.timeScale = 1f;
-        //    _bus?.PublishImmediate(new InputLock(false, "ContinueGranted"));
-        //
-        //    SetPanel("Revive", false, true);
-        //    SetPanel("GameOver", false, true);
-        //    SetPanel("NewRecord", false, true);
-        //
-        //    ForceCloseAllModals();
-        //    NormalizeAllPanelsAlpha();
-        //    ForceMainUIClean();
-        //
-        //    // 결과 억제/그레이스
-        //    _resultSuppressUntil = Time.realtimeSinceStartup + _resultSuppressAfterReviveSec;
-        //    UIStateProbe.ArmResultGuard(_resultSuppressAfterReviveSec);
-        //    UIStateProbe.ArmReviveGrace(2.0f);
-        //    StartCoroutine(CoReviveGrace(2.0f));
-        //
-        //    StartCoroutine(CoPostContinueSanity());
-        //}, replaySticky: false);
+        _bus.Subscribe<ContinueGranted>(_ =>
+        {
+            GameOverGate.Reset("ContinueGranted");
+            GameOverUtil.ResetAll("continue_granted");
+        
+            CancelReviveDelay();
+            AdPauseGuard.OnAdClosedOrFailed();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+        
+            Time.timeScale = 1f;
+            _bus?.PublishImmediate(new InputLock(false, "ContinueGranted"));
+        
+            SetPanel("Revive", false, true);
+            SetPanel("GameOver", false, true);
+            SetPanel("NewRecord", false, true);
+        
+            ForceCloseAllModals();
+            NormalizeAllPanelsAlpha();
+            ForceMainUIClean();
+        
+            // 결과 억제/그레이스
+            _resultSuppressUntil = Time.realtimeSinceStartup + _resultSuppressAfterReviveSec;
+            UIStateProbe.ArmResultGuard(_resultSuppressAfterReviveSec);
+            UIStateProbe.ArmReviveGrace(2.0f);
+            StartCoroutine(CoReviveGrace(2.0f));
+        
+            StartCoroutine(CoPostContinueSanity());
+        }, replaySticky: false);
 
-        //_bus.Subscribe<RevivePerformed>(_ =>
-        //{
-        //    _reviveConsumedThisRun = true;
-        //    GameOverGate.Reset("RevivePerformed");
-        //    Debug.Log("[UI] RevivePerformed → reviveConsumed = true");
-        //}, replaySticky: false);
-        //
+        _bus.Subscribe<RevivePerformed>(_ =>
+        {
+            _reviveConsumedThisRun = true;
+            GameOverGate.Reset("RevivePerformed");
+            Debug.Log("[UI] RevivePerformed → reviveConsumed = true");
+        }, replaySticky: false);
+        
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
 
@@ -237,6 +252,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<GameResetDone>(_ => ResetReviveFlags("GameResetDone"), replaySticky: false);
 
         _bus.Subscribe<AdFinished>(_ => { StartCoroutine(CoReassertResultAfterAd()); }, replaySticky: false);
+
+        _bus.Subscribe<ResultDelay>(e =>
+        {
+            _resultSuppressUntil = Time.realtimeSinceStartup + Mathf.Max(0.05f, e.seconds);
+            UIStateProbe.ArmResultGuard(e.seconds);
+            Debug.Log($"[UI] ResultDelay armed: {e.seconds}s");
+        }, replaySticky: false);
     }
 
     private void OnPanelToggle(PanelToggle e)
@@ -262,11 +284,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     public void SetPanel(string key, bool on, bool ignoreDelay = false)
     {
-        if (key == "Adventure_Result")
-            Debug.Log($"[UI] SetPanel(Adventure_Result) -> {on} ignoreDelay={ignoreDelay} ");
-
-        // 결과패널: 열자마자 닫히는 것 방지 (stick window)
-        if (!on && (key == "GameOver" || key == "NewRecord"))
+        // 1) 스틱 윈도우, ReviveLatch 가드(현재 코드 유지)
+        if (!on && (key == "GameOver" || key == "NewRecord" || key == "Adventure_Result"))
         {
             if (_resultStickUntil.TryGetValue(key, out var until) &&
                 Time.realtimeSinceStartup < until)
@@ -275,20 +294,25 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
                 return;
             }
         }
-        if (on && (key == "GameOver" || key == "NewRecord"))
+        if (on && (key == "GameOver" || key == "NewRecord" || key == "Adventure_Result"))
         {
             _resultStickUntil[key] = Time.realtimeSinceStartup + _resultStickSec;
             _lastResultKey = key;
         }
-
-        // --- 부활 래치 중 결과창 열림 차단 ---
-        if ((key == "GameOver" || key == "NewRecord") && on && ReviveLatch.Active)
+        if (__ResultKeys.Contains(key) && on && ReviveLatch.Active)
         {
-            Debug.Log($"[UI] Block '{key}' open while ReviveLatch active");
-            GameOverUtil.CancelPending("ui_setpanel_block");
-            GameOverGate.Reset("ui_setpanel_block");
-            UpdateProbes();
-            return;
+            var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+            if (mm != null && mm.CurrentMode == GameMode.Adventure)
+            {
+                Debug.Log("[UI] Ignore ReviveLatch for Adventure result");
+            }
+            else
+            {
+                Debug.Log($"[UI] Block '{key}' open while ReviveLatch active — will retry");
+                StartCoroutine(CoRetryOpenAfterLatch(key));
+                UpdateProbes();
+                return;
+            }
         }
 
         Debug.Log($"SetPanel {key} -> {on}");
@@ -300,43 +324,56 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             return;
         }
 
-        if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
-
-        if (on)
+        // 2) p 확보 (이전과 동일)
+        if (!_panelMap.TryGetValue(key, out var p) || p.root == null)
         {
-            CancelCloseDelay(key);
-            StopFade(key);
-            if (key == "Main") DumpCanvasTree("Main AFTER ON", p.root);
-            if (key == "Game") DumpCanvasTree("Game AFTER ON", p.root);
-            if (key == "Main" || key == "Game")
-            {
-                EnforceSingleScaler(p.root);
-                DumpCanvasTree($"After Enforce {key}", p.root);
-            }
+            Debug.LogError($"[UI] SetPanel: unknown panel key='{key}' or root missing. Check mapping.");
+            return;
         }
 
+        // 3) 공통 준비
+        CancelCloseDelay(key);
+        StopFade(key);
+
+        if (on && key == "Adventure_Result")
+        {
+            EnableAllCanvasRecursively(p.root);
+            EnforceSingleScaler(p.root);
+            ForceCanvasGroupVisible(p.root);
+
+            var rt = p.root.GetComponent<RectTransform>();
+            if (rt)
+            {
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                rt.localScale = Vector3.one;
+            }
+            Canvas.ForceUpdateCanvases();
+            DumpCanvasTree("Adventure_Result AFTER FIX", p.root);
+            LogPanelState(key, p.root);
+        }
+
+
+        // 4) 모달 패널 처리 (on/off 모두 커버)
         if (p.isModal)
         {
-            if (on) PushModalInternal(key, on);
+            if (on)
+            {
+                PushModalInternal(key, on);
+            }
             else
             {
-                if (ignoreDelay)
-                {
-                    ClosePanelImmediate(key);
-                }
-                else if (p.closeDelaySeconds > 0f && p.root.activeSelf)
-                {
-                    StartCloseDelayForModal(key, p);
-                }
-                else
-                {
-                    PopModalInternal(key);
-                }
+                if (ignoreDelay) ClosePanelImmediate(key);
+                else if (p.closeDelaySeconds > 0f && p.root.activeSelf) StartCloseDelayForModal(key, p);
+                else PopModalInternal(key);
             }
             UpdateProbes();
             return;
         }
 
+        // 5) CanvasGroup 안 쓰는 패널 (on/off 모두 커버)
         if (!p.useCanvasGroup)
         {
             if (!on && !ignoreDelay && p.closeDelaySeconds > 0f && p.root.activeSelf)
@@ -345,16 +382,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
                 return;
             }
             p.root.SetActive(on);
+            UpdateProbes();
             return;
         }
 
+        // 6) CanvasGroup 쓰는 패널 (on/off 분기)
         var cg = EnsureCanvasGroup(p.root);
 
         if (!on)
         {
-            StopFade(key);
-            CancelCloseDelay(key);
-
+            // 닫기 경로
             cg.blocksRaycasts = false;
             cg.interactable = false;
             cg.alpha = 0f;
@@ -368,6 +405,7 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             return;
         }
 
+        // === 여기부터 열기(on) 경로 ===
         EnsureAllCanvasEnabled(p.root);
         ResetChildCanvasGroupsAlpha(p.root);
         if (!p.root.activeSelf) { p.root.SetActive(true); cg.alpha = 0f; }
@@ -380,40 +418,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (key == "Revive") Game.Ads?.Refresh();
         UpdateProbes();
     }
-
-    IEnumerator GraceClosePanel(string key, GameObject root, float timeout, bool useCanvasToggle)
-    {
-        if (!root) yield break;
-        var cg = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
-        cg.blocksRaycasts = false;
-        cg.interactable = false;
-
-        float t = 0f;
-        while (t < timeout)
-        {
-            if (cg.interactable || cg.blocksRaycasts)
-            {
-                _closeDelayJobs.Remove(key);
-                yield break;
-            }
-            if (AreChildScalesAtInitial(root)) break;
-            t += Time.unscaledDeltaTime;
-            yield return null;
-        }
-
-        if (cg.interactable || cg.blocksRaycasts)
-        { _closeDelayJobs.Remove(key); yield break; }
-
-        if (!AreChildScalesAtInitial(root)) RestoreInitialScales(root);
-
-        cg.alpha = 0f;
-        if (useCanvasToggle && root.TryGetComponent(out Canvas canvas))
-            canvas.enabled = false;
-
-        root.SetActive(false);
-        _closeDelayJobs.Remove(key);
-    }
-
 
     private void StartCloseDelay(string key, PanelEntry p)
     {
@@ -601,6 +605,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     private void PopModalInternal(string key)
     {
+        Debug.Log($"[UI] PopModalInternal: {key}");
+
         int idx = _modalOrder.LastIndexOf(key);
         if (idx < 0) return;
 
@@ -957,6 +963,8 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     public void ClosePanelImmediate(string key)
     {
+        Debug.Log($"[UI] ClosePanelImmediate: {key}");
+
         if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
 
         if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
@@ -1031,6 +1039,20 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus?.PublishImmediate(new GiveUpRequest("ui_bypass"));
     }
 
+    public bool TryResolvePanelKeyByRoot(GameObject go, out string key)
+    {
+        var t = go ? go.transform : null;
+        while (t)
+        {
+            foreach (var kv in _panelMap)
+            {
+                if (kv.Value.root == t.gameObject) { key = kv.Key; return true; }
+            }
+            t = t.parent;
+        }
+        key = null;
+        return false;
+    }
 
     // === Utilities ===
 
@@ -1061,9 +1083,52 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         SanitizeModalStack();
 
         UIStateProbe.IsReviveOpen = IsPanelActuallyOpen("Revive");
-        UIStateProbe.IsResultOpen = IsPanelActuallyOpen("GameOver") || IsPanelActuallyOpen("NewRecord");
+        UIStateProbe.IsResultOpen =
+            IsPanelActuallyOpen("GameOver") ||
+            IsPanelActuallyOpen("NewRecord") ||
+            IsPanelActuallyOpen("Adventure_Result");
+
         UIStateProbe.IsAnyModalOpen = _modalOrder.Count > 0;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[UI.Probes] resultOpen={UIStateProbe.IsResultOpen} reviveOpen={UIStateProbe.IsReviveOpen} " +
+                  $"anyModal={UIStateProbe.IsAnyModalOpen} grace={UIStateProbe.ReviveGraceActive} guard={UIStateProbe.ResultGuardActive}");
+#endif
     }
+
+    private IEnumerator GraceClosePanel(string key, GameObject root, float timeout, bool useCanvasToggle)
+    {
+        if (!root) yield break;
+        var cg = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+
+        float t = 0f;
+        while (t < timeout)
+        {
+            if (cg.interactable || cg.blocksRaycasts)
+            {
+                _closeDelayJobs.Remove(key);
+                yield break;
+            }
+            if (AreChildScalesAtInitial(root)) break;
+            t += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (cg.interactable || cg.blocksRaycasts)
+        { _closeDelayJobs.Remove(key); yield break; }
+
+        if (!AreChildScalesAtInitial(root)) RestoreInitialScales(root);
+
+        cg.alpha = 0f;
+        if (useCanvasToggle && root.TryGetComponent(out Canvas canvas))
+            canvas.enabled = false;
+
+        root.SetActive(false);
+        _closeDelayJobs.Remove(key);
+    }
+
 
     static void EnsureAllCanvasEnabled(GameObject root)
     {
@@ -1075,12 +1140,11 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     {
         if (Time.realtimeSinceStartup < _resultSuppressUntil)
         {
-            Debug.Log("[UI] Suppress GameOverConfirmed (recent revive guard)");
-            GameOverUtil.CancelPending("ui_suppress_recent_revive");
-            GameOverGate.Reset("ui_suppress_recent_revive");
-            UpdateProbes();
+            float wait = _resultSuppressUntil - Time.realtimeSinceStartup;
+            StartCoroutine(Co_OpenClassicResultAfterDelay(e, wait));
             return;
         }
+
         if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed || ReviveLatch.Active)
         {
             Debug.Log("[UI] Suppress GameOverConfirmed (router/gate state)");
@@ -1130,7 +1194,51 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         SetPanel("GameOver", !e.isNewBest);
         SetPanel("NewRecord", e.isNewBest);
 
-        StartCoroutine(Co_ShowInterstitialAfterResultOpen(e.isNewBest ? "NewRecord" : "GameOver"));
+        if (Game.Ads?.IsInterstitialReady() == true)
+        {
+            StartCoroutine(Co_ShowInterstitialAfterResultOpen(e.isNewBest ? "NewRecord" : "GameOver"));
+        }
+    }
+
+    private void OpenClassicResultNow(GameOverConfirmed e)
+    {
+        Debug.Log($"[UI] GameOverConfirmed score={e.score} isNewBest={e.isNewBest} mode=Classic");
+
+        CancelReviveDelay();
+        Game.Audio.StopContinueTimeCheckSE();
+        SetPanel("Revive", false, ignoreDelay: true);
+
+        int bestNow = _lastBestClassic;
+        if (e.isNewBest)
+        {
+            bestNow = e.score;
+            if (_lastLoggedClassicBest != e.score)
+            {
+                AnalyticsManager.Instance?.ClassicBestLog(e.score);
+                _lastLoggedClassicBest = e.score;
+            }
+            _lastBestClassic = Mathf.Max(_lastBestClassic, e.score);
+            UpdateBestHUD();
+        }
+
+        SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
+        SetAll(_goBestTexts, $"{FormatScore(bestNow)}");
+
+        SetPanel("GameOver", !e.isNewBest);
+        SetPanel("NewRecord", e.isNewBest);
+    }
+
+    private IEnumerator Co_OpenClassicResultAfterDelay(GameOverConfirmed e, float wait)
+    {
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.05f, wait));
+
+        if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed || ReviveLatch.Active)
+            yield break;
+
+        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+        if (mm && mm.CurrentMode == GameMode.Adventure) yield break;
+
+        OpenClassicResultNow(e);
     }
 
     private IEnumerator Co_ShowInterstitialAfterResultOpen(string key)
@@ -1161,19 +1269,15 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         var cvs = root.GetComponentsInChildren<Canvas>(true);
         var scals = root.GetComponentsInChildren<CanvasScaler>(true);
 
-        int en = 0;
-        for (int i = 0; i < cvs.Length; i++) if (cvs[i].enabled) en++;
-
+        int en = 0; for (int i = 0; i < cvs.Length; i++) if (cvs[i].enabled) en++;
         Debug.Log($"[Dump] {tag}: canvases={cvs.Length} (enabled={en}), scalers={scals.Length}");
 
-        for (int i = 0; i < scals.Length; i++)
+        foreach (var cv in cvs)
         {
-            var go = scals[i].gameObject;
-            var cv = go.GetComponent<Canvas>();
-            var rt = go.GetComponent<RectTransform>();
+            var rt = cv.GetComponent<RectTransform>();
             Debug.Log(
-                $"  - {go.name}  scaler.enabled={scals[i].enabled}  canvas.enabled={cv?.enabled}  " +
-                $"localScale={rt.localScale}  size={rt.rect.size}"
+              $"  - {cv.gameObject.name}  overrideSorting={cv.overrideSorting}  order={cv.sortingOrder}  " +
+              $"renderMode={cv.renderMode}  localScale={rt.localScale}  size={rt.rect.size}"
             );
         }
     }
@@ -1231,21 +1335,67 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     }
     IEnumerator CoReassertResultAfterAd()
     {
-        // 모달/게이트 잠잠해질 때까지 잠깐 대기
-        float deadline = Time.realtimeSinceStartup + 0.35f;
+        if (Game.Ads is AdManager m && m.DisableInterstitials) yield break;
+
+        var mm = MapManager.Instance;
+        if (_lastResultKey == "Adventure_Result" && (mm?.CurrentMode != GameMode.Adventure))
+            yield break;
+
+
+        if (string.IsNullOrEmpty(_lastResultKey)) yield break;
+
+        var mode = mm?.CurrentMode ?? GameMode.Classic;
+
+        // 1) 모드-결과키 매칭 가드
+        bool isAdventureResult = _lastResultKey == "Adventure_Result";
+        bool isClassicResult = _lastResultKey == "GameOver" || _lastResultKey == "NewRecord";
+
+        if ((isAdventureResult && mode != GameMode.Adventure) ||
+            (isClassicResult && mode == GameMode.Adventure))
+            yield break;
+
+        // 2) 모달/게이트/래치 잠잠해질 때까지 잠깐 대기
+        float deadline = Time.realtimeSinceStartup + 0.5f;
         yield return null;
-        while ((ReviveGate.IsArmed || UIStateProbe.IsAnyModalOpen) &&
-               Time.realtimeSinceStartup < deadline)
+        while ((ReviveGate.IsArmed || UIStateProbe.IsAnyModalOpen || ReviveLatch.Active || UIStateProbe.ResultGuardActive)
+               && Time.realtimeSinceStartup < deadline)
             yield return null;
 
-        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
-        if (mm && mm.CurrentMode == GameMode.Adventure) yield break;
-
-        if (!string.IsNullOrEmpty(_lastResultKey) && !IsPanelActuallyOpen(_lastResultKey))
+        // 3) 매핑/열림 상태 최종 확인 후 재오픈
+        if (!IsPanelActuallyOpen(_lastResultKey) && TryGetPanelRoot(_lastResultKey, out _))
         {
             Debug.Log("[UI] Reopen result after interstitial");
             SetPanel(_lastResultKey, true, ignoreDelay: true);
         }
+    }
+
+    static void EnableAllCanvasRecursively(GameObject root)
+    {
+        if (!root) return;
+        var cvs = root.GetComponentsInChildren<Canvas>(includeInactive: true);
+        for (int i = 0; i < cvs.Length; i++)
+            cvs[i].enabled = true;
+    }
+
+    static void ForceCanvasGroupVisible(GameObject root)
+    {
+        if (!root) return;
+        var cg = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
+        cg.alpha = 1f;
+        cg.blocksRaycasts = true;
+        cg.interactable = true;
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    void LogPanelState(string key, GameObject root)
+    {
+        var cg = root.GetComponent<CanvasGroup>();
+        var cv = root.GetComponent<Canvas>();
+        var rt = root.GetComponent<RectTransform>();
+        Debug.Log($"[UI.State] {key} active={root.activeInHierarchy} cg?={(cg != null)} alpha={(cg ? cg.alpha : -1)} " +
+                  $"ray={(cg ? cg.blocksRaycasts : false)} itact={(cg ? cg.interactable : false)} " +
+                  $"ovrSort={(cv ? cv.overrideSorting : false)} order={(cv ? cv.sortingOrder : -1)} " +
+                  $"scale={rt.localScale} size={rt.rect.size}");
     }
 }
 

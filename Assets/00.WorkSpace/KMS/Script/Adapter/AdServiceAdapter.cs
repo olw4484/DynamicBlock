@@ -62,7 +62,7 @@ public sealed class AdServiceAdapter : IAdService
     public void ShowInterstitial(Action onClosed = null)
     {
         // 인터스티셜은 AdManager 쪽 안전 래퍼를 그대로 사용
-        _ad?.ShowInterstitial(onClosed);
+        //_ad?.ShowInterstitial(onClosed);
     }
 
     // ====== 배너/리프레시 ======

@@ -453,6 +453,50 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &234004329
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 234004330}
+  - component: {fileID: 234004331}
+  m_Layer: 0
+  m_Name: AdventureResultBridge
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &234004330
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 234004329}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7252772808081392200}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &234004331
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 234004329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ce2e1db0446c0742a30ce949681ed52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &464459832
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1443,6 +1487,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 852d215100e2f1a4bbee6fe0536971cd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  specificPanelKey: 
 --- !u!114 &1636426425
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3224,7 +3269,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8636015216115865984, guid: 693abc1d8a292524da41b819a76c1c06, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 461.94
+      value: 460.13
       objectReference: {fileID: 0}
     - target: {fileID: 8640950517165887361, guid: 693abc1d8a292524da41b819a76c1c06, type: 3}
       propertyPath: m_AnchorMax.y
@@ -3236,11 +3281,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8640950517165887361, guid: 693abc1d8a292524da41b819a76c1c06, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 301.94
+      value: 300.13
       objectReference: {fileID: 0}
     - target: {fileID: 8640950517165887361, guid: 693abc1d8a292524da41b819a76c1c06, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 230.97
+      value: 230.065
       objectReference: {fileID: 0}
     - target: {fileID: 8640950517165887361, guid: 693abc1d8a292524da41b819a76c1c06, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -4220,6 +4265,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -229.925
       objectReference: {fileID: 0}
+    - target: {fileID: 6808154616761143541, guid: 6b7ba53bfb48af548b336421e9d58e42, type: 3}
+      propertyPath: modalsToClose.Array.size
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7379815168489632472, guid: 6b7ba53bfb48af548b336421e9d58e42, type: 3}
       propertyPath: m_SizeDelta.y
       value: 459.85
@@ -4455,6 +4504,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8192963250734532215, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
       propertyPath: clearRunStateOnClick
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8192963250734532215, guid: 3cdd2966ce417654d81afa833936a750, type: 3}
+      propertyPath: modalsToClose.Array.size
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -6234,8 +6287,16 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[11].isModal
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: _panels.Array.data[12].isModal
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[11].baseSorting
+      value: 5000
       objectReference: {fileID: 0}
     - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: _panels.Array.data[12].baseSorting
@@ -6250,8 +6311,16 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[4].closeDelaySeconds
+      value: 0.15
+      objectReference: {fileID: 0}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: _panels.Array.data[7].closeDelaySeconds
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[11].closeDelaySeconds
+      value: 0.15
       objectReference: {fileID: 0}
     - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: _panels.Array.data[2].restoreScaleOnClose
@@ -6600,6 +6669,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2516424001269626929, guid: eee3e26ed8f72694eaf85870992830c7, type: 3}
+      propertyPath: modalsToClose.Array.data[1]
+      value: Game_Options
+      objectReference: {fileID: 0}
     - target: {fileID: 6440510704635160739, guid: eee3e26ed8f72694eaf85870992830c7, type: 3}
       propertyPath: m_Name
       value: InGameOptionCanvas_Settings
@@ -6720,6 +6793,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1732323795969892592, guid: 5f9853db0d813b9429066dd542322aeb, type: 3}
       propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2019201288395943994, guid: 5f9853db0d813b9429066dd542322aeb, type: 3}
+      propertyPath: modalsToClose.Array.size
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2867368545028256363, guid: 5f9853db0d813b9429066dd542322aeb, type: 3}
@@ -10724,6 +10801,7 @@ Transform:
   - {fileID: 1331684333}
   - {fileID: 530448605}
   - {fileID: 1669631398}
+  - {fileID: 234004330}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &7276703951194650341
@@ -10749,6 +10827,10 @@ PrefabInstance:
     - target: {fileID: 2252579986752036585, guid: feaf01b051470404e9fe77576bf08fb0, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2773575636887632305, guid: feaf01b051470404e9fe77576bf08fb0, type: 3}
+      propertyPath: modalsToClose.Array.size
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3517502242750296114, guid: feaf01b051470404e9fe77576bf08fb0, type: 3}
       propertyPath: m_AnchorMax.y

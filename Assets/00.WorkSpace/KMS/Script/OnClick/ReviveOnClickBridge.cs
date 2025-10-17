@@ -20,7 +20,7 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
 
         if (!ads.CanOfferReviveNow())
         {
-            Debug.LogWarning("[ReviveBridge] Revive not offerable now → refresh & bail");
+            Debug.LogWarning("[ReviveBridge] Revive not offerable now  refresh & bail");
             ads.Refresh();
             FreeReviveOrGiveUp("[ReviveBridge] gate denied");
             return;
@@ -39,9 +39,9 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
             {
                 try
                 {
-                    // ContinueGranted + RevivePerformed 는 RewardAdController가 발행
+                    // ContinueGranted + RevivePerformed  RewardAdController 
                     if (_rewardFired)
-                        Debug.Log("[ReviveBridge] Closed with reward → handled by RewardAdController");
+                        Debug.Log("[ReviveBridge] Closed with reward  handled by RewardAdController");
                     else
                         FreeReviveOrGiveUp("[ReviveBridge] Closed without reward");
                 }
@@ -59,19 +59,15 @@ public sealed class ReviveOnClickBridge : MonoBehaviour
     void FreeReviveOrGiveUp(string reasonLog)
     {
         if (!freeReviveWhenAdsUnavailable)
-        {
-            ReviveGate.Disarm();
-            AdStateProbe.IsRevivePending = false;
+            {
+                ReviveCleanup.ResetAll("revive_closed");
+                if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest("revive_closed"));
+                var ui = FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
+                ui?.OpenResultNowBecauseNoRevive();
+                return;
+            }
 
-            if (Game.IsBound) Game.Bus.PublishImmediate(new GiveUpRequest("revive_closed"));
-
-            var ui = FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
-            ui?.OpenResultNowBecauseNoRevive();
-
-            return;
-        }
-
-        Debug.LogWarning($"{reasonLog} → FREE REVIVE (dev)");
+        Debug.LogWarning($"{reasonLog}  FREE REVIVE (dev)");
         if (!ReviveGate.IsArmed) ReviveGate.Arm(2f);
         Game.Bus?.PublishImmediate(new ContinueGranted());
         Game.Bus?.PublishImmediate(new RevivePerformed());

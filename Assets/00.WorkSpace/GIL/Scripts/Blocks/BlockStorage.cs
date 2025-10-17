@@ -676,6 +676,7 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             }
 
             Debug.Log("===== GAME OVER! 더 이상 배치할 수 있는 블록이 없습니다. =====");
+            Diag.DumpAll("BlockStorage/GO_EOF");
             int score = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
 
             bool adsReadyToOffer =

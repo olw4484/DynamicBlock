@@ -6,6 +6,47 @@ using UnityEngine;
 
 public sealed class GameOverResultRouter : MonoBehaviour
 {
+    void TryOpenResultPanelNow()
+    {
+        var ui = UnityEngine.Object.FindFirstObjectByType<UIManager>(UnityEngine.FindObjectsInactive.Include);
+        if (ui == null) return;
+        // Prefer adventure result first, then fallback to classic
+        ui.SetPanel("Adventure_Result", true, ignoreDelay: true);
+        ui.SetPanel("GameOver", true, ignoreDelay: true);
+    }
+
+    bool ShouldSuppressNow()
+    {
+        bool s =
+            AdReviveToken.HasPending() ||
+            AdStateProbe.IsFullscreenShowing ||
+            AdStateProbe.IsRevivePending ||
+            ReviveGate.IsArmed ||
+            UIStateProbe.ReviveGraceActive ||
+            UIStateProbe.ResultGuardActive;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[ResultRouter.ShouldSuppressNow] => {s} " +
+                  $"(token={AdReviveToken.HasPending()}, fs={AdStateProbe.IsFullscreenShowing}, pending={AdStateProbe.IsRevivePending}, " +
+                  $"armed={ReviveGate.IsArmed}, grace={UIStateProbe.ReviveGraceActive}, guard={UIStateProbe.ResultGuardActive})");
+#endif
+        return s;
+    }
+
+    System.Collections.IEnumerator CoFlushWatcher()
+    {
+        while (true)
+        {
+            if (_queuedGoc != null && !ShouldSuppressNow())
+            {
+                Debug.Log("[ResultRouter] Flush watcher: unblocked â†’ flushing queued GOC");
+                Diag.DumpAll("CoFlushWatcher/TRIGGER");
+                TryFlushQueuedGoc();
+            }
+            yield return null;
+        }
+    }
+
     [Header("Refs")]
     [SerializeField] private GameObject classicGameOverRoot;
     [SerializeField] private GameObject classicNewBestRoot;
@@ -27,11 +68,13 @@ public sealed class GameOverResultRouter : MonoBehaviour
     private bool _suppressResults;
     private float _suppressUntil = 0f;
 
-    // ¸·Èù GOC¸¦ Àá½Ã º¸°ü
+    //  GOC  
     private GameOverConfirmed? _queuedGoc;
 
     private void OnEnable()
     {
+        StartCoroutine(CoFlushWatcher());
+
         _shownOnce = false;
         _handledThisDeath = false;
         _suppressResults = false;
@@ -51,9 +94,9 @@ public sealed class GameOverResultRouter : MonoBehaviour
             _onCont = _ =>
             {
                 _handledThisDeath = false;
-                // ºÎÈ° Àç°³ Á÷ÈÄ¿£ °á°ú ³ëÃâ ±ÝÁö (º°µµ ½Ã°£ °¡µå´Â ContinueGrantedÂÊ¿¡¼­ ¼Â)
+                // È° ç°³ Ä¿    ( Ã°  ContinueGrantedÊ¿ )
                 _suppressResults = false;
-                Debug.Log("[ResultRouter] ContinueGranted ¡æ handled=false, suppress=OFF");
+                Debug.Log("[ResultRouter] ContinueGranted  handled=false, suppress=OFF");
             };
             _onCleared = OnAdventureCleared;
             _onFailed = OnAdventureFailed;
@@ -70,35 +113,35 @@ public sealed class GameOverResultRouter : MonoBehaviour
                 _bus.ClearSticky<AdventureStageFailed>();
             };
 
-            // ´Ù¿î Á÷ÈÄ: °á°ú ¶ó¿ìÆÃ Àá±Ý
+            // Ù¿ :   
             _bus.Subscribe<PlayerDowned>(_ =>
             {
                 _suppressResults = true;
                 _shownOnce = false;
                 if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
                 adventurePresenter?.HideAllPublic();
-                Debug.Log("[ResultRouter] PlayerDowned ¡æ suppress=ON");
+                Debug.Log("[ResultRouter] PlayerDowned  suppress=ON");
             }, replaySticky: false);
 
-            // ±¤°í ½ÃÀÛ: °á°ú ¶ó¿ìÆÃ Àá±Ý
+            //  :   
             _bus.Subscribe<AdPlaying>(_ =>
             {
                 _suppressResults = true;
                 if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
                 adventurePresenter?.HideAllPublic();
-                Debug.Log("[ResultRouter] AdPlaying ¡æ suppress=ON");
+                Debug.Log("[ResultRouter] AdPlaying  suppress=ON");
             }, replaySticky: false);
 
-            // ºÎÈ° È®Á¤ ½Ã: °á°ú ¶ó¿ìÆÃ ÇØÁ¦ + Å¥ Æó±â(ºÎÈ° ½Ã °á°úÃ¢ X)
+            // È° È® :    + Å¥ (È°  Ã¢ X)
             _bus.Subscribe<RevivePerformed>(_ =>
             {
                 _suppressResults = false;
                 _handledThisDeath = false;
                 _queuedGoc = null;
-                Debug.Log("[ResultRouter] RevivePerformed ¡æ suppress=OFF, handled=false, queued GOC cleared");
+                Debug.Log("[ResultRouter] RevivePerformed  suppress=OFF, handled=false, queued GOC cleared");
             }, replaySticky: false);
 
-            // ºÎÈ° Àç°³ Á÷ÈÄ Àá±ñ ½Ã°£ °¡µå + °­Á¦ ´Ý±â + ½ºÆ¼Å° Ã»¼Ò
+            // È° ç°³   Ã°  +  Ý± + Æ¼Å° Ã»
             _bus.Subscribe<ContinueGranted>(_ =>
             {
                 _handledThisDeath = false;
@@ -111,10 +154,10 @@ public sealed class GameOverResultRouter : MonoBehaviour
                 _bus.ClearSticky<GameOverConfirmed>();
                 _bus.ClearSticky<AdventureStageCleared>();
                 _bus.ClearSticky<AdventureStageFailed>();
-                Debug.Log("[ResultRouter] ContinueGranted ¡æ suppress ON + hard close + clear stickies + clear queue");
+                Debug.Log("[ResultRouter] ContinueGranted  suppress ON + hard close + clear stickies + clear queue");
             }, replaySticky: false);
 
-            // Æ÷±â(°á°ú·Î °¡´Â ·çÆ®): °¡µå°¡ ¾øÀ¸¸é Áï½Ã ÇØÁ¦ÇÏ°í ÇÃ·¯½Ã
+            // (  Æ®): å°¡   Ï° Ã·
             _bus.Subscribe<GiveUpRequest>(_ =>
             {
                 if (AdStateProbe.IsFullscreenShowing || AdStateProbe.IsRevivePending || ReviveGate.IsArmed)
@@ -123,26 +166,26 @@ public sealed class GameOverResultRouter : MonoBehaviour
                     return;
                 }
                 _suppressResults = false;
-                Debug.Log("[ResultRouter] GiveUpRequest ¡æ suppress OFF (no revive/ad)");
+                Debug.Log("[ResultRouter] GiveUpRequest  suppress OFF (no revive/ad)");
                 TryFlushQueuedGoc();
             }, replaySticky: false);
 
-            // ±¤°í Á¾·á: ÅäÅ«(º¸»ó)ÀÌ ¾øÀ¸¸é °á°ú Çã¿ë ¡æ ÇÃ·¯½Ã
+            //  : Å«()     Ã·
             _bus.Subscribe<AdFinished>(_ =>
             {
                 if (!AdReviveToken.HasPending())
                 {
                     _suppressResults = false;
-                    Debug.Log("[ResultRouter] AdFinished (no token) ¡æ suppress=OFF");
-                    TryFlushQueuedGoc(); // ÇÃ·¯½Ã
+                    Debug.Log("[ResultRouter] AdFinished (no token)  suppress=OFF");
+                    TryFlushQueuedGoc(); // Ã·
                 }
                 else
                 {
-                    Debug.Log("[ResultRouter] AdFinished (token pending) ¡æ keep suppress");
+                    Debug.Log("[ResultRouter] AdFinished (token pending)  keep suppress");
                 }
             }, replaySticky: false);
 
-            _bus.Subscribe(_onGoc, replaySticky: false); // ½ºÆ¼Å° Àç»ý ±ÝÁö
+            _bus.Subscribe(_onGoc, replaySticky: false); // Æ¼Å°  
             _bus.Subscribe(_onCont, replaySticky: false);
             _bus.Subscribe(_onCleared, replaySticky: false);
             _bus.Subscribe(_onFailed, replaySticky: false);
@@ -188,7 +231,7 @@ public sealed class GameOverResultRouter : MonoBehaviour
     }
 
     // =======================
-    // ÇÙ½É: GOC ÁøÀÔÁ¡
+    // Ù½: GOC 
     // =======================
     private void OnGameOverConfirmed(GameOverConfirmed e)
     {
@@ -212,7 +255,7 @@ public sealed class GameOverResultRouter : MonoBehaviour
         RouteFor(e);
     }
 
-    // °ø¿ë ¶ó¿ìÆÃ: ÇöÀç ¸ðµå¿¡ ¸ÂÃç °á°ú ºÐ±â
+    //  :  å¿¡   Ð±
     private void RouteFor(GameOverConfirmed e)
     {
         var mode = MapManager.Instance?.CurrentMode ?? GameMode.Classic;
@@ -249,9 +292,9 @@ public sealed class GameOverResultRouter : MonoBehaviour
         Game.Save?.ClearRunState(true);
     }
 
-    // °¡µå ÇØÁ¦ ½Ã Å¥ ÇÃ·¯½Ã
     private void TryFlushQueuedGoc()
     {
+        Diag.DumpAll("TryFlushQueuedGoc/BEFORE");
         if (!_queuedGoc.HasValue) return;
         if (_suppressResults || AdStateProbe.IsFullscreenShowing ||
             AdStateProbe.IsRevivePending || ReviveGate.IsArmed ||
@@ -261,6 +304,7 @@ public sealed class GameOverResultRouter : MonoBehaviour
         _queuedGoc = null;
         _handledThisDeath = false;
         Debug.Log("[ResultRouter] Flushing queued GOC");
+        Diag.DumpAll("TryFlushQueuedGoc/AFTER");
         RouteFor(e);
     }
 
@@ -283,7 +327,7 @@ public sealed class GameOverResultRouter : MonoBehaviour
 
     private IEnumerator Co_ShowAdResultNextFrame(bool cleared, MapGoalKind kind, int score)
     {
-        yield return null; // ´ÙÀ½ ÇÁ·¹ÀÓ
+        yield return null; //  
         if (classicGameOverRoot) classicGameOverRoot.SetActive(false);
 
         if (cleared) adventurePresenter?.ShowClearPublic(kind, score);

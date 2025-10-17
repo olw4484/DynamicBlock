@@ -7,7 +7,7 @@ public sealed class RestartOnClick : MonoBehaviour
     public enum RestartMode { SoftReset, ReloadSceneViaEvent, ReloadSceneDirect }
 
     [SerializeField] RestartMode mode = RestartMode.SoftReset;
-    [SerializeField] string[] closePanels = { "Options", "GameOver" };
+    [SerializeField] string[] closePanels = { "Game_Options", "GameOver" };
     [SerializeField] string openPanelAfter = "Game";
     [SerializeField] string gameplayScene = "Gameplay";
     [SerializeField] float cooldown = 0.12f;
