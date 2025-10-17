@@ -6096,7 +6096,7 @@ PrefabInstance:
       objectReference: {fileID: 7168637351508798647}
     - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: _panels.Array.data[9].isModal
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: _panels.Array.data[12].isModal
@@ -8758,6 +8758,10 @@ PrefabInstance:
     - target: {fileID: 6069063751927611023, guid: 68ceb06f4e9703e42b701b001e7546ea, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: -45
+      objectReference: {fileID: 0}
+    - target: {fileID: 6152195981327955014, guid: 68ceb06f4e9703e42b701b001e7546ea, type: 3}
+      propertyPath: closeModalFirst
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6175090200396974167, guid: 68ceb06f4e9703e42b701b001e7546ea, type: 3}
       propertyPath: m_AnchorMax.x
