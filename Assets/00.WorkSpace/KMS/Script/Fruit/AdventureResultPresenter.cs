@@ -46,18 +46,44 @@ public sealed class AdventureResultPresenter : MonoBehaviour
 
     private EventQueue _bus;
     private Coroutine _scoreTween;
-    private System.Action<GameResetRequest> _onReset;
     private bool _wroteResultThisRun = false;
-    private void Awake() => HideAll();
+    private bool _isOpen;
+
+    private bool InAdventure => MapManager.Instance?.CurrentMode == GameMode.Adventure;
+
+    [ContextMenu("Dump ADResult State")]
+    void DumpState()
+    {
+        Debug.Log(
+          $"[ADResult.Dump] " +
+          $"scoreGroup={(scoreGroup ? scoreGroup.activeSelf.ToString() : "null")} " +
+          $"fruitGroup={(fruitGroup ? fruitGroup.activeSelf.ToString() : "null")} " +
+          $"ClearBG={(ClearBG ? ClearBG.activeSelf.ToString() : "null")} " +
+          $"FailBG={(FailBG ? FailBG.activeSelf.ToString() : "null")}");
+    }
+    void Awake()
+    {
+        if (!scoreGroup || !fruitGroup)
+            Debug.LogError("[ADResult] scoreGroup/fruitGroup reference missing in inspector!");
+        HideAll();
+    }
 
     private void OnEnable()
     {
         StartCoroutine(GameBindingUtil.WaitAndRun(() =>
         {
             _bus = Game.Bus;
+            if (_bus == null) return;
+
             _bus.Subscribe<AdventureStageCleared>(OnCleared, replaySticky: false);
             _bus.Subscribe<AdventureStageFailed>(OnFailed, replaySticky: false);
             _bus.Subscribe<GameResetRequest>(OnGameReset, replaySticky: false);
+
+            if (MapManager.Instance?.CurrentMode != GameMode.Adventure)
+            {
+                _bus.ClearSticky<AdventureStageCleared>();
+                _bus.ClearSticky<AdventureStageFailed>();
+            }
         }));
     }
     private void OnDisable()
@@ -76,24 +102,28 @@ public sealed class AdventureResultPresenter : MonoBehaviour
         _bus.ClearSticky<GameOver>();
         HideAll();
         _wroteResultThisRun = false;
+        _isOpen = false;
     }
 
     private void OpenPanel()
     {
+        if (!InAdventure) return;   // 비어드벤처에서 열지 않음
         _bus?.PublishImmediate(new PanelToggle(panelKey, true));
     }
-    private void ClosePanel()
-    {
-        _bus?.PublishImmediate(new PanelToggle(panelKey, false));
-    }
+
+    private void ClosePanel() => _bus?.PublishImmediate(new PanelToggle(panelKey, false));
 
     // 이벤트에서 kind/score 둘 다 받도록 변경
     private void OnCleared(AdventureStageCleared e)
     {
-        Debug.Log($"[ADResult] CLEARED kind={e.kind}, score={e.finalScore}, mapGoal={MapManager.Instance?.CurrentMapData?.goalKind}");
-        ShowClear(e.kind, e.finalScore);
+        if (!InAdventure) { Debug.Log("[ADResult] Ignore CLEARED (not Adventure)"); return; }
+        ShowClear(ResolveKind(e.kind), e.finalScore);
     }
-    private void OnFailed(AdventureStageFailed e) => ShowFail(e.kind, e.finalScore);
+    private void OnFailed(AdventureStageFailed e)
+    {
+        if (!InAdventure) { Debug.Log("[ADResult] Ignore FAILED (not Adventure)"); return; }
+        ShowFail(ResolveKind(e.kind), e.finalScore);
+    }
 
     // 외부에서 직접 호출할 수 있도록 오버로드도 변경
     public void ShowClearPublic(MapGoalKind kind, int score) => ShowClear(kind, score);
@@ -102,8 +132,11 @@ public sealed class AdventureResultPresenter : MonoBehaviour
 
     private void ShowClear(MapGoalKind kind, int score)
     {
+        if (_isOpen) return;
+        _isOpen = true;
+        kind = ResolveKind(kind);
         OpenPanel();
-        if (ADResult_Canvas) ADResult_Canvas.SetActive(true);
+        //if (ADResult_Canvas) ADResult_Canvas.SetActive(true);
 
         if (Fail_Button) Fail_Button.SetActive(false);
         if (FailBG) FailBG.SetActive(false);
@@ -152,8 +185,12 @@ public sealed class AdventureResultPresenter : MonoBehaviour
 
     private void ShowFail(MapGoalKind kind, int score)
     {
+        if (_isOpen) return;
+        _isOpen = true;
+        Debug.Log($"[ADResult] FAILED kind={kind} score={score}");
+        kind = ResolveKind(kind);
         OpenPanel();
-        if (ADResult_Canvas) ADResult_Canvas.SetActive(true);
+        //if (ADResult_Canvas) ADResult_Canvas.SetActive(true);
 
         if (Clear_Button) Clear_Button.SetActive(false);
         if (ClearBG) ClearBG.SetActive(false);
@@ -269,7 +306,7 @@ public sealed class AdventureResultPresenter : MonoBehaviour
 
     private void HideAll()
     {
-        if (ADResult_Canvas) ADResult_Canvas.SetActive(false);
+        //if (ADResult_Canvas) ADResult_Canvas.SetActive(false);
         if (ClearBG) ClearBG.SetActive(false);
         if (ADResult_ClearPanel) ADResult_ClearPanel.SetActive(false);
         if (FailBG) FailBG.SetActive(false);
@@ -390,6 +427,19 @@ public sealed class AdventureResultPresenter : MonoBehaviour
             list.Add(new FruitReq { sprite = icon, count = remain, achieved = done });
         }
         fruitLayout.Show(list.ToArray());
+    }
+
+    private MapGoalKind ResolveKind(MapGoalKind fromEvent)
+    {
+        var mm = MapManager.Instance;
+        if (fromEvent != MapGoalKind.None) return fromEvent;
+
+        var byMap = mm?.CurrentMapData?.goalKind ?? MapGoalKind.Score;
+        // 맵은 Score라고 쓰여 있는데 과일 미션 코드가 실시간으로 존재하면 과일로 보정
+        if (byMap == MapGoalKind.Score && (mm?.ActiveFruitCodes?.Count ?? 0) > 0)
+            return MapGoalKind.Fruit;
+
+        return byMap;
     }
 
     private static void ForceCleanRunStateAndBoard()

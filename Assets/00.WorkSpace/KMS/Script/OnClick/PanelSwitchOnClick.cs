@@ -21,7 +21,7 @@ public sealed class PanelSwitchOnClick : MonoBehaviour, IPointerClickHandler
 
     [Header("Modal close")]
     [SerializeField] bool closeModalFirst = true;
-    [SerializeField] string[] modalsToClose = { "GameOver", "Option" };
+    [SerializeField] string[] modalsToClose = { "GameOver", "Main_Options" };
     [SerializeField] bool clearRunStateOnClick = false; // 메인 갈 때 진행상태 비우기
 
     [Header("SFX")]

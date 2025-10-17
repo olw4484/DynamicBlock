@@ -16,6 +16,9 @@ public class AdManager : MonoBehaviour, IAdService
 
     public int Order => 80;
 
+    [Header("Feature switches")]
+    public bool DisableInterstitials = true;
+
     [Header("Policy (쿨다운은 자동노출용)")]
     public int RewardTime = 90;
     public int InterstitialTime = 120;
@@ -67,7 +70,11 @@ public class AdManager : MonoBehaviour, IAdService
         {
             Debug.Log("[Ads] MobileAds initialized (via gate)");
 
-            Interstitial = new InterstitialAdController(); Interstitial.Init();
+            if (!DisableInterstitials)
+            {
+                Interstitial = new InterstitialAdController();
+                Interstitial.Init();
+            }
             Banner = new BannerAdController(); Banner.InitAdaptive();
             Reward = new RewardAdController(); Reward.Init();
 
@@ -98,13 +105,19 @@ public class AdManager : MonoBehaviour, IAdService
             _lastResumeAt = Time.realtimeSinceStartup;
 
             AdPauseGuard.OnAdClosedOrFailed();
+            UIStateProbe.DisarmResultGuard();
+            UIStateProbe.DisarmReviveGrace();
+            GameOverUtil.ResetAll("focus_cleanup");
+
             AdStateProbe.IsFullscreenShowing = false;
             AdStateProbe.IsRevivePending = false;
             ReviveLatch.Disarm("app focus");
             Time.timeScale = 1f;
 
-            if (!AdReviveToken.HasPending() && Game.IsBound)
+            bool hadAnyAd = _interstitialInProgress || _rewardInProgress;
+            if (hadAnyAd && !AdReviveToken.HasPending() && Game.IsBound)
                 Game.Bus.PublishImmediate(new AdFinished());
+
             if (!UIStateProbe.IsResultOpen && !UIStateProbe.IsReviveOpen
                 && (AdStateProbe.IsRevivePending || ReviveGate.IsArmed))
             {
@@ -125,7 +138,8 @@ public class AdManager : MonoBehaviour, IAdService
 #endif
         return Reward != null && Reward.IsReady;
     }
-    public bool IsInterstitialReady() => Interstitial != null && Interstitial.IsReady;
+    public bool IsInterstitialReady()
+        => !DisableInterstitials && Interstitial != null && Interstitial.IsReady;
 
     public void ShowRewarded(Action onReward, Action onClosed = null, Action onFailed = null)
     {
@@ -134,7 +148,12 @@ public class AdManager : MonoBehaviour, IAdService
 
     public void ShowInterstitial(Action onClosed = null)
     {
-        if (_interstitialInProgress) { Debug.LogWarning("[Ads] Already showing interstitial"); return; }
+        if (DisableInterstitials)
+        {
+            Debug.Log("[Ads] Interstitials disabled by switch");
+            return;
+        }
+            if (_interstitialInProgress) { Debug.LogWarning("[Ads] Already showing interstitial"); return; }
         if (!_adsReady) { Debug.LogWarning("[Ads] Not ready"); return; }
         if (!Application.isFocused) { Debug.LogWarning("[Ads] deny interstitial: not focused"); return; }
         if (Interstitial == null || !Interstitial.IsReady) { Debug.LogWarning("[Ads] Interstitial not ready"); return; }
@@ -188,7 +207,11 @@ public class AdManager : MonoBehaviour, IAdService
 
         void OnFailedInternal()
         {
+            // 실패 후라도 보상이 이미 찍혔다면 커밋 분기는 유지
             Cleanup();
+            UIStateProbe.DisarmResultGuard();
+            UIStateProbe.DisarmReviveGrace();
+            GameOverUtil.ResetAll("reward_failed");
             Refresh();
         }
 
@@ -218,16 +241,12 @@ public class AdManager : MonoBehaviour, IAdService
 
     public void Refresh()
     {
-        if (!Application.isFocused)
-        {
-            Debug.Log("[Ads] Skip preload: not focused");
-            return;
-        }
-
+        if (!Application.isFocused) { Debug.Log("[Ads] Skip preload: not focused"); return; }
         if (Time.realtimeSinceStartup - _lastResumeAt < 0.3f) return;
 
         if (Reward != null && !Reward.IsReady) Reward.Init();
-        if (Interstitial != null && !Interstitial.IsReady) Interstitial.Init();
+        if (!DisableInterstitials && Interstitial != null && !Interstitial.IsReady)
+            Interstitial.Init();
     }
 
     // ===== 내부 =====
@@ -446,6 +465,9 @@ public class AdManager : MonoBehaviour, IAdService
 
             // 보상 미지급 케이스
             Cleanup();
+            UIStateProbe.DisarmResultGuard();
+            UIStateProbe.DisarmReviveGrace();
+            GameOverUtil.ResetAll("closed_no_reward");
             AdStateProbe.IsFullscreenShowing = false;
             AdStateProbe.IsRevivePending = false;
             ReviveGate.Disarm();

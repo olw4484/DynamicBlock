@@ -7,8 +7,8 @@ public sealed class ReviveRouter : MonoBehaviour
 
     public enum State { Idle, DownedGuard, PanelOpen, AdPlaying, Revived, GiveUp }
     [Header("Config")]
-    [SerializeField] float reviveDelaySec = 1.0f;   // ´Ù¿î ÈÄ ÆÐ³Î ¿­±â±îÁö Áö¿¬
-    [SerializeField] float panelWindowSec = 5.0f;   // ¸®¹ÙÀÌºê ¼±ÅÃ Ã¢ À¯È¿½Ã°£(Ç¥½Ã¿ë)
+    [SerializeField] float reviveDelaySec = 1.0f;   // Ù¿  Ð³  
+    [SerializeField] float panelWindowSec = 5.0f;   // Ìº  Ã¢ È¿Ã°(Ç¥Ã¿)
     [SerializeField] bool reviveOncePerRun = true;
 
     State _state = State.Idle;
@@ -25,7 +25,7 @@ public sealed class ReviveRouter : MonoBehaviour
         I = this; DontDestroyOnLoad(gameObject);
     }
 
-    // === ¿ÜºÎ¿¡¼­ ÇÑ ¹ø¸¸ ¸¸µé¾îµµ µÊ ===
+    // === ÜºÎ¿   îµµ  ===
     public static ReviveRouter CreateIfNeeded()
     {
         if (I) return I;
@@ -33,7 +33,7 @@ public sealed class ReviveRouter : MonoBehaviour
         return go.AddComponent<ReviveRouter>();
     }
 
-    // === ·¯´× ÇÑ ÆÇ ½ÃÀÛ/¸®¼Â ½Ã È£Ãâ (¿É¼Ç) ===
+    // ===    /  È£ (É¼) ===
     public void ResetRun()
     {
         _state = State.Idle;
@@ -42,7 +42,7 @@ public sealed class ReviveRouter : MonoBehaviour
         Time.timeScale = 1f;
     }
 
-    // === ´Ù¿î ÁøÀÔÁ¡ ===
+    // === Ù¿  ===
     public void OnPlayerDowned(int score)
     {
         if (_state != State.Idle) return;
@@ -55,12 +55,12 @@ public sealed class ReviveRouter : MonoBehaviour
     {
         _state = State.DownedGuard;
 
-        // °á°ú ¶ó¿ìÆÃ º¸È£ »óÅÂ
+        //   È£ 
         AdStateProbe.IsRevivePending = true;
         ReviveGate.Arm(reviveDelaySec + panelWindowSec + 0.2f);
         ReviveLatch.Arm(panelWindowSec + 1.0f, "downed");
 
-        // ÀÔ·Â¶ô + ÀÏ½ÃÁ¤Áö
+        // Ô·Â¶ + Ï½
         Bus?.PublishImmediate(new InputLock(true, "PreRevive"));
         Time.timeScale = 0f;
 
@@ -68,7 +68,7 @@ public sealed class ReviveRouter : MonoBehaviour
 
         if (reviveOncePerRun && _reviveConsumedThisRun)
         {
-            ForceGiveUp("no_revive_left"); // ¹Ù·Î °á°ú·Î
+            ForceGiveUp("no_revive_left"); // Ù· 
             yield break;
         }
 
@@ -78,15 +78,15 @@ public sealed class ReviveRouter : MonoBehaviour
     void OpenRevivePanel()
     {
         _state = State.PanelOpen;
-        // UIManager°¡ ÆÐ³Î ¿­±â
+        // UIManager Ð³ 
         var ui = FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
         ui?.SetPanel("Revive", true, ignoreDelay: true);
 
-        // ÇÊ¿ä½Ã »ç¿îµå/Å¸ÀÌ¸Ó ¾È³» ½ÃÀÛ (UI¿¡¼­ Ã³¸®)
+        // Ê¿ /Å¸Ì¸ È³  (UI Ã³)
         Bus?.PublishImmediate(new InputLock(false, "PreRevive"));
     }
 
-    // === ReviveScreen¿¡¼­ È£Ãâ: Æ÷±â/Å¸ÀÓ¾Æ¿ô ===
+    // === ReviveScreen È£: /Å¸Ó¾Æ¿ ===
     public void ForceGiveUp(string reason)
     {
         if (_state != State.PanelOpen && _state != State.AdPlaying) return;
@@ -101,7 +101,7 @@ public sealed class ReviveRouter : MonoBehaviour
         Bus?.PublishImmediate(new GiveUpRequest(reason));
     }
 
-    // === ReviveScreen¿¡¼­ È£Ãâ: ±¤°í ½ÃÀÛ/º¸»ó/Á¾·á ===
+    // === ReviveScreen È£:  // ===
     public void OnAdStart()
     {
         if (_state != State.PanelOpen) return;
@@ -113,7 +113,7 @@ public sealed class ReviveRouter : MonoBehaviour
 
     public void OnAdRewardGranted()
     {
-        // once-per-run Ã³¸®
+        // once-per-run Ã³
         _reviveConsumedThisRun = true;
     }
 
@@ -123,7 +123,7 @@ public sealed class ReviveRouter : MonoBehaviour
 
         if (rewarded)
         {
-            // °ú°Å¿¡ °É¸° °á°ú publish ½Ãµµ/°ÔÀÌÆ®¸¦ Àß¶ó³¿
+            // Å¿ É¸  publish Ãµ/Æ® ß¶
             GameOverUtil.CancelPending("revive_granted");
             GameOverGate.Reset("revive_granted");
             GameOverUtil.SuppressFor(2.0f, "revive_grace");
@@ -170,6 +170,9 @@ public sealed class ReviveRouter : MonoBehaviour
         AdStateProbe.IsRevivePending = false;
         ReviveGate.Disarm();
         ReviveLatch.Disarm(why);
+        UIStateProbe.DisarmReviveGrace();
+        UIStateProbe.DisarmResultGuard();
+        GameOverUtil.ResetAll(why);
     }
 
     public void BindToGameBus()
@@ -177,10 +180,10 @@ public sealed class ReviveRouter : MonoBehaviour
         if (_busWired || Game.Bus == null) return;
         _busWired = true;
 
-        // ´Ù¿î ¡æ ¶ó¿ìÅÍ ÁøÀÔ
+        // Ù¿   
         Game.Bus.Subscribe<PlayerDowned>(e => { OnPlayerDowned(e.score); }, replaySticky: false);
 
-        // ÇÑ ÆÇ ¸®¼Â ¡æ ¶ó¿ìÅÍ »óÅÂ ¸®¼Â
+        //       
         Game.Bus.Subscribe<GameResetDone>(_ => { ResetRun(); }, replaySticky: false);
     }
 
