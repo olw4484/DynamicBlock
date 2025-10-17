@@ -44,5 +44,9 @@ public static class UIStateProbe
         ReviveGraceActive = false;
         DisarmResultGuard();
     }
+    public static void DisarmReviveGrace()
+    {
+        ReviveGraceActive = false;
+    }
 }
 

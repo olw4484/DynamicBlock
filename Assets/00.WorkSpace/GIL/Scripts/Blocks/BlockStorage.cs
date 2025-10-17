@@ -744,6 +744,8 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             UIStateProbe.ArmResultGuard(2.5f);
             _goCheckFreezeUntil = Time.realtimeSinceStartup + 2.5f;
 
+            MonoRunner.Run(Co_AutoUnblockGoCheck(3.0f));
+
             // 4) 무장 해제 & 입력 언락
             ReviveGate.Disarm();
             AdStateProbe.IsRevivePending = false;
@@ -849,6 +851,14 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
         public void OnBlockPlaced(Block placedBlock)
         {
+            if (_reviveAwaitFirstPlacement)
+            {
+                _reviveAwaitFirstPlacement = false;
+                Debug.Log("[Revive] First placement → unblock GO checks");
+
+                UIStateProbe.DisarmReviveGrace();
+            }
+
             _currentBlocks.Remove(placedBlock);
             _currentBlocksShapeData.Remove(placedBlock.GetShapeData());
             _currentBlocksSpriteData.Remove(placedBlock.GetSpriteData());
@@ -1350,6 +1360,16 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
             Debug.Log($"[Storage][TUT] ForceTutorialFirstHand() at slot={mid}");
         }
+        IEnumerator Co_AutoUnblockGoCheck(float delay)
+        {
+            yield return new WaitForSecondsRealtime(delay);
+            if (_reviveAwaitFirstPlacement)
+            {
+                _reviveAwaitFirstPlacement = false;
+                Debug.Log("[Revive] Auto-unblock GO checks after delay");
+            }
+        }
+
         #region Fruit Tracker Utils (Editor)
 #if UNITY_EDITOR
         private void T(string msg) => UnityEngine.Debug.Log(msg);
