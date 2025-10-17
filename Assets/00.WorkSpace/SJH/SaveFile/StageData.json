@@ -1,4 +1,11 @@
 {
-  "IsNull": false,
-  "Count": 2
+  "_data": {
+    "Stage1": {
+      "1": 0
+    },
+    "StageName": {
+      "1": 33
+    }
+  },
+  "_firstData": {}
 }
