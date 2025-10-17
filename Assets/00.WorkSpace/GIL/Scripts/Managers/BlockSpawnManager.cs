@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Shapes;
 using UnityEngine;
@@ -46,7 +47,6 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         private int[] _dynCumulativeWeights;
         private int   _dynTotalWeight;
         private float _lastAForWeights = -999f;
-        
 // a 범위 (문서 기준 0.3~1.0)
 
         public void SetDependencies(EventQueue bus) { _bus = bus; }

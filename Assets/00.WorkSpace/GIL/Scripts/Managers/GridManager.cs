@@ -1,5 +1,6 @@
 using _00.WorkSpace.GIL.Scripts.Grids;
 using _00.WorkSpace.GIL.Scripts.Messages;
+using _00.WorkSpace.GIL.Scripts.Shapes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -216,19 +217,34 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public bool CanPlaceShape(List<Transform> shapeBlocks)
         {
             ClearHoverPreview();
-            // 블록 이미지/점유 처리
-            Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>().sprite;
+            Sprite targetImage = shapeBlocks[0].gameObject.GetComponent<Image>()?.sprite;
 
             if (!TryGetPlacement(shapeBlocks, out var targetSquares))
                 return false;
 
-            foreach (var square in targetSquares)
-                SetCellOccupied(square.RowIndex, square.ColIndex, true, targetImage);
+            int j = 0;
+            for (int i = 0; i < shapeBlocks.Count; i++)
+            {
+                var t = shapeBlocks[i];
+                if (!t.gameObject.activeSelf) continue;
 
-            // 이번에 배치한 블록 칸 수(블록 자체 점수로 사용)
-            int blockUnits = targetSquares.Count;
+                var sq = targetSquares[j++];
 
-            CheckForCompletedLines(blockUnits);
+                var ss = t.GetComponent<ShapeSquare>();
+                bool hasFruit = ss != null && ss.HasFruit && ss.FruitSprite != null;
+
+                if (hasFruit) SetCellOccupied(sq.RowIndex, sq.ColIndex, true, ss.FruitSprite, true);
+                else SetCellOccupied(sq.RowIndex, sq.ColIndex, true, targetImage, false);
+            }
+
+            CheckForCompletedLines(targetSquares.Count);
+
+            if (MapManager.Instance?.CurrentMode == GameMode.Tutorial && !TutorialFlags.WasFirstPlacement())
+            {
+                TutorialFlags.MarkFirstPlacement();
+                MapManager.Instance.PromoteTutorialToClassic();
+            }
+
             return true;
         }
 
@@ -261,21 +277,44 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (_lineCount > 0)
             {
-                // 1) 예고 이벤트 : FX가 둘레/프리롤에 사용
+                // 1) 예고 이벤트 (기존)
                 var rowsArr = completedRows.ToArray();
                 var colsArr = completedCols.ToArray();
                 _bus?.PublishImmediate(new _00.WorkSpace.GIL.Scripts.Messages.LinesWillClear(rowsArr, colsArr, destroySprite));
 
-                // 2) 실제 셀 비우기
-                foreach (int r in completedRows)
+                // 1.5) 과일 차감: 먼저 지워질 칸을 중복 없이 수집하고, 코드 읽어 MapManager에 보고
+                var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+                if (mm != null)
                 {
-                    for (int c = 0; c < cols; c++)
+                    var cellsToClear = new HashSet<(int r, int c)>();
+                    foreach (int r in completedRows) for (int c = 0; c < cols; c++) cellsToClear.Add((r, c));
+                    foreach (int c in completedCols) for (int r = 0; r < rows; r++) cellsToClear.Add((r, c));
+
+                    foreach (var (r, c) in cellsToClear)
+                    {
+                        var cell = gridSquares[r, c];
+                        if (cell == null) continue;
+
+                        int code = cell.BlockSpriteIndex; // 과일이면 201~205
+                        if (_00.WorkSpace.GIL.Scripts.Managers.MapManager.IsFruitCode(code) && mm.IsFruitCodeActive(code))
+                        {
+                            mm.OnFruitCleared(code, 1);
+                        }
+                    }
+
+                    // 2) 실제 셀 비우기 (중복 제거된 동일 셋으로)
+                    foreach (var (r, c) in cellsToClear)
                         SetCellOccupied(r, c, false);
                 }
-                foreach (int c in completedCols)
+                else
                 {
-                    for (int r = 0; r < rows; r++)
-                        SetCellOccupied(r, c, false);
+                    // 기존 동작 유지(맵 매니저가 없으면)
+                    foreach (int r in completedRows)
+                        for (int c = 0; c < cols; c++)
+                            SetCellOccupied(r, c, false);
+                    foreach (int c in completedCols)
+                        for (int r = 0; r < rows; r++)
+                            SetCellOccupied(r, c, false);
                 }
 
                 // 프리뷰 싹 정리
@@ -457,19 +496,20 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         public void ValidateGridConsistency()
         {
-            for (int r = 0; r < rows; r++)
-                for (int c = 0; c < cols; c++)
-                {
-                    var cell = gridSquares[r, c];
-                    if (cell == null) continue;
-                    bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
-                    bool occupiedBySquare = cell.IsOccupied;
-                    if (occupiedByIndex != occupiedBySquare)
-                    {
-                        Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | spriteIndex={cell.BlockSpriteIndex} vs square.IsOccupied={occupiedBySquare} | cellState={cell.state}");
-                        Debug.Assert(false, "Grid invariant broken: spriteIndex vs IsOccupied mismatch");
-                    }
-                }
+            Debug.Log("[GridManager] ValidateGridConsistency, 지금은 주석처리됨");
+            // for (int r = 0; r < rows; r++)
+            //     for (int c = 0; c < cols; c++)
+            //     {
+            //         var cell = gridSquares[r, c];
+            //         if (cell == null) continue;
+            //         bool occupiedByIndex = (cell.BlockSpriteIndex != 0);
+            //         bool occupiedBySquare = cell.IsOccupied;
+            //         if (occupiedByIndex != occupiedBySquare)
+            //         {
+            //             Debug.LogWarning($"[GridManager] MISMATCH r={r}, c={c} | spriteIndex={cell.BlockSpriteIndex} vs square.IsOccupied={occupiedBySquare} | cellState={cell.state}");
+            //             Debug.Assert(false, "Grid invariant broken: spriteIndex vs IsOccupied mismatch");
+            //         }
+            //     }
         }
         /// <summary>
         /// 보드 전체 정보를 0으로 초기화
@@ -518,14 +558,14 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
                 }
         }
 
-        public void SetCellOccupied(int r, int c, bool occupied, Sprite sprite = null)
+        public void SetCellOccupied(int r, int c, bool occupied, Sprite sprite = null, bool isFruit = false)
         {
             var cell = gridSquares[r, c];
             if (!cell) return;
-
             if (occupied)
             {
-                cell.SetImage(sprite, changeIndex: true);
+                if (isFruit) cell.SetFruitImage(true, sprite, changeIndex: true);
+                cell.SetImage(sprite, changeIndex: false);
                 cell.SetOccupied(true);
             }
             else

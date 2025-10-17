@@ -42,8 +42,11 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
 
     // 런타임 상태
     public GameData gameData;
+
     public GameData Data => gameData;
     [NonSerialized] public bool skipNextGridSnapshot = false;
+    [SerializeField] private AchievementDatabase achievementDb;
+    private bool _achChecking;
 
     [SerializeField] private float _snapshotDebounce = 0.25f;   // 디바운스 대기
     [SerializeField] private float _snapshotMinInterval = 1.0f; // 최소 저장 간격(초)
@@ -71,7 +74,6 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         yield return new WaitForSecondsRealtime(s);
         _suppressSnapshot = false;
     }
-
     // ------------- Lifecycle (Mono) -------------
     private void Awake()
     {
@@ -81,9 +83,23 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         _filePath = Path.Combine(dir, "save.json");
         _backupPath = Path.Combine(dir, "save.json.bak");
 
+        EnsurePaths();
+
         TryMigrateLegacyLanguageOnce();
         LoadGame();
         StartCoroutine(CoApplyLocale(gameData?.LanguageIndex ?? 0));
+    }
+
+    private void EnsurePaths()
+    {
+        if (string.IsNullOrEmpty(_filePath) || string.IsNullOrEmpty(_backupPath))
+        {
+            var dir = Path.Combine(Application.persistentDataPath, DirName);
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+            _filePath = Path.Combine(dir, FileName);
+            _backupPath = Path.Combine(dir, FileName + ".bak");
+        }
     }
 
 
@@ -137,68 +153,91 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         {
             if (e.reason == ResetReason.Restart)
             {
-                // 리트라이: pending 즉시 폐기 + 런 초기화
                 ClearDownedPending();
                 ClearRunState(save: true);
 
-                // 다음 클래식 입장에서 스냅샷/페딩 소비를 막는 가드
                 _justRestarted = true;
                 _skipNextEnterSnapshotApply = true;
                 StartCoroutine(CoClearRestartGuards());
 
                 Debug.Log("[Save] Snapshot cleared by Restart.");
+                GameOverGate.Reset("Restart");
             }
         }, replaySticky: false);
 
         // ---- 클래식 입장: '대기'만 설정 ----
-        _bus.Subscribe<GameEnterRequest>(e =>
-        {
-            if (e.mode != GameMode.Classic) return;
-
-            // 리스타트 직후엔 스냅샷 적용 시도 자체를 막는다
-            if (_justRestarted || _skipNextEnterSnapshotApply)
-            {
-                Debug.Log("[Save] EnterRequest during Restart guard -> skip snapshot apply & pending consume");
-                return;
-            }
-
-            SuppressSnapshotsFor(0.5f);
-            ArmSnapshotApply("EnterRequest");
-        }, replaySticky: false);
-
         _bus.Subscribe<GameEnterIntent>(e =>
         {
             if (e.mode != GameMode.Classic) return;
 
-            // 리스타트 직후엔 pending 소비 금지 (GameOverConfirmed 재발 방지)
+            if (AdPauseGuard.IsAdShowing
+                || AdStateProbe.IsRevivePending
+                || ReviveGate.IsArmed
+                || UIStateProbe.ReviveGraceActive
+                || UIStateProbe.ResultGuardActive
+                || UIStateProbe.IsReviveOpen
+                || UIStateProbe.IsResultOpen)
+            {
+                Debug.Log($"[Save] EnterIntent blocked by context: " +
+                          $"ad={AdPauseGuard.IsAdShowing}, revivePend={AdStateProbe.IsRevivePending}, " +
+                          $"gate={ReviveGate.IsArmed}, grace={UIStateProbe.ReviveGraceActive}, " +
+                          $"resultGuard={UIStateProbe.ResultGuardActive}, reviveOpen={UIStateProbe.IsReviveOpen}, " +
+                          $"resultOpen={UIStateProbe.IsResultOpen}");
+                return;
+            }
+
+            if (_justRestarted || _skipNextEnterSnapshotApply)
+            {
+                Debug.Log("[Save] EnterIntent during Restart/Enter guard -> skip pending consume");
+                return;
+            }
+
+            if (TryConsumeDownedPending(out var lastScore))
+            {
+                Debug.Log("[Save] EnterIntent consumed pending → GameOverConfirmed");
+                ClearClassicRun();
+                bool isNewBest = lastScore > (gameData?.classicHighScore ?? 0);
+                GameOverUtil.PublishGameOverOnce(lastScore, isNewBest, "PendingFinalizedOnEnter");
+                return;
+            }
+            SuppressSnapshotsFor(0.5f);
+            ArmSnapshotApply(e.forceLoadSave ? "EnterIntent(force)" : "EnterIntent");
+        }, false);
+
+        _bus.Subscribe<GameEnterIntent>(e =>
+        {
+            if (e.mode != GameMode.Classic) return;
+            if (AdPauseGuard.IsAdShowing) { Debug.Log("[Save] EnterIntent blocked: ad showing"); return; }
+            if (ReviveGate.IsArmed) { Debug.Log("[Save] EnterIntent blocked by ReviveGate"); return; }
+
             if (_justRestarted || _skipNextEnterSnapshotApply)
             {
                 Debug.Log("[Save] EnterIntent during Restart guard -> skip pending consume");
                 return;
             }
 
-            // 앱 재진입 등 '복귀' 성격에서만 pending 확정 처리
-            if (TryConsumeDownedPending(out var lastScore)) // 시그니처: out int score, ttlSeconds=0
+            if (TryConsumeDownedPending(out var lastScore))
             {
+                Debug.Log("[Save] EnterIntent consumed pending → GameOverConfirmed");
                 ClearClassicRun();
-                bool isNewBest = lastScore > (gameData?.highScore ?? 0);
-                _bus.PublishImmediate(new GameOverConfirmed(lastScore, isNewBest, "PendingFinalizedOnEnter"));
+                bool isNewBest = lastScore > (gameData?.classicHighScore ?? 0);
+                GameOverUtil.PublishGameOverOnce(lastScore, isNewBest, "PendingFinalizedOnEnter");
                 return;
             }
 
             SuppressSnapshotsFor(0.5f);
             ArmSnapshotApply(e.forceLoadSave ? "EnterIntent(force)" : "EnterIntent");
-        }, replaySticky: false);
+        }, false);
 
         _bus.Subscribe<RevivePerformed>(_ =>
         {
-            if (gameData == null) LoadGame();
-            if (gameData != null && gameData.classicDownedPending)
-            {
-                gameData.classicDownedPending = false;
-                SaveGame();
-            }
-        }, replaySticky: false);
+            if (gameData != null && gameData.classicDownedPending) { gameData.classicDownedPending = false; SaveGame(); }
+            SkipNextSnapshot("revive");
+            SuppressSnapshotsFor(0.5f);
+            _skipNextEnterSnapshotApply = true;
+            StartCoroutine(CoReleaseEnterGuard());
+            GameOverGate.Reset("revive");
+        }, false);
 
         // ---- 실제 복원 타이밍: 보드/그리드 준비 or 게임 진입 완료 ----
         _bus.Subscribe<BoardReady>(_ => TryApplyPending("BoardReady"), replaySticky: false);
@@ -218,7 +257,25 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         _bus.Subscribe<ResetRequested>(_ => { gameData = GameData.NewDefault(DefaultStages); SaveGame(); }, replaySticky: false);
         _bus.Subscribe<GameOverConfirmed>(e =>
         {
-            UpdateClassicScore(e.score);
+            if (AdStateProbe.IsRevivePending ||
+                ReviveGate.IsArmed ||
+                UIStateProbe.ReviveGraceActive ||
+                UIStateProbe.ResultGuardActive ||
+                UIStateProbe.IsReviveOpen)
+            {
+                Debug.Log($"[Save] Skip GameOverConfirmed during revive guard. " +
+                          $"revivePending={AdStateProbe.IsRevivePending}, " +
+                          $"gate={ReviveGate.IsArmed}, grace={UIStateProbe.ReviveGraceActive}, " +
+                          $"resultGuard={UIStateProbe.ResultGuardActive}, reviveOpen={UIStateProbe.IsReviveOpen}");
+                return;
+            }
+
+            var mm = MapManager.Instance;
+            bool isAdventure = mm?.CurrentMode == GameMode.Adventure;
+            if (isAdventure)
+                UpdateAdventureScore(e.score);
+            else
+                UpdateClassicScore(e.score);
 
             if (gameData != null)
             {
@@ -230,7 +287,6 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             else { Game.Fx.PlayGameOverAt(); Sfx.GameOver(); }
 
             ClearRunState(save: true);
-
             _runMaxCombo = 0;
 
             Debug.Log($"[Save] FINAL total={e.score}, persistedHigh={gameData?.highScore}");
@@ -244,12 +300,54 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             // 리바이브 창 열릴 동안은 자동 스냅샷 방지
             SuppressSnapshotsFor(5f);
         }, replaySticky: false);
+        _bus.Subscribe<AdventureStageCleared>(e =>
+        {
+            // 점수 반영
+            UpdateAdventureScore(e.finalScore); // 내부에서 SaveGame 호출
+
+            // 현재 스테이지 index(0-based) 파악
+            var map = MapManager.Instance;
+            var sm = StageManager.Instance;
+            int idx0 = (map?.CurrentMapData?.mapIndex)
+                       ?? (sm != null ? sm.GetCurrentStage() : 0);
+
+            // 스테이지 클리어 플래그 + 해당 스테이지 최고점 저장
+            ClearStage(idx0, e.finalScore);        // SaveGame 포함
+
+            // 최고 진행도(1-based) 갱신 시도 (이미 높으면 내부에서 무시)
+            TryUpdateAdventureBest(idx0 + 1, MapManager.Instance?.CurrentMapData?.stageName);
+
+            // 혹시 모를 중복 호출 대비해도 모두 idempotent
+        }, replaySticky: true);
+        _bus.Subscribe<ContinueGranted>(_ =>
+        {
+            // 1) 리바이브 컨텍스트에서 즉시 Pending 제거
+            if (gameData != null && gameData.classicDownedPending)
+            {
+                gameData.classicDownedPending = false;
+                gameData.classicDownedScore = 0;
+                gameData.classicDownedUtc = 0;
+                SaveGame();
+                Debug.Log("[Save] ContinueGranted → clear classicDownedPending immediately");
+            }
+
+            // 2) 재진입 스냅샷/적용 가드
+            SkipNextSnapshot("ContinueGranted");
+            SuppressSnapshotsFor(0.5f);
+            _skipNextEnterSnapshotApply = true;
+            StartCoroutine(CoReleaseEnterGuard());
+
+            // 3) 혹시 모를 잔여 발행 차단
+            GameOverGate.Reset("ContinueGranted");
+        }, replaySticky: false);
     }
 
     // ------------- Public Save/Load -------------
     public void SaveGame()
     {
         if (gameData == null) return;
+
+        EnsurePaths();
 
         var json = JsonUtility.ToJson(gameData, true);
         try
@@ -266,35 +364,51 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     }
     private static void AtomicWriteWithBackup(string mainPath, string bakPath, string content)
     {
+        if (string.IsNullOrEmpty(mainPath)) throw new ArgumentNullException(nameof(mainPath));
+        if (string.IsNullOrEmpty(bakPath)) throw new ArgumentNullException(nameof(bakPath));
+
+        var dir = Path.GetDirectoryName(mainPath);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+
         var tmp = mainPath + ".tmp";
-        File.WriteAllText(tmp, content);              // 1) 임시파일에 기록
-                                                      // 일부 플랫폼에서 Replace 미지원일 수 있어 try/fallback
+        File.WriteAllText(tmp, content);
+
         try
         {
-            // 메인이 있으면 백업을 갱신하며 교체, 없으면 교체 동작 = 이동
             if (File.Exists(mainPath))
+            {
+                // Replace가 일부 플랫폼에서 미지원일 수 있음 → catch로 폴백
                 File.Replace(tmp, mainPath, bakPath);
+            }
             else
             {
-                // 메인이 없을 때는 단순 Move 후, 기존 백업 갱신
                 if (File.Exists(bakPath)) File.Delete(bakPath);
                 File.Move(tmp, mainPath);
-                File.Copy(mainPath, bakPath);
+                File.Copy(mainPath, bakPath, overwrite: true);
             }
         }
         catch
         {
-            // Replace 불가 플랫폼 폴백
-            if (File.Exists(bakPath)) File.Delete(bakPath);
-            if (File.Exists(mainPath)) File.Copy(mainPath, bakPath);
+            // 폴백 경로
+            try { if (File.Exists(bakPath)) File.Delete(bakPath); } catch { /* ignore */ }
+            try { if (File.Exists(mainPath)) File.Copy(mainPath, bakPath, overwrite: true); } catch { /* ignore */ }
+
+            // 최종 쓰기
             File.Copy(tmp, mainPath, overwrite: true);
-            File.Delete(tmp);
         }
-        if (File.Exists(tmp)) File.Delete(tmp);
+        finally
+        {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* ignore */ }
+        }
     }
 
     public void LoadGame()
     {
+        bool needSave = false;
+
+        EnsurePaths();
+
         try
         {
             if (File.Exists(_filePath))
@@ -311,6 +425,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             else
             {
                 gameData = GameData.NewDefault(DefaultStages);
+                needSave = true; // 새로 만들었으니 저장 필요
             }
 
             // 보정
@@ -326,9 +441,20 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             Debug.LogError("[Save] Load failed: " + ex);
             // 백업 시도
             if (TryRestoreAndReload()) { /* ok */ }
-            else gameData = GameData.NewDefault(DefaultStages);
+            else { gameData = GameData.NewDefault(DefaultStages); needSave = true; }
         }
 
+        // 1) 마이그레이션 먼저 (v4 이식 포함)
+        int beforeVer = gameData.Version;
+        int beforeStampCount = gameData.achievementTierStamps?.Count ?? 0;
+        gameData.MigrateIfNeeded();
+        if (gameData.Version != beforeVer ||
+            (gameData.achievementTierStamps?.Count ?? 0) != beforeStampCount)
+        {
+            needSave = true;
+        }
+
+        // 2) 다운드 펜딩 중립화 (있으면)
         if (gameData.classicDownedPending)
         {
             Debug.Log("[Save] Pending detected on load -> neutralize run snapshot");
@@ -344,13 +470,18 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             gameData.currentScore = 0;
             gameData.currentCombo = 0;
 
-            SaveGame();
+            needSave = true;
         }
 
+        // 3) 변경사항 저장
+        if (needSave) SaveGame();
+
         Debug.Log($"[Save] Loaded: blocks={gameData.currentBlockSlots?.Count}");
+        // 이벤트/브로드캐스트는 최신 데이터로
         AfterLoad?.Invoke(gameData);
         PublishState(gameData);
     }
+
     private void RestoreFromBackup()
     {
         File.Copy(_backupPath, _filePath, overwrite: true);
@@ -387,6 +518,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     // ------------- Legacy Migration (1회) -------------
     private void TryMigrateLegacyLanguageOnce()
     {
+        EnsurePaths();
 #if UNITY_EDITOR
         string legacyPath = Path.Combine(Application.dataPath, "00.WorkSpace/SJH/SaveFile/SaveData.json");
 #else
@@ -398,13 +530,13 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             if (!File.Exists(legacyPath) || File.Exists(bak)) return;
 
             string json = File.ReadAllText(legacyPath);
-            SJH.GameData legacy = JsonUtility.FromJson<SJH.GameData>(json);
-            if (legacy == null) return;
-
-            if (gameData == null) gameData = GameData.NewDefault(DefaultStages);
-
-            int before = gameData.LanguageIndex;
-            gameData.LanguageIndex = legacy.LanguageIndex;
+            //SJH.GameData legacy = JsonUtility.FromJson<SJH.GameData>(json);
+            //if (legacy == null) return;
+            //
+            //if (gameData == null) gameData = GameData.NewDefault(DefaultStages);
+            //
+            //int before = gameData.LanguageIndex;
+            //gameData.LanguageIndex = legacy.LanguageIndex;
 
             SaveGame();
 
@@ -412,7 +544,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
             File.Move(legacyPath, bak);
 
 #if UNITY_EDITOR
-            Debug.Log($"[Save] Migrated LanguageIndex {before}→{legacy.LanguageIndex} from legacy file.");
+            //Debug.Log($"[Save] Migrated LanguageIndex {before}→{legacy.LanguageIndex} from legacy file.");
 #endif
         }
         catch (Exception ex) { Debug.LogException(ex); }
@@ -425,7 +557,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         var evt = new global::GameDataChanged(d);
         _bus.PublishSticky(evt, alsoEnqueue: false);
         _bus.PublishImmediate(evt);
-        Debug.Log($"[Save] PublishState high={d?.highScore}");
+        Debug.Log($"[Save] PublishState classicHigh={d?.classicHighScore}, advHigh={d?.adventureHighScore}");
     }
 
     // ------------- Language API -------------
@@ -470,35 +602,56 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     }
 
     // ------------- Score/Stage API -------------
+    // 클래식 전용: 모드별 + 레거시 미러링(호환)
     public void UpdateClassicScore(int score)
     {
         if (gameData == null) LoadGame();
 
-        gameData.lastScore = score;
+        gameData.classicLastScore = score;
         gameData.playCount++;
-        if (score > gameData.highScore) gameData.highScore = score;
+        if (score > gameData.classicHighScore) gameData.classicHighScore = score;
+
+        // 레거시 호환: 클래식 값만 미러
+        gameData.lastScore = gameData.classicLastScore;
+        gameData.highScore = gameData.classicHighScore;
+
+        CheckAndRecordAchievementsIfNeeded();
 
         SaveGame();
     }
 
+    // 어드벤처 전용
+    public void UpdateAdventureScore(int score)
+    {
+        if (gameData == null) LoadGame();
+        gameData.adventureLastScore = score;
+        if (score > gameData.adventureHighScore) gameData.adventureHighScore = score;
+        CheckAndRecordAchievementsIfNeeded();
+        SaveGame();
+    }
+
+
+    // 클래식 전용 신기록 갱신
     public bool TryUpdateHighScore(int score, bool save = true)
     {
         if (gameData == null) LoadGame();
-        if (score > gameData.highScore)
+        if (score > gameData.classicHighScore)
         {
-            gameData.highScore = score;
+            gameData.classicHighScore = score;
+            gameData.highScore = gameData.classicHighScore;
+            CheckAndRecordAchievementsIfNeeded();
             if (save) SaveGame();
             return true;
         }
         return false;
     }
 
-    public int CurrentHighScore => gameData?.highScore ?? 0;
+    public int CurrentHighScore => gameData?.classicHighScore ?? 0;
 
     public int GetPersistedHighScoreFresh()
     {
         LoadGame(); // UI 갱신 이벤트 나갈 수 있음(정상)
-        return gameData?.highScore ?? 0;
+        return gameData?.classicHighScore ?? 0;
     }
 
     public void ClearStage(int stageIndex, int score)
@@ -509,6 +662,7 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         gameData.stageCleared[stageIndex] = 1;
         if (score > gameData.stageScores[stageIndex]) gameData.stageScores[stageIndex] = score;
 
+        CheckAndRecordAchievementsIfNeeded();
         SaveGame();
     }
     public bool IsStageCleared(int stageIndex) => gameData.stageCleared[stageIndex] == 1;
@@ -587,32 +741,28 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     {
         if (gameData == null || storage == null) return false;
 
+        var mode = MapManager.Instance?.CurrentMode ?? GameMode.Classic;
+        // 튜토리얼 & 클래식은 손패 복원 자체를 금지
+        if (mode == GameMode.Tutorial || mode == GameMode.Classic) return false;
+
         var shapes = gameData.currentShapes;
         var sprites = gameData.currentShapeSprites;
         var slots = gameData.currentBlockSlots;
 
-        // 필요시 이름→객체 복원
-        if ((shapes == null || shapes.Count == 0)
-            && (gameData.currentShapeNames?.Count ?? 0) > 0)
+        if ((shapes == null || shapes.Count == 0) && (gameData.currentShapeNames?.Count ?? 0) > 0)
         {
-            shapes = gameData.currentShapeNames.Select(n => GDS.I.GetShapeByName(n)).ToList();
-            sprites = (gameData.currentSpriteNames ?? new List<string>())
-                        .Select(n => GDS.I.GetBlockSpriteByName(n)).ToList();
+            shapes = (gameData.currentShapeNames ?? new List<string>()).Select(n => GDS.I.GetShapeByName(n)).ToList();
+            sprites = (gameData.currentSpriteNames ?? new List<string>()).Select(n => GDS.I.GetBlockSpriteByName(n)).ToList();
+
+            shapes = shapes.Where(s => s != null).ToList();
+            sprites = sprites.Where(s => s != null).ToList();
 
             gameData.currentShapes = shapes;
             gameData.currentShapeSprites = sprites;
         }
 
-        int nShapes = shapes?.Count ?? 0;
-        int nSprites = sprites?.Count ?? 0;
-
-        if (nShapes == 0 || nSprites == 0)
-        {
-            Debug.Log("[Save] TryRestoreBlocksToStorage: empty -> false");
-            return false;
-        }
-
-        int n = Mathf.Min(nShapes, nSprites);
+        int n = Mathf.Min(shapes?.Count ?? 0, sprites?.Count ?? 0);
+        if (n == 0) { Debug.Log("[Save] TryRestoreBlocksToStorage: empty -> false"); return false; }
 
         if (slots != null && slots.Count == n)
             return storage.RebuildBlocksFromLists(shapes, sprites, slots);
@@ -807,26 +957,20 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
         SaveGame();
     }
 
-    public bool TryConsumeDownedPending(out int score, double ttlSeconds = 0) // ttl 0=무한
+    public bool TryConsumeDownedPending(out int score, double ttlSeconds = 0)
     {
         score = 0;
         if (gameData == null) LoadGame();
-        if (gameData == null || !gameData.classicDownedPending) return false;
-
-        // TTL 검사
-        if (ttlSeconds > 0)
-        {
-            var elapsed = (DateTime.UtcNow - new DateTime(gameData.classicDownedUtc)).TotalSeconds;
-            if (elapsed > ttlSeconds) { /* 만료 처리해도 됨 */ }
-        }
+        if (gameData == null || !gameData.classicDownedPending)
+        { Debug.Log("[Save] Pending: NONE"); return false; }
 
         score = gameData.classicDownedScore;
-        gameData.classicDownedPending = false; // 소비
+        gameData.classicDownedPending = false;
         SaveGame();
+        Debug.Log($"[Save] Pending CONSUMED: score={score}");
         return true;
     }
 
-    // 런 정리(이름만, 기존 ClearRunState 써도 OK)
     public void ClearClassicRun()
     {
         ClearRunState(save: true);
@@ -851,6 +995,46 @@ public sealed class SaveManager : MonoBehaviour, IManager, ISaveService
     }
 
     public void SkipNextSnapshot(string reason = null) { skipNextGridSnapshot = true; Debug.Log($"[Save] Skip next grid snapshot (reason: {reason})"); }
+
+    public bool TryUpdateAdventureBest(int newIndex, string stageName)
+    {
+        if (gameData == null) return false;
+
+        newIndex = Mathf.Max(1, newIndex);
+
+        int prev = gameData.adventureBestIndex;
+        if (newIndex <= prev) return false;
+
+        gameData.adventureBestIndex = newIndex;
+        SaveGame();
+
+        string name = string.IsNullOrEmpty(stageName) ? $"Stage_{newIndex}" : stageName;
+
+        var evt = new AdventureBestUpdated(prev, newIndex, name);
+        Game.Bus?.PublishSticky(evt, alsoEnqueue: false);
+        Game.Bus?.PublishImmediate(evt);
+
+        return true;
+    }
+    private void CheckAndRecordAchievementsIfNeeded()
+    {
+        // 중복·재귀 방지 + 준비물 검사
+        if (_achChecking || achievementDb == null || gameData == null) return;
+
+        _achChecking = true;
+        try
+        {
+            var svc = new AchievementService(gameData, achievementDb);
+            svc.EvaluateAll(recordUnlocks: true, utcNow: DateTime.UtcNow, out var newly);
+
+            // 방금 해금이 있으면 저장
+            if (newly != null && newly.Count > 0)
+                SaveGame();
+        }
+        finally { _achChecking = false; }
+    }
+    IEnumerator CoReleaseEnterGuard() { yield return null; yield return new WaitForEndOfFrame(); _skipNextEnterSnapshotApply = false; }
+
     // ------------- ISaveService (직접 호출 경로) -------------
     public bool LoadOrCreate() { LoadGame(); return true; }
     public void Save() { SaveGame(); }

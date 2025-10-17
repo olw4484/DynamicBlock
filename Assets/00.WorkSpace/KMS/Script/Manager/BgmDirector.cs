@@ -40,15 +40,7 @@ public sealed class BgmDirector : IManager
         var am = AudioManager.Instance;
         if (!am) return;
 
-        if (am.IsBgmOn && am.BGM_Main)
-        {
-            // 중복 재생 방지는 IAudioService 내부에서 해주는 편이 깔끔
-            _audio?.PlayBgm(am.BGM_Main);
-        }
-        else
-        {
-            _audio?.StopBgm();
-        }
+        if (am.BGM_Main) _audio?.PlayBgm(am.BGM_Main);
     }
 
     // 패널 열릴 때 라우팅 (닫힐 때는 무시)
@@ -57,30 +49,18 @@ public sealed class BgmDirector : IManager
         if (!e.on) return;
 
         EnsureMap();
-        var am = AudioManager.Instance;
-        if (!am) return;
-
-        // 사용자 토글 OFF면 절대 재생하지 않음
-        if (!am.IsBgmOn) { _audio?.StopBgm(); return; }
-
         if (_bgmByKey != null && _bgmByKey.TryGetValue(e.key, out var clip) && clip)
         {
             _audio?.PlayBgm(clip);
-            // Debug.Log($"[BGM] Panel='{e.key}' -> {clip.name}");
         }
-        // 매핑 없으면 유지(또는 정책에 따라 _audio.StopBgm();)
     }
 
     // 필요 시 씬 체인지에도 같은 정책 적용
     private void OnSceneChanged(SceneChanged e)
     {
         EnsureMap();
-        var am = AudioManager.Instance;
-        if (!am || !am.IsBgmOn) { _audio?.StopBgm(); return; }
-
         if (_bgmByKey != null && _bgmByKey.TryGetValue(e.sceneName, out var clip) && clip)
             _audio?.PlayBgm(clip);
-        // else _audio?.StopBgm();
     }
 
     // 패널/씬 키 → BGM 매핑

@@ -1,4 +1,5 @@
 ﻿using _00.WorkSpace.GIL.Scripts.Managers;
+using _00.WorkSpace.GIL.Scripts.Maps;
 using _00.WorkSpace.GIL.Scripts.Messages;
 using System;
 using System.Collections.Concurrent;
@@ -342,11 +343,31 @@ namespace _00.WorkSpace.GIL.Scripts.Messages
             this.rows = rows; this.cols = cols; this.combo = combo; this.destroySprite = sprite;
         }
     }
+
+    public readonly struct AdventureStageCleared
+    {
+        public readonly MapGoalKind kind;
+        public readonly int finalScore;
+        public AdventureStageCleared(MapGoalKind kind, int finalScore)
+        { this.kind = kind; this.finalScore = finalScore; }
+    }
+
+    public readonly struct AdventureStageFailed
+    {
+        public readonly MapGoalKind kind;
+        public readonly int finalScore;
+        public AdventureStageFailed(MapGoalKind kind, int finalScore)
+        { this.kind = kind; this.finalScore = finalScore; }
+    }
 }
 
 
 public readonly struct ReviveRequest { }              // 리바이브 버튼 클릭/보상 수령
-public readonly struct GiveUpRequest { }              // 포기 버튼/타임아웃
+public readonly struct GiveUpRequest                  // 포기 버튼/타임아웃
+{
+    public readonly string reason;
+    public GiveUpRequest(string reason) { this.reason = reason; }
+}
 
 public readonly struct GridCleared { public readonly int rows, cols; public GridCleared(int r,int c){rows=r;cols=c;} }
 
@@ -385,3 +406,19 @@ public readonly struct GameEntered
 }
 
 public readonly struct BlockCommitted { }
+
+public readonly struct AdventureBestUpdated
+{
+    public readonly int prevIndex;
+    public readonly int newIndex;
+    public readonly string stageName;
+    public AdventureBestUpdated(int prevIndex, int newIndex, string stageName)
+    { this.prevIndex = prevIndex; this.newIndex = newIndex; this.stageName = stageName; }
+}
+public readonly struct ServiceNoticeCheck { }
+
+public readonly struct ResultDelay
+{
+    public readonly float seconds;
+    public ResultDelay(float seconds) { this.seconds = seconds; }
+}

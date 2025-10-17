@@ -1,7 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public sealed class AdServiceAdapter : IAdService
@@ -16,73 +13,67 @@ public sealed class AdServiceAdapter : IAdService
         _ad = AdManager.Instance;
         if (_ad == null)
             Debug.LogWarning("[AdServiceAdapter] AdManager.Instance is null. Is it in the scene?");
-        // AdManager가 내부에서 Initialize → 각 컨트롤러 Init 호출
     }
+
     public void PostInit() { }
     public void Shutdown() { }
 
-    public void InitAds(bool userConsent) { /* CMP/ATT 처리 지점 */ }
+    public void InitAds(bool userConsent) { /* CMP/ATT 등 처리 위치 */ }
 
-    public bool IsRewardedReady() => _ad?.Reward != null && _ad.Reward.IsReady;
-    public bool IsInterstitialReady() => _ad?.Interstitial != null && _ad.Interstitial.IsReady;
+    // ====== 상태 조회 ======
+    public bool IsRewardedReady() => _ad != null && _ad.Reward != null && _ad.Reward.IsReady;
+    public bool IsInterstitialReady() => _ad != null && _ad.Interstitial != null && _ad.Interstitial.IsReady;
 
+    public bool IsRewardCooldownActive(out float remainSec)
+    {
+        remainSec = 0f;
+        if (_ad == null) return false; // AdManager 없으면 쿨타임 없음으로 간주
+        if (_ad.RewardTime <= 0) return false;
+
+        var now = DateTime.UtcNow;
+        if (now < _ad.NextRewardTime)
+        {
+            remainSec = (float)(_ad.NextRewardTime - now).TotalSeconds;
+            return true;
+        }
+        return false;
+    }
+    public bool CanOfferReviveNow()
+    {
+        if (_ad == null) return false;
+        float _;
+        return IsRewardedReady() && !IsRewardCooldownActive(out _);
+    }
+
+    // ====== 노출 요청 ======
     public void ShowRewarded(Action onReward, Action onClosed = null, Action onFailed = null)
     {
-        if (!IsRewardedReady()) { onFailed?.Invoke(); return; }
-
-        void OnR() { Unsub(); onReward?.Invoke(); }
-        void OnC() { Unsub(); onClosed?.Invoke(); }
-        void OnF() { Unsub(); onFailed?.Invoke(); }
-
-        void Unsub()
+        // 쿨타임/미준비면 바로 실패 콜백 (UI 측에서 GiveUp로 흐름 처리)
+        if (!CanOfferReviveNow())
         {
-            _ad.Reward.Rewarded -= OnR;
-            _ad.Reward.Closed -= OnC;
-            _ad.Reward.Failed -= OnF;
+            try { onFailed?.Invoke(); } catch { }
+            return;
         }
 
-        _ad.Reward.Rewarded += OnR;
-        _ad.Reward.Closed += OnC;
-        _ad.Reward.Failed += OnF;
-
-        // 외부 onReward도 컨트롤러에 넘겨 보장
-        _ad.Reward.ShowAd(onReward);
+        // AdManager의 안전 래퍼(Co_ShowRewardedSafely)로 위임 (watchdog/guard 포함)
+        _ad?.ShowRewarded(onReward, onClosed, onFailed);
     }
 
     public void ShowInterstitial(Action onClosed = null)
     {
-        if (!IsInterstitialReady()) { onClosed?.Invoke(); return; }
-
-        void OnC()
-        {
-            _ad.Interstitial.Closed -= OnC;
-            onClosed?.Invoke();
-        }
-
-        _ad.Interstitial.Closed += OnC;
-        _ad.Interstitial.ShowAd();
+        // 인터스티셜은 AdManager 쪽 안전 래퍼를 그대로 사용
+        //_ad?.ShowInterstitial(onClosed);
     }
 
+    // ====== 배너/리프레시 ======
     public void ToggleBanner(bool show)
     {
-        if (_ad?.Banner == null)
-            return;
-
-        if (show)
-        {
-            _ad.Banner.ShowAd();
-        }
-        else
-        {
-            _ad.Banner.HideAd();
-        }
+        if (_ad == null) return;
+        _ad.ToggleBanner(show);
     }
 
     public void Refresh()
     {
-        // 필요 시 재로딩 직접 트리거
-        _ad?.Interstitial?.Init();
-        _ad?.Reward?.Init();
-        // 배너는 자동 로드/토글 구조라 보통 필요 없음
+        _ad?.Refresh();
     }
 }

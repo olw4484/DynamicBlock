@@ -273,8 +273,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Button
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -377,8 +377,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8bcb8774b93daf64da94535ac9df7cf0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  BGM_Main: {fileID: 0}
-  BGM_Adventure: {fileID: 0}
+  sePoolSize: 10
+  BGMVolume: 1
+  SEVolume: 1
+  VibrateEnabled: 1
+  SE_Button: {fileID: 0}
+  SE_Classic_StageEnter: {fileID: 0}
+  SE_Classic_GameOver: {fileID: 0}
+  SE_Classic_NewRecord: {fileID: 0}
+  SE_Adven_StageEnter: {fileID: 0}
+  SE_Adven_Fail: {fileID: 0}
+  SE_Adven_Clear: {fileID: 0}
+  SE_BlockSelect: {fileID: 0}
+  SE_BlockPlace: {fileID: 0}
+  SE_ClearCombo:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  SE_ContinueTimeCheck: {fileID: 0}
   SE_LineClear:
   - {fileID: 0}
   - {fileID: 0}
@@ -386,13 +407,9 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
-  SE_BlockSelect: {fileID: 0}
-  SE_BlockPlace: {fileID: 0}
-  SE_Adven_StageEnter: {fileID: 0}
-  SE_Button: {fileID: 0}
-  sePoolSize: 10
-  BGMVolume: 1
-  SEVolume: 1
+  SE_ClearAllBlock: {fileID: 0}
+  BGM_Main: {fileID: 0}
+  BGM_Adventure: {fileID: 0}
 --- !u!4 &315274155
 Transform:
   m_ObjectHideFlags: 0
@@ -569,8 +586,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Button
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -824,8 +841,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Button
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1342,8 +1359,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Button
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
+  m_sharedMaterial: {fileID: 5475354962482500751, guid: 28f21d83938ec874ab01b1223865bbcc, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

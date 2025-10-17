@@ -2,6 +2,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using _00.WorkSpace.GIL.Scripts.Messages;
+using _00.WorkSpace.GIL.Scripts.Maps;
 
 namespace _00.WorkSpace.GIL.Scripts.Managers
 {
@@ -15,12 +16,16 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
         [SerializeField] public int baseScroe = 30;
 
+        public event Action<int> OnScoreChanged;
+
         private EventQueue _bus;
         private int _score = 0;
         public int Score => _score;
         public int Combo { get; private set; }
 
-        private bool _handHadClear = false; // �̹� ��Ʈ(3��) ���� �� ���̶� �� ���Ű� �־��°�
+        private bool _adventureScoreClearNotified = false;
+
+        private bool _handHadClear = false; // ??? ???(3??) ???? ?? ????? ?? ????? ????��?
 
         public int comboCount
         {
@@ -62,12 +67,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _bus.Unsubscribe<GameResetRequest>(OnGameResetReq);
             _bus.Subscribe<GameResetRequest>(OnGameResetReq, replaySticky: false);
 
-            // �� ���� ���� 0 ���¸� HUD�� ����
+            // ?? ???? ???? 0 ???��? HUD?? ????
             PublishScore();
             PublishCombo();
         }
 
-        // =============== ����/�޺� API ===============
+        // =============== ????/??? API ===============
         private void OnGameResetReq(GameResetRequest _)
         {
             ResetRuntime();
@@ -77,7 +82,8 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         {
             _score = 0;
             Combo = 0;
-            _handHadClear = false; // �޺� �ʱ�ȭ
+            _handHadClear = false; // ??? ????
+            _adventureScoreClearNotified = false;
             PublishScore();
             PublishCombo();
         }
@@ -87,6 +93,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int before = _score;
             _score += amount;
             PublishScore();
+            CheckAdventureScoreClearAndConfirm();
         }
 
         public void SetCombo(int value)
@@ -94,7 +101,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             Combo = Mathf.Max(0, value);
 
             if (Combo > 0)
-                Sfx.Combo(Combo); // ���۰� 1~8�� Ŭ����
+                Sfx.Combo(Combo); // ????? 1~8?? ?????
 
             PublishCombo();
         }
@@ -105,12 +112,12 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             if (clearedLines < 0) clearedLines = 0;
 
             int comboAtStart = Combo;
-            int baseScore = (comboAtStart + 1) * baseScroe; // ���̽� ����
+            int baseScore = (comboAtStart + 1) * baseScroe; // ????? ????
 
             if (clearedLines == 0)
             {
                 AddScore(blockUnits);
-                // SetCombo(0); // �޺� ������ �ʿ� ���� ��� �ּ� ����
+                // SetCombo(0); // ??? ?????? ??? ???? ??? ??? ????
                 return;
             }
 
@@ -120,12 +127,26 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             int bonus = CalcBonus(baseScore, comboAtStart, clearedLines);
 
             AddScore(blockUnits + bonus);
-            SetCombo(comboAtStart + 1);
+            SetCombo(comboAtStart + clearedLines);
 
+            // GIL_ADD - 어드벤쳐 모드일 경우 점수 체크까지 하기
+            if (MapManager.Instance.CurrentMode == GameMode.Adventure)
+            {
+                var mM = MapManager.Instance;
+                if (mM.CurrentMapData != null && mM.CurrentMapData.goalKind == MapGoalKind.Score)
+                {
+                    if (_score >= mM.CurrentMapData.scoreGoal && !_adventureScoreClearNotified)
+                    {
+                        _adventureScoreClearNotified = true;
+                        Debug.Log($"[ScoreManager] 점수 목표 달성! 현재 점수: {_score}, 목표: {mM.CurrentMapData.scoreGoal}");
+                        _bus?.PublishImmediate(new AdventureStageCleared(MapGoalKind.Score, _score));
+                    }
+                }
+            }
             _handHadClear = true;
         }
 
-        // ���� API�� ����
+        // ???? API?? ????
         [Obsolete("Use ApplyMoveScore(blockUnits, clearedLines).")]
         public void CalculateLineClearScore(int lineCount)
         {
@@ -135,16 +156,19 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
         public void OnHandRefilled()
         {
             if (!_handHadClear)
-                SetCombo(0);   // �̹� ��Ʈ(3��) ���� �� ���� �� ���Ű� �������� �޺� ����
+                SetCombo(0);   // ??? ???(3??) ???? ?? ???? ?? ????? ???????? ??? ????
 
-            _handHadClear = false; // ���� ��Ʈ�� ���� �÷��� �ʱ�ȭ
+            _handHadClear = false; // ???? ????? ???? ?��??? ????
         }
 
-        // =============== ���� API ===============
+        // =============== ???? API ===============
         void PublishScore()
         {
             if (scoreText) scoreText.text = _score.ToString();
             if (_bus == null) return;
+
+            OnScoreChanged?.Invoke(_score);
+
             var e = new ScoreChanged(_score);
             _bus.PublishSticky(e, alsoEnqueue: false);
             _bus.PublishImmediate(e);
@@ -158,9 +182,22 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             _bus.PublishSticky(e, alsoEnqueue: false);
             _bus.PublishImmediate(e);
         }
+        // 어드벤쳐, 점수 모드일 경우 콤보수 마다 추가될 점수
+        // 변경 가능성을 대비해서 별도 배열로 둠
+        private readonly int[] ScoreByLines = { 0, 10, 30, 60, 100, 150, 210 };
 
         private int CalcBonus(int baseScore, int comboAtStart, int clearedLines)
         {
+            // Adventure 모드 && 점수 목표일 경우 별도의 모드 적용
+            var mM = MapManager.Instance;
+            if (mM.CurrentMode == GameMode.Adventure && mM.CurrentMapData.goalKind == MapGoalKind.Score)
+            {
+                if (mM.CurrentMapData != null && mM.CurrentMapData.goalKind == MapGoalKind.Score)
+                {
+                    int idx = Mathf.Clamp(clearedLines, 0, ScoreByLines.Length - 1);
+                    return ScoreByLines[idx];
+                }
+            }
             int tier = (comboAtStart <= 4) ? 0 : (comboAtStart <= 9 ? 1 : 2); // 0,1,2
             int w = 2 + tier; // 2,3,4
 
@@ -193,7 +230,7 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
 
             if (!publish) return;
 
-            // 1) 즉시 한 번 (이미 구독 중인 리스너용)
+            // 1) ��� �� �� (�̹� ���� ���� �����ʿ�)
             PublishScore();
             PublishCombo();
         }
@@ -207,6 +244,25 @@ namespace _00.WorkSpace.GIL.Scripts.Managers
             {
                 Game.Bus.PublishImmediate(new ScoreChanged(_score));
                 Game.Bus.PublishImmediate(new ComboChanged(Combo));
+            }
+        }
+        private void CheckAdventureScoreClearAndConfirm()
+        {
+            var mm = MapManager.Instance;
+            var md = mm?.CurrentMapData;
+            if (mm?.CurrentMode != GameMode.Adventure) return;
+            if ((md?.goalKind ?? MapGoalKind.Score) != MapGoalKind.Score) return;
+
+            int goal = Mathf.Max(1, md.scoreGoal);
+            if (_score >= goal && !_adventureScoreClearNotified)
+            {
+                _adventureScoreClearNotified = true;
+                Debug.Log($"[ScoreManager] Adventure 목표 달성! score={_score}, goal={goal}");
+
+                // 1) 결과 이벤트 먼저
+                Game.Bus.PublishImmediate(new AdventureStageCleared(MapGoalKind.Score, _score));
+                // 2) 바로 확정으로 밀어넣기 (리바이브 스킵)
+                Game.Bus.PublishImmediate(new GiveUpRequest());
             }
         }
     }

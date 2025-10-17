@@ -3,7 +3,13 @@ using UnityEngine;
 
 namespace _00.WorkSpace.GIL.Scripts.Maps
 {
-    public enum MapGoalKind { Tutorial, Score, Fruit }
+    public enum MapGoalKind
+    {
+        Tutorial = 0,
+        Score = 1,
+        Fruit = 2,
+        None = 3
+    }
 
     [CreateAssetMenu(fileName = "Stage_0", menuName = "Map Data", order = 1)]
     public class MapData : ScriptableObject
@@ -39,6 +45,7 @@ namespace _00.WorkSpace.GIL.Scripts.Maps
         [Range(0f, 2f)] public float charlieMin = 0.5f;
         [Range(0f, 2f)] public float charlieMax = 1.5f;
 
+        public string stageName => string.IsNullOrEmpty(id) ? $"Stage_{mapIndex}" : id;
         public int Get(int r, int c) => layout[r * cols + c];
         public void Set(int r, int c, int v) { layout[r * cols + c] = v; }
         

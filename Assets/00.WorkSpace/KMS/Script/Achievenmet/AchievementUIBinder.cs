@@ -30,7 +30,6 @@ public sealed class AchievementUIBinder : MonoBehaviour
 
     void Awake()
     {
-        if (!database) Debug.LogWarning("[AchievementUIBinder] Database not set.");
         Loc.DefaultTable = "LanguageTable";
 
         _data = saveManager ? saveManager.gameData : GameData.NewDefault();
@@ -50,9 +49,11 @@ public sealed class AchievementUIBinder : MonoBehaviour
         if (saveManager)
         {
             saveManager.AfterLoad += OnAfterSaveLoad;
-            saveManager.AfterSave += OnAfterSave; // ← 추가
+            saveManager.AfterSave += OnAfterSave;
         }
-        RefreshAll(recordUnlocks: false);
+
+        if (LocalizationSettings.InitializationOperation.IsDone)
+            RefreshAll(recordUnlocks: false);
     }
 
     void OnDisable()
@@ -61,7 +62,7 @@ public sealed class AchievementUIBinder : MonoBehaviour
         if (saveManager)
         {
             saveManager.AfterLoad -= OnAfterSaveLoad;
-            saveManager.AfterSave -= OnAfterSave; // ← 추가
+            saveManager.AfterSave -= OnAfterSave;
         }
     }
 
@@ -91,7 +92,7 @@ public sealed class AchievementUIBinder : MonoBehaviour
 
         // 1) 통계 텍스트
         if (txtHighestCombo) txtHighestCombo.text = Mathf.Max(_data.bestCombo, _data.currentCombo).ToString();
-        if (txtBestScore) txtBestScore.text = _data.highScore.ToString("N0");
+        if (txtBestScore) txtBestScore.text = _data.highScore.ToString("#0");
         if (txtRounds) txtRounds.text = _data.playCount.ToString();
         if (txtLoginDays) txtLoginDays.text = _data.loginDays.ToString();
 
@@ -103,7 +104,6 @@ public sealed class AchievementUIBinder : MonoBehaviour
         {
             var def = v ? v.Definition : null;
             var inDb = def && byId.ContainsKey(def.id);
-            Debug.Log($"[ACH-BIND] view={v?.name} def={(def ? def.id.ToString() : "NULL")} inDb={inDb}");
         }
 
         // 3) 메달 UI 반영
@@ -119,31 +119,83 @@ public sealed class AchievementUIBinder : MonoBehaviour
             }
         }
 
-        // 4) 팝업(옵션)
+        // 4) 팝업
         if (showPopupOnUnlock && popup && newlyUnlocked != null && newlyUnlocked.Count > 0)
         {
-            // 가장 최근 해금만 샘플로 표시(원하면 큐로 돌려도 됨)
             var def = newlyUnlocked[0];
             var rec = _data.unlocked.FindLast(u => u.id == (int)def.id);
             int tier = rec.tier;
+
+            // 해금 시각 사용 (utcTicks, utc 등 저장 형태에 맞춰 변환)
+            DateTime unlockedAtUtc = GetAchievementUnlockedAtUtc(rec);
+
             object[] args = (def.thresholds != null && def.thresholds.Length > 0)
                 ? new object[] { def.thresholds[Mathf.Clamp(tier - 1, 0, def.thresholds.Length - 1)] }
                 : Array.Empty<object>();
-            popup.Show(def, tier, DateTime.UtcNow, args);
+
+            popup.Show(def, tier, unlockedAtUtc, args);
         }
     }
 
     public void ShowPopupFor(AchievementDefinition def)
     {
+        Sfx.Button();
         Game.UI.SetPanel("Achievement_Popup", true);
 
         var prog = _svc.Evaluate(def);
         int tierToShow = Mathf.Max(1, prog.tier);
 
+        // 먼저 tier 일치로 찾고, 없으면 id만으로 폴백
+        int idx = _data.unlocked.FindLastIndex(u => u.id == (int)def.id && u.tier == tierToShow);
+        if (idx < 0) idx = _data.unlocked.FindLastIndex(u => u.id == (int)def.id);
+
+        DateTime unlockedAtUtc = (idx >= 0)
+            ? GetAchievementUnlockedAtUtc(_data.unlocked[idx])
+            : DateTime.UtcNow; // 기록 없으면 현재시간(원하면 MinValue로 넘기고 UI에서 숨겨도 OK)
+
         popup.Show(
-            def, tierToShow, System.DateTime.UtcNow,
+            def, tierToShow, unlockedAtUtc,
             prog.tier > 0 ? new object[] { def.thresholds[tierToShow - 1] }
-                          : (prog.nextTarget > 0 ? new object[] { prog.nextTarget } : System.Array.Empty<object>())
+                          : (prog.nextTarget > 0 ? new object[] { prog.nextTarget } : Array.Empty<object>())
         );
+    }
+    private static DateTime GetAchievementUnlockedAtUtc(object rec)
+    {
+        if (rec == null) return DateTime.UtcNow;
+
+        var t = rec.GetType();
+
+        // 1) ticks(long)로 저장된 경우: utcTicks
+        var fTicks = t.GetField("utcTicks");
+        if (fTicks != null && fTicks.FieldType == typeof(long))
+        {
+            long ticks = (long)fTicks.GetValue(rec);
+            return new DateTime(ticks, DateTimeKind.Utc);
+        }
+
+        // 2) Unix time (초/밀리초)로 저장된 경우: utcSeconds / utcMs
+        var fSec = t.GetField("utcSeconds");
+        if (fSec != null && fSec.FieldType == typeof(long))
+        {
+            long sec = (long)fSec.GetValue(rec);
+            return DateTimeOffset.FromUnixTimeSeconds(sec).UtcDateTime;
+        }
+        var fMs = t.GetField("utcMs");
+        if (fMs != null && fMs.FieldType == typeof(long))
+        {
+            long ms = (long)fMs.GetValue(rec);
+            return DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime;
+        }
+
+        // 3) DateTime 자체로 저장된 경우: unlockedAtUtc
+        var fDt = t.GetField("unlockedAtUtc");
+        if (fDt != null && fDt.FieldType == typeof(DateTime))
+        {
+            var dt = (DateTime)fDt.GetValue(rec);
+            return DateTime.SpecifyKind(dt, DateTimeKind.Utc).ToUniversalTime();
+        }
+
+        // 폴백
+        return DateTime.UtcNow;
     }
 }

@@ -1,30 +1,43 @@
+using _00.WorkSpace.GIL.Scripts.Managers;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// ================================
-// Project : DynamicBlock
-// Script  : UIManager.cs
-// Desc    : HUD ∞ªΩ≈ + ∆–≥Œ ø¬/ø¿«¡ ∞¸∏Æ
-// ================================
-
 [DisallowMultipleComponent]
 [AddComponentMenu("Game/UIManager")]
 public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 {
+    // Treat these as "result" panels that must retry after ReviveLatch
+    static readonly HashSet<string> __ResultKeys =
+        new() { "GameOver", "NewRecord", "Adventure_Result" };
+
+    private IEnumerator CoRetryOpenAfterLatch(string key)
+    {
+        float deadline = Time.realtimeSinceStartup + 6f;
+        while (ReviveLatch.Active && Time.realtimeSinceStartup < deadline) yield return null;
+        if (!ReviveLatch.Active)
+        {
+            SetPanel(key, true, ignoreDelay: true);
+        }
+    }
+
+
     [System.Serializable]
     public class PanelEntry
     {
-        public string key;                   // "Pause", "Result" µÓ
-        public GameObject root;              // ∆–≥Œ ∑Á∆Æ ø¿∫Í¡ß∆Æ
+        public string key;
+        public GameObject root;
         public bool defaultActive = false;
-        public bool useCanvasGroup = true;   // ∆‰¿ÃµÂøÎ
-        public bool isModal = false;         // ∏¥ﬁ ø©∫Œ
-        public bool closeOnEscape = true;    // ESC∑Œ ¥›±‚ «„øÎ
-        public int baseSorting = 1000;       // ∏¥ﬁ ±‚∫ª ¡§∑ƒ
-        public string fallbackKey = null;    // ¥›»˙ ∂ß ¿⁄µø¿∏∑Œ ƒ—¡Ÿ ∆–≥Œ
+        public bool useCanvasGroup = true;
+        public bool isModal = false;
+        public bool closeOnEscape = true;
+        public int baseSorting = 1000;
+        public string fallbackKey = null;
+        public float closeDelaySeconds = 1f;
+
+        public bool restoreScaleOnClose = true;
     }
 
     [Header("HUD")]
@@ -32,47 +45,64 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     [SerializeField] private TMP_Text _hudBestText;
 
     [Header("GameOver Texts (All Canvases)")]
-    [SerializeField] private TMP_Text[] _goTotalTexts; // ∏µÁ Canvas¿« TotalScore ∂Û∫ßµÈ
-    [SerializeField] private TMP_Text[] _goBestTexts;  // ∏µÁ Canvas¿« Best ∂Û∫ßµÈ
+    [SerializeField] private TMP_Text[] _goTotalTexts;
+    [SerializeField] private TMP_Text[] _goBestTexts;
 
     [Header("Panels")]
     [SerializeField] private List<PanelEntry> _panels = new();
 
     [Header("Fade")]
-    [SerializeField] CanvasGroup mainGroup;   // ∏ﬁ¿Œ ∑Á∆Æ ±◊∑Ï(∞≠¡¶ ø¯∫πøÎ)
-    [SerializeField] Image dimOverlay;        // ∏¥ﬁ DIM
+    [SerializeField] private CanvasGroup mainGroup;
+    [SerializeField] private Image dimOverlay;
 
     [Header("Combo UI")]
-    [SerializeField] private GameObject _rainbowIcon;   // GameCanvas
-    [SerializeField] private CanvasGroup _comboGroup;   // UICanvas (Combo ¿ÃπÃ¡ˆ+≈ÿΩ∫∆Æ π≠¿Ω)
-    [SerializeField] private TMP_Text _comboText;       // Combo º˝¿⁄
-    [SerializeField] private float _comboHoldTime = 0.8f; // ¿Ø¡ˆΩ√∞£
-    [SerializeField] private float _comboFadeTime = 0.2f; // ∆‰¿ÃµÂæ∆øÙ Ω√∞£
+    [SerializeField] private GameObject _rainbowIcon;
+    [SerializeField] private CanvasGroup _comboGroup;
+    [SerializeField] private TMP_Text _comboText;
+    [SerializeField] private float _comboHoldTime = 0.8f;
+    [SerializeField] private float _comboFadeTime = 0.2f;
     [SerializeField] private int _comboVisibleThreshold = 2;
     [SerializeField] private int[] _comboTierStarts = new int[] { 0, 2, 3, 5, 8 };
 
     [Header("Revive Settings")]
     [SerializeField] private float _reviveDelaySec = 1.0f;
     private Coroutine _reviveDelayJob;
-    [SerializeField] private CanvasGroup _preReviveBlocker; // «ÆΩ∫≈©∏∞ Image+CanvasGroup, ≈ı∏Ì OK
+    [SerializeField] private CanvasGroup _preReviveBlocker;
+
+    [Header("Revive Limits")]
+    [SerializeField] private bool _reviveOncePerRun = true;
+    private bool _reviveConsumedThisRun = false;
+
+    [Header("Result Suppress After Revive")]
+    [SerializeField] private float _resultSuppressAfterReviveSec = 1.0f;
+    private float _resultSuppressUntil = -999f;
 
     private Coroutine _comboFadeJob;
     private readonly Dictionary<string, PanelEntry> _panelMap = new();
     private readonly List<string> _modalOrder = new();
 
-    // ∆–≥Œ∫∞ ∆‰¿ÃµÂ ƒ⁄∑Á∆æ ∞¸∏Æ
     private readonly Dictionary<string, Coroutine> _fadeJobs = new();
-    // DIM ∆‰¿ÃµÂ ƒ⁄∑Á∆æ
+    private readonly Dictionary<string, Coroutine> _closeDelayJobs = new();
     private Coroutine _dimJob;
 
-    // HUD state
-    private int _lastHighScore = 0;
-    int _pendingDownedScore;
+    private int _lastBestClassic = 0;
+    private int _lastBestAdventure = 0;
+    private int _pendingDownedScore;
 
+    private int _lastLoggedClassicBest = -1;
+    private int _bestShown = -1;
     private EventQueue _bus;
     private GameManager _game;
 
+    private bool _runStartLogged = false;
     public int Order => 100;
+
+    readonly Dictionary<RectTransform, Vector3> _initScale = new();
+
+    // Result stick / Re-assert
+    private readonly Dictionary<string, float> _resultStickUntil = new();
+    [SerializeField] private float _resultStickSec = 0.45f;
+    private string _lastResultKey;
 
     public void SetDependencies(EventQueue bus, GameManager game) { _bus = bus; _game = game; }
 
@@ -82,12 +112,12 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         for (int i = 0; i < arr.Length; i++)
             if (arr[i]) arr[i].text = value;
     }
-    private static string FormatScore(int v) => v.ToString("#,0");
+    private static string FormatScore(int v) => v.ToString("#0");
 
     public void PreInit()
     {
         if (_bus == null || _game == null)
-            Debug.LogError("[UIManager] SetDependencies « ø‰");
+            Debug.LogError("[UIManager] SetDependencies ÔøΩ øÔøΩ");
 
         foreach (var p in _panels)
         {
@@ -97,22 +127,27 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             {
                 var cv = p.root.GetComponent<Canvas>() ?? p.root.AddComponent<Canvas>();
                 cv.overrideSorting = true;
-
-                if (!p.root.GetComponent<GraphicRaycaster>())
+                if (!p.root.TryGetComponent<GraphicRaycaster>(out _))
                     p.root.AddComponent<GraphicRaycaster>();
 
-                // ∏¥ﬁ¿∫ CanvasGroup ∫∏¿Â (∑π¿Ãƒ≥Ω∫∆Æ ¡¶æÓøÎ)
                 var cg = EnsureCanvasGroup(p.root);
                 cg.blocksRaycasts = false;
                 cg.interactable = false;
             }
 
-            // ¿œπ› ∆–≥Œ¿« ∆‰¿ÃµÂøÎ CanvasGroup ∫∏¿Â
+            foreach (var a in p.root.GetComponentsInChildren<Animator>(true))
+            {
+                a.updateMode = AnimatorUpdateMode.UnscaledTime;
+                a.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                a.keepAnimatorStateOnDisable = false;
+            }
+
             if (p.useCanvasGroup && !p.isModal)
                 _ = EnsureCanvasGroup(p.root);
+
+            CaptureInitialScales(p.root);
         }
 
-        // DIM √ ±‚»≠
         if (dimOverlay)
         {
             var c = dimOverlay.color; c.a = 0f;
@@ -121,7 +156,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         }
     }
 
-    // Init: ∏  ±∏√‡ + √ ±‚ »∞º∫»≠
     public void Init()
     {
         _panelMap.Clear();
@@ -138,158 +172,338 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
             p.root.SetActive(p.defaultActive);
         }
-        foreach (var kv in _panelMap)
-            Debug.Log($"[UI] Map: {kv.Key} -> root={kv.Value.root?.name}");
     }
 
     public void PostInit()
     {
-        // HUD πŸ¿Œµ˘ (Sticky ¡ÔΩ√ ¿Áª˝)
         _bus.Subscribe<ScoreChanged>(e =>
         {
             if (_scoreText) _scoreText.text = FormatScore(e.value);
+            UpdateBestHUD();
         }, replaySticky: true);
 
         _bus.Subscribe<ComboChanged>(e =>
         {
             int tier = MapToTier(e.value);
-
-            if (tier <= 0)
-            {
-                HideComboImmediate();
-                return;
-            }
-
+            if (tier <= 0) { HideComboImmediate(); return; }
             if (_comboText) _comboText.SetText($"x{e.value - 1}");
-
             ApplyComboTierVisuals(tier);
-
             ShowComboStartHold();
         }, replaySticky: true);
 
         _bus.Subscribe<GameDataChanged>(e =>
         {
-            _lastHighScore = e.data.highScore;
-            if (_hudBestText) _hudBestText.text = $"{_lastHighScore:#,0}";
-            // « ø‰ Ω√ GO »≠∏È¿« Bestµµ √÷Ω≈¿∏∑Œ µø±‚»≠
-            SetAll(_goBestTexts, $"{FormatScore(_lastHighScore)}");
-            Debug.Log($"[UI] Best HUD update -> {_lastHighScore}");
+            _lastBestClassic = e.data.classicHighScore;
+            _lastBestAdventure = e.data.adventureHighScore;
+            UpdateBestHUD();
         }, replaySticky: true);
 
-        // ∏ÆπŸ¿Ã∫Í ∆–≥Œ ON (¿˙¿Â/FX ±›¡ˆ)
-        _bus.Subscribe<PlayerDowned>(e =>
-        {
-            _pendingDownedScore = e.score;
-            if (_reviveDelayJob != null) StopCoroutine(_reviveDelayJob);
-            _reviveDelayJob = StartCoroutine(Co_OpenReviveAfterDelay(_reviveDelaySec));
-        }, replaySticky: false);
+        // ReviveRouterÍ∞Ä PlayerDownedÎ•º Ï≤òÎ¶¨ÌïòÎØÄÎ°ú UIManagerÎäî Îçî Ïù¥ÏÉÅ Í¥ÄÏó¨ÌïòÏßÄ ÏïäÏùå
 
+        _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed_Classic, replaySticky: false);
 
-        // ∏ÆπŸ¿Ã∫Í ∆–≥Œ OFF
-        void CancelReviveDelay()
-        {
-            if (_reviveDelayJob != null) { StopCoroutine(_reviveDelayJob); _reviveDelayJob = null; }
-            SetPreReviveBlock(false);
-            _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
-            Time.timeScale = 1f;
-        }
-
-        // ∏ÆπŸ¿Ã∫Í ∆–≥Œ OFF + ∞·∞˙ ∆–≥Œ ON (Ω≈±‚∑œ ø©∫Œø° µ˚∂Û ∫–±‚)
-        _bus.Subscribe<GameOverConfirmed>(e =>
-        {
-            CancelReviveDelay();
-            Game.Audio.StopContinueTimeCheckSE();
-            SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
-            int best = e.isNewBest ? e.score : _lastHighScore;
-            SetAll(_goBestTexts, $"{FormatScore(best)}");
-
-            SetPanel("Revive", false);
-            SetPanel("GameOver", !e.isNewBest);
-            SetPanel("NewRecord", e.isNewBest);
-        }, replaySticky: false);
-
-        // ±§∞Ì º∫∞¯ Ω√ ∏¥ﬁ/∆–≥Œ ¥›±‚
         _bus.Subscribe<ContinueGranted>(_ =>
         {
+            GameOverGate.Reset("ContinueGranted");
+            GameOverUtil.ResetAll("continue_granted");
+        
             CancelReviveDelay();
-            Game.Audio.StopContinueTimeCheckSE();
-
-            SetPanel("Revive", false);
-            SetPanel("GameOver", false);
-            SetPanel("NewRecord", false);
-
+            AdPauseGuard.OnAdClosedOrFailed();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+        
+            Time.timeScale = 1f;
+            _bus?.PublishImmediate(new InputLock(false, "ContinueGranted"));
+        
+            SetPanel("Revive", false, true);
+            SetPanel("GameOver", false, true);
+            SetPanel("NewRecord", false, true);
+        
             ForceCloseAllModals();
             NormalizeAllPanelsAlpha();
             ForceMainUIClean();
-
-            // «— «¡∑π¿” µ⁄ ¿Á∞À¡ı(»§Ω√ ∫Òµø±‚ ≤ø¿” ¥Î∫Ò)
+        
+            // Í≤∞Í≥º ÏñµÏ†ú/Í∑∏Î†àÏù¥Ïä§
+            _resultSuppressUntil = Time.realtimeSinceStartup + _resultSuppressAfterReviveSec;
+            UIStateProbe.ArmResultGuard(_resultSuppressAfterReviveSec);
+            UIStateProbe.ArmReviveGrace(2.0f);
+            StartCoroutine(CoReviveGrace(2.0f));
+        
             StartCoroutine(CoPostContinueSanity());
         }, replaySticky: false);
 
-        // ∆–≥Œ ≈‰±€ ¿Ã∫•∆Æ ±∏µ∂ (Sticky ¿Áª˝ ƒ—µ“)
+        _bus.Subscribe<RevivePerformed>(_ =>
+        {
+            _reviveConsumedThisRun = true;
+            GameOverGate.Reset("RevivePerformed");
+            Debug.Log("[UI] RevivePerformed ‚Üí reviveConsumed = true");
+        }, replaySticky: false);
+        
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
-
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
 
-        var svc = Game.Save as ISaveService;
-        var data = svc?.Data;
+        var data = Game.Save?.Data;
         if (data != null)
         {
-            _lastHighScore = data.highScore;
-            if (_hudBestText) _hudBestText.text = $"{_lastHighScore:#,0}";
-            SetAll(_goBestTexts, $"{_lastHighScore:#,0}");
-            Debug.Log($"[UI] Seed Best from Save: {_lastHighScore}");
+            _lastBestClassic = data.classicHighScore;
+            _lastBestAdventure = data.adventureHighScore;
+            UpdateBestHUD();
         }
+        _bus.Subscribe<GameResetDone>(_ => ResetReviveFlags("GameResetDone"), replaySticky: false);
+
+        _bus.Subscribe<AdFinished>(_ => { StartCoroutine(CoReassertResultAfterAd()); }, replaySticky: false);
+
+        _bus.Subscribe<ResultDelay>(e =>
+        {
+            _resultSuppressUntil = Time.realtimeSinceStartup + Mathf.Max(0.05f, e.seconds);
+            UIStateProbe.ArmResultGuard(e.seconds);
+            Debug.Log($"[UI] ResultDelay armed: {e.seconds}s");
+        }, replaySticky: false);
     }
 
-    private void OnPanelToggle(PanelToggle e) => SetPanel(e.key, e.on);
-
-    // === ø‹∫Œ API ===
-    public void SetPanel(string key, bool on)
+    private void OnPanelToggle(PanelToggle e)
     {
-        Debug.Log($"SetPanel {key} -> {on}");
-        if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
+        SetPanel(e.key, e.on);
+        if (e.key == "Game" && e.on) ResetReviveFlags("PanelToggle(Game on)");
+    }
 
-        // ∏¥ﬁ: Ω∫≈√ ±‚π› √≥∏Æ
+    private void UpdateBestHUD()
+    {
+        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+        var mode = mm?.CurrentMode ?? GameMode.Classic;
+
+        int best = (mode == GameMode.Adventure) ? _lastBestAdventure : _lastBestClassic;
+        int cur = ScoreManager.Instance ? ScoreManager.Instance.Score : 0;
+
+        int display = (mode == GameMode.Classic) ? Mathf.Max(best, cur) : best;
+        if (display == _bestShown) return;
+        _bestShown = display;
+
+        if (_hudBestText) _hudBestText.text = $"{display:#0}";
+    }
+
+    public void SetPanel(string key, bool on, bool ignoreDelay = false)
+    {
+        // 1) Ïä§Ìã± ÏúàÎèÑÏö∞, ReviveLatch Í∞ÄÎìú(ÌòÑÏû¨ ÏΩîÎìú Ïú†ÏßÄ)
+        if (!on && (key == "GameOver" || key == "NewRecord" || key == "Adventure_Result"))
+        {
+            if (_resultStickUntil.TryGetValue(key, out var until) &&
+                Time.realtimeSinceStartup < until)
+            {
+                Debug.Log($"[UI] Ignore close of {key} during stick window");
+                return;
+            }
+        }
+        if (on && (key == "GameOver" || key == "NewRecord" || key == "Adventure_Result"))
+        {
+            _resultStickUntil[key] = Time.realtimeSinceStartup + _resultStickSec;
+            _lastResultKey = key;
+        }
+        if (__ResultKeys.Contains(key) && on && ReviveLatch.Active)
+        {
+            var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+            if (mm != null && mm.CurrentMode == GameMode.Adventure)
+            {
+                Debug.Log("[UI] Ignore ReviveLatch for Adventure result");
+            }
+            else
+            {
+                Debug.Log($"[UI] Block '{key}' open while ReviveLatch active ‚Äî will retry");
+                StartCoroutine(CoRetryOpenAfterLatch(key));
+                UpdateProbes();
+                return;
+            }
+        }
+
+        Debug.Log($"SetPanel {key} -> {on}");
+
+        if (key == "Revive" && on && _reviveOncePerRun && _reviveConsumedThisRun)
+        {
+            Debug.Log("[UI] Block Revive open (revive consumed) ‚Üí publish GiveUpRequest");
+            _bus?.PublishImmediate(new GiveUpRequest("revive_consumed"));
+            return;
+        }
+
+        // 2) p ÌôïÎ≥¥ (Ïù¥Ï†ÑÍ≥º ÎèôÏùº)
+        if (!_panelMap.TryGetValue(key, out var p) || p.root == null)
+        {
+            Debug.LogError($"[UI] SetPanel: unknown panel key='{key}' or root missing. Check mapping.");
+            return;
+        }
+
+        // 3) Í≥µÌÜµ Ï§ÄÎπÑ
+        CancelCloseDelay(key);
+        StopFade(key);
+
+        if (on && key == "Adventure_Result")
+        {
+            EnableAllCanvasRecursively(p.root);
+            EnforceSingleScaler(p.root);
+            ForceCanvasGroupVisible(p.root);
+
+            var rt = p.root.GetComponent<RectTransform>();
+            if (rt)
+            {
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                rt.localScale = Vector3.one;
+            }
+            Canvas.ForceUpdateCanvases();
+            DumpCanvasTree("Adventure_Result AFTER FIX", p.root);
+            LogPanelState(key, p.root);
+        }
+
+
+        // 4) Î™®Îã¨ Ìå®ÎÑê Ï≤òÎ¶¨ (on/off Î™®Îëê Ïª§Î≤Ñ)
         if (p.isModal)
         {
-            if (on) PushModalInternal(key, on);
-            else PopModalInternal(key);
+            if (on)
+            {
+                PushModalInternal(key, on);
+            }
+            else
+            {
+                if (ignoreDelay) ClosePanelImmediate(key);
+                else if (p.closeDelaySeconds > 0f && p.root.activeSelf) StartCloseDelayForModal(key, p);
+                else PopModalInternal(key);
+            }
+            UpdateProbes();
             return;
         }
 
-        // ¿œπ› ∆–≥Œ
+        // 5) CanvasGroup Ïïà Ïì∞Îäî Ìå®ÎÑê (on/off Î™®Îëê Ïª§Î≤Ñ)
         if (!p.useCanvasGroup)
         {
+            if (!on && !ignoreDelay && p.closeDelaySeconds > 0f && p.root.activeSelf)
+            {
+                StartCloseDelay(key, p);
+                return;
+            }
             p.root.SetActive(on);
+            UpdateProbes();
             return;
         }
 
-        if (!on && !p.root.activeSelf) return;
-
+        // 6) CanvasGroup Ïì∞Îäî Ìå®ÎÑê (on/off Î∂ÑÍ∏∞)
         var cg = EnsureCanvasGroup(p.root);
 
-        if (on)
-            ResetChildCanvasGroupsAlpha(p.root);
-
-        if (!p.root.activeSelf)
+        if (!on)
         {
-            p.root.SetActive(true);
-            if (on) cg.alpha = 0f;
+            // Îã´Í∏∞ Í≤ΩÎ°ú
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
+            cg.alpha = 0f;
+
+            float timeout = (!ignoreDelay && p.root.activeSelf)
+                ? Mathf.Max(0.05f, p.closeDelaySeconds)
+                : 0.05f;
+
+            bool useCanvasToggle = true;
+            _closeDelayJobs[key] = StartCoroutine(GraceClosePanel(key, p.root, timeout, useCanvasToggle));
+            return;
         }
+
+        // === Ïó¨Í∏∞Î∂ÄÌÑ∞ Ïó¥Í∏∞(on) Í≤ΩÎ°ú ===
+        EnsureAllCanvasEnabled(p.root);
+        ResetChildCanvasGroupsAlpha(p.root);
+        if (!p.root.activeSelf) { p.root.SetActive(true); cg.alpha = 0f; }
+        cg.blocksRaycasts = true;
+        cg.interactable = true;
 
         StopFade(key);
-        _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, on ? 1f : 0f, 0.15f, on, key));
-        if (on) StartCoroutine(FailsafeOpenSnap(key, p.root, EnsureCanvasGroup(p.root)));
-        if (on && key == "Revive")
-        {
-            Game.Ads?.Refresh();   // Reward/Interstitial ¡ÿ∫Ò æ»µ∆¿∏∏È πŸ∑Œ ∑ŒµÂ Ω√¿€
-        }
+        _fadeJobs[key] = StartCoroutine(FadeRoutine(key, p, cg, 1f, 0.15f, true));
+
+        if (key == "Revive") Game.Ads?.Refresh();
+        UpdateProbes();
     }
 
-    private IEnumerator FadeRoutine(CanvasGroup cg, float target, float dur, bool finalActive, string key)
+    private void StartCloseDelay(string key, PanelEntry p)
     {
-        // ∆‰¿ÃµÂ ¡ﬂ ¿‘∑¬ ∏∑±‚
+        if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+            StopCoroutine(job);
+
+        _closeDelayJobs[key] = StartCoroutine(CoCloseAfterDelay(key, p));
+    }
+
+    static bool Approximately(Vector3 a, Vector3 b)
+    {
+        const float eps = 0.0001f;
+        return Mathf.Abs(a.x - b.x) < eps && Mathf.Abs(a.y - b.y) < eps && Mathf.Abs(a.z - b.z) < eps;
+    }
+    void CaptureInitialScales(GameObject root)
+    {
+        if (!root) return;
+        foreach (var rt in root.GetComponentsInChildren<RectTransform>(includeInactive: true))
+            if (rt && !_initScale.ContainsKey(rt))
+                _initScale[rt] = rt.localScale;
+    }
+
+    bool AreChildScalesAtInitial(GameObject root)
+    {
+        if (!root) return true;
+        foreach (var rt in root.GetComponentsInChildren<RectTransform>(includeInactive: true))
+            if (rt && _initScale.TryGetValue(rt, out var s0) && !Approximately(rt.localScale, s0))
+                return false;
+        return true;
+    }
+
+    void RestoreInitialScales(GameObject root)
+    {
+        if (!root) return;
+        foreach (var rt in root.GetComponentsInChildren<RectTransform>(includeInactive: true))
+            if (rt && _initScale.TryGetValue(rt, out var s0))
+                rt.localScale = s0;
+    }
+
+    static bool AllChildScalesAreOne(GameObject root)
+    {
+        if (!root) return true;
+        var rts = root.GetComponentsInChildren<RectTransform>(true);
+        for (int i = 0; i < rts.Length; i++)
+        {
+            var s = rts[i].localScale;
+            if (Mathf.Abs(s.x - 1f) > 0.001f || Mathf.Abs(s.y - 1f) > 0.001f || Mathf.Abs(s.z - 1f) > 0.001f)
+                return false;
+        }
+        return true;
+    }
+
+
+    private IEnumerator CoCloseAfterDelay(string key, PanelEntry p)
+    {
+        var cg = EnsureCanvasGroup(p.root);
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+
+        // ÏßÄÏó∞ ÎèôÏïà Ïä§ÏºÄÏùº Î≥µÍ∑Ä Í∞êÏãú (unscaled Í∏∞Ï§Ä)
+        float wait = Mathf.Max(0f, p.closeDelaySeconds);
+        float t = 0f;
+        while (t < wait)
+        {
+            if (!_closeDelayJobs.ContainsKey(key) || !p.root.activeSelf)
+                yield break;
+
+            // Ïä§ÏºÄÏùºÏù¥ Î™®Îëê 1.0 Í∑ºÏ≤òÎ°ú ÎèåÏïÑÏôîÏúºÎ©¥ Ï¶âÏãú Îã´Í∏∞
+            if (AreChildScalesAtInitial(p.root)) break;
+
+            t += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (!_closeDelayJobs.ContainsKey(key) || !p.root) yield break;
+
+        StopFade(key);
+        if (p.restoreScaleOnClose && !AreChildScalesAtInitial(p.root))
+            RestoreInitialScales(p.root);
+
+        yield return GraceClosePanel(key, p.root, 0.0f, true);
+        _closeDelayJobs.Remove(key);
+    }
+
+    private IEnumerator FadeRoutine(string key, PanelEntry p, CanvasGroup cg, float target, float dur, bool finalActive)
+    {
         cg.blocksRaycasts = false;
         cg.interactable = false;
 
@@ -304,31 +518,24 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         cg.alpha = target;
         cg.blocksRaycasts = finalActive;
         cg.interactable = finalActive;
-        if (!finalActive) cg.gameObject.SetActive(false);
+
+        if (!finalActive)
+        {
+            if (p.restoreScaleOnClose)
+                RestoreInitialScales(p.root);
+            cg.gameObject.SetActive(false);
+        }
 
         _fadeJobs.Remove(key);
     }
 
-    private IEnumerator FailsafeOpenSnap(string key, GameObject root, CanvasGroup cg)
-    {
-        yield return null; // ¥Ÿ¿Ω «¡∑π¿”
-        if (!root || !root.activeInHierarchy) yield break;
-
-        // ø©¿¸»˜ 0(∂«¥¬ ∞≈¿« 0)¿Ã∞Ì ¿‘∑¬µµ ∏∑«Ù ¿÷¿∏∏È ∞≠¡¶ ¡§ªÛ»≠
-        if (cg && cg.alpha <= 0.01f && !cg.interactable)
-            StopFadeAndSnap(key, cg, true);
-    }
-
     private IEnumerator FadeOutCombo(CanvasGroup cg, float hold, float fade)
     {
-        // ¡ÔΩ√ ∫∏¿Ã∞‘
         cg.alpha = 1f;
 
-        // ¿œ¡§ Ω√∞£ ¿Ø¡ˆ
         float t = 0f;
         while (t < hold) { t += Time.unscaledDeltaTime; yield return null; }
 
-        // ∆‰¿ÃµÂ æ∆øÙ
         float start = cg.alpha;
         t = 0f;
         while (t < fade)
@@ -356,7 +563,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         return true;
     }
 
-    // ∏ﬁ¿Œ UI ∞≠¡¶ ø¯∫π(DIM/∏ﬁ¿Œ ±◊∑Ï)
     public void ForceMainUIClean()
     {
         if (dimOverlay)
@@ -374,33 +580,33 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         }
     }
 
-    // === ≥ª∫Œ: ∏¥ﬁ LIFO ===
     private void PushModalInternal(string key, bool on)
     {
         if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
 
-        // ¡ﬂ∫π ¡¶∞≈ »ƒ ∏« ¿ß∑Œ
         int idx = _modalOrder.IndexOf(key);
         if (idx >= 0) _modalOrder.RemoveAt(idx);
         _modalOrder.Add(key);
 
-        // ƒ—±‚
         if (p.useCanvasGroup)
         {
             var cg = EnsureCanvasGroup(p.root);
             ResetChildCanvasGroupsAlpha(p.root);
             if (!p.root.activeSelf) { p.root.SetActive(true); cg.alpha = 0f; }
             StopFade(key);
-            _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 1f, 0.12f, true, key));
+            _fadeJobs[key] = StartCoroutine(FadeRoutine(key, p, cg, 1f, 0.12f, true));
         }
         else p.root.SetActive(true);
 
         ReorderModals();
-        UpdateDimByStack(); // DIM æ˜µ•¿Ã∆Æ
+        UpdateDimByStack();
+        UpdateProbes();
     }
 
     private void PopModalInternal(string key)
     {
+        Debug.Log($"[UI] PopModalInternal: {key}");
+
         int idx = _modalOrder.LastIndexOf(key);
         if (idx < 0) return;
 
@@ -412,23 +618,21 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             {
                 var cg = EnsureCanvasGroup(p.root);
                 StopFade(key);
-                _fadeJobs[key] = StartCoroutine(FadeRoutine(cg, 0f, 0.12f, false, key));
+                _fadeJobs[key] = StartCoroutine(FadeRoutine(key, p, cg, 0f, 0.12f, false));
             }
             else p.root.SetActive(false);
 
             if (!string.IsNullOrEmpty(p.fallbackKey))
-            {
                 SetPanel(p.fallbackKey, true);
-            }
         }
 
         ReorderModals();
-        UpdateDimByStack(); // DIM æ˜µ•¿Ã∆Æ
+        UpdateDimByStack();
+        UpdateProbes();
     }
 
     private void ReorderModals()
     {
-        // √÷ªÛ¥‹∏∏ ¿‘∑¬/Raycast, ¡§∑ƒ¿∫ baseSorting + depth*10
         for (int i = 0; i < _modalOrder.Count; i++)
         {
             var k = _modalOrder[i];
@@ -451,18 +655,6 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _fadeJobs.Remove(key);
     }
 
-    private void StopFadeAndSnap(string key, CanvasGroup cg, bool on)
-    {
-        StopFade(key);
-        if (!cg) return;
-
-        cg.alpha = on ? 1f : 0f;
-        cg.blocksRaycasts = on;
-        cg.interactable = on;
-        if (!on) cg.gameObject.SetActive(false);
-    }
-
-    // DIM ∆‰¿ÃµÂ/º≥¡§
     private void FadeDim(float target, float dur = 0.12f)
     {
         if (!dimOverlay) return;
@@ -493,21 +685,18 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     private void UpdateDimByStack()
     {
-        // ∏¥ﬁ¿Ã «œ≥™∂Ûµµ ¿÷¿∏∏È dim 0.6, æ¯¿∏∏È 0
         FadeDim(_modalOrder.Count > 0 ? 0.6f : 0f);
     }
 
-    // CanvasGroup ∫∏¿Â
     private static CanvasGroup EnsureCanvasGroup(GameObject go)
     {
         var cg = go.GetComponent<CanvasGroup>();
         return cg != null ? cg : go.AddComponent<CanvasGroup>();
     }
 
-    // === ∏Æº¬ »Â∏ß ===
     public void ResetRuntime()
     {
-        // ∏¥ﬁ/Dim/∏ﬁ¿Œ ∞≠¡¶ ¡§∏Æ »ƒ ±‚∫ª ∆–≥Œ ªÛ≈¬∑Œ
+        _reviveConsumedThisRun = false;
         ForceCloseAllModals();
         SetPanel("GameOver", false);
         SetPanel("NewRecord", false);
@@ -519,53 +708,92 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     private void OnGameResetRequest(GameResetRequest req)
     {
+        _reviveConsumedThisRun = false;
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
+        UIStateProbe.IsResultOpen = false;
+        UIStateProbe.IsReviveOpen = false;
+    
         CancelReviveDelay();
-
-        // 1) ∫∏¿Â: Ω√∞£/ø¿µø¿/∏¥ﬁ ¡§∏Æ
+    
         Time.timeScale = 1f;
         Game.Audio.StopContinueTimeCheckSE();
         Game.Audio.StopAllSe();
         Game.Audio.ResumeAll();
         ForceCloseAllModals();
-
-        bool toGame = (req.targetPanel == "Game");
+    
+        bool toGame = req.targetPanel == "Game";
         string onKey = toGame ? "Game" : "Main";
         string offKey = toGame ? "Main" : "Game";
-
-        // 2) ø£¡¯ ∏Æº¬ ¿Ã∫•∆Æ (∏Ò¿˚¡ˆø° µ˚∂Û)
+    
         if (!toGame)
         {
-            // Main¿∏∑Œ ≥™∞• ∂ß∏∏ ∑± ¡§∏Æ
             _bus.PublishImmediate(new GameResetting());
             _bus.PublishImmediate(new ComboChanged(0));
             _bus.PublishImmediate(new ScoreChanged(0));
         }
-        else
-        {
-            // Game¿∏∑Œ µÈæÓ∞• ∂ß¥¬ ∑± ¿Ø¡ˆ (ø¯«œ∏È Heal ø‰√ª∏∏)
-            // _bus.PublishImmediate(new HealBoardRequest(), alsoEnqueue:false);
-        }
+    
+        ClosePanelImmediate("GameOver");
+        ClosePanelImmediate("NewRecord");
+        SetPanel(offKey, false, ignoreDelay: true);
 
-        // 3) UI ¿¸»Ø(ø¯¿⁄¿˚)
-        SetPanel("GameOver", false);
-        SetPanel("NewRecord", false);
-        SetPanel(offKey, false);
-        SetPanel(onKey, true);
-
-        _bus.PublishImmediate(new PanelToggle(offKey, false));
+        SetPanel(onKey, true, ignoreDelay: true);
+        if (TryGetPanelRoot(onKey, out var onRoot))
+            EnforceSingleScaler(onRoot);
+    
         var onEvt = new PanelToggle(onKey, true);
         _bus.PublishSticky(onEvt, alsoEnqueue: false);
         _bus.PublishImmediate(onEvt);
-
-        NormalizeAllPanelsAlpha();
-        ForceMainUIClean();
-
-        // 4) øœ∑· æÀ∏≤
+    
+        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+        bool isAdventure = mm?.CurrentMode == GameMode.Adventure;
+        int stageIndex = mm?.CurrentMapData?.mapIndex ?? 0;
+    
+        // Î™®ÎìúÎ≥Ñ Î¶¨Î∞îÏù¥Î∏å Ï†ïÏ±Ö Ï£ºÏûÖ
+        var mode = mm?.CurrentMode ?? GameMode.Classic;
+        ReviveRouter.I?.SetPolicyFromMode(mode);
+    
+        // Í≤åÏûÑ ÌôîÎ©¥ÏúºÎ°ú ÏßÑÏûÖÌï† Îïå ÎùºÏö∞ÌÑ∞ Îü∞ ÏÉÅÌÉú Î¶¨ÏÖã
+        if (toGame)
+            ReviveRouter.I?.ResetRun();
+    
+        if (toGame && !_runStartLogged)
+        {
+            AnalyticsManager.Instance?.GameStartLog(!isAdventure, stageIndex);
+            _runStartLogged = true;
+        }
+        if (!toGame) _runStartLogged = false;
+    
+        if (dimOverlay)
+        {
+            if (_dimJob != null) { StopCoroutine(_dimJob); _dimJob = null; }
+            var c = dimOverlay.color; c.a = 0f; dimOverlay.color = c;
+            dimOverlay.enabled = false;
+        }
+    
+        if (TryGetPanelRoot("Main", out var mainRoot) && !mainRoot.activeSelf)
+        {
+            if (mainGroup)
+            {
+                mainGroup.alpha = 0f;
+                mainGroup.interactable = false;
+                mainGroup.blocksRaycasts = false;
+            }
+        }
+        else
+        {
+            if (mainGroup)
+            {
+                mainGroup.alpha = 1f;
+                mainGroup.interactable = true;
+                mainGroup.blocksRaycasts = true;
+            }
+        }
+    
         _bus.PublishImmediate(new GameResetDone());
     }
 
 
-    // ∏µÁ ∏¥ﬁ ∞≠¡¶ ¡æ∑· + DIM/∏ﬁ¿Œ ø¯∫π
     private void ForceCloseAllModals()
     {
         while (_modalOrder.Count > 0)
@@ -575,12 +803,22 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
             if (_panelMap.TryGetValue(key, out var p) && p.root)
             {
+                if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+                {
+                    StopCoroutine(job);
+                    _closeDelayJobs.Remove(key);
+                }
+
                 var cg = EnsureCanvasGroup(p.root);
-                StopFadeAndSnap(key, cg, false);
-                ResetChildCanvasGroupsAlpha(p.root);
+                StopFade(key);
+                // ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ
+                if (p.restoreScaleOnClose) RestoreInitialScales(p.root);
+                cg.alpha = 0f;
+                cg.blocksRaycasts = false;
+                cg.interactable = false;
+                p.root.SetActive(false);
             }
         }
-
         UpdateDimByStack();
         ForceMainUIClean();
     }
@@ -593,12 +831,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             var cg = EnsureCanvasGroup(p.root);
             bool on = p.root.activeSelf;
 
-            // ∑Á∆Æ »Æ¡§
             cg.alpha = on ? 1f : 0f;
             cg.interactable = on;
             cg.blocksRaycasts = on;
 
-            // «œ¿ß »Æ¡§
             ResetChildCanvasGroupsAlpha(p.root);
         }
     }
@@ -645,15 +881,16 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (_comboFadeJob != null) StopCoroutine(_comboFadeJob);
         if (_comboGroup) _comboFadeJob = StartCoroutine(FadeOutCombo(_comboGroup, _comboHoldTime, _comboFadeTime));
     }
+
     private int MapToTier(int actual)
     {
         if (_comboTierStarts == null || _comboTierStarts.Length == 0) return 0;
         int tier = 0;
-        // 1~4 ∆ºæÓ∏∏ ∞ÀªÁ
         for (int i = 1; i < _comboTierStarts.Length && i < 5; i++)
             if (actual >= _comboTierStarts[i]) tier = i;
         return Mathf.Clamp(tier, 0, 4);
     }
+
     private void ApplyComboTierVisuals(int tier)
     {
         if (_comboGroup)
@@ -662,15 +899,15 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
             _comboGroup.transform.localScale = Vector3.one * scale;
         }
     }
+
     void CancelReviveDelay()
     {
-        if (_reviveDelayJob != null)
-        {
-            StopCoroutine(_reviveDelayJob);
-            _reviveDelayJob = null;
-        }
+        if (_reviveDelayJob != null) { StopCoroutine(_reviveDelayJob); _reviveDelayJob = null; }
         SetPreReviveBlock(false);
         Time.timeScale = 1f;
+        _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
     }
 
     void SetPreReviveBlock(bool on)
@@ -680,10 +917,10 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         if (on)
         {
             _preReviveBlocker.gameObject.SetActive(true);
-            _preReviveBlocker.alpha = 0f;            // øœ¿¸ ≈ı∏Ì
-            _preReviveBlocker.blocksRaycasts = true; // ≈¨∏Ø øœ¿¸ ¬˜¥‹
+            _preReviveBlocker.alpha = 0f;
+            _preReviveBlocker.blocksRaycasts = true;
             _preReviveBlocker.interactable = false;
-            _preReviveBlocker.transform.SetAsLastSibling(); // «◊ªÛ ∏« ¿ß
+            _preReviveBlocker.transform.SetAsLastSibling();
         }
         else
         {
@@ -695,38 +932,473 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
     IEnumerator Co_OpenReviveAfterDelay(float delay)
     {
-        // 1) UI ≈Õƒ° ¬˜¥‹(ø¿πˆ∑π¿Ã)
         SetPreReviveBlock(true);
-
-        // 2) ¿¸ø™ ¿‘∑¬ ∂Ù (¡˜¡¢ Input ¿–¥¬ Ω∫≈©∏≥∆ÆøÎ)
+        CancelCloseDelay("Revive");
         _bus?.PublishImmediate(new InputLock(true, "PreRevive"));
 
         Time.timeScale = 0f;
         yield return new WaitForSecondsRealtime(Mathf.Max(0f, delay));
 
+        if (_reviveOncePerRun && _reviveConsumedThisRun)
+        {
+            OpenResultNowBecauseNoRevive();
+            yield break;
+        }
+
         SetPreReviveBlock(false);
-        SetPanel("Revive", true);
+        SetPanel("Revive", true, ignoreDelay: true);
         Game.Audio.PlayContinueTimeCheckSE();
 
-        // 3) ¿¸ø™ ¿‘∑¬∂Ù «ÿ¡¶
         _bus?.PublishImmediate(new InputLock(false, "PreRevive"));
 
         _reviveDelayJob = null;
     }
+
     IEnumerator CoPostContinueSanity()
     {
         yield return null;
-        Debug.Log($"[Sanity] modals={_modalOrder.Count} dim.enabled={(dimOverlay && dimOverlay.enabled)}");
+        Debug.Log($"[Sanity] modals={_modalOrder.Count} dim.enabled={dimOverlay && dimOverlay.enabled}");
         SetPreReviveBlock(false);
     }
+
+    public void ClosePanelImmediate(string key)
+    {
+        Debug.Log($"[UI] ClosePanelImmediate: {key}");
+
+        if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return;
+
+        if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+        {
+            StopCoroutine(job);
+            _closeDelayJobs.Remove(key);
+        }
+        StopFade(key);
+
+        int idx = _modalOrder.LastIndexOf(key);
+        if (idx >= 0) _modalOrder.RemoveAt(idx);
+        UpdateDimByStack();
+
+        var cg = EnsureCanvasGroup(p.root);
+        if (p.restoreScaleOnClose) RestoreInitialScales(p.root);
+        cg.alpha = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+        p.root.SetActive(false);
+
+        UpdateProbes();
+    }
+
+    private void StartCloseDelayForModal(string key, PanelEntry p)
+    {
+        if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+            StopCoroutine(job);
+
+        _closeDelayJobs[key] = StartCoroutine(CoCloseModalAfterDelay(key, p));
+    }
+
+    private IEnumerator CoCloseModalAfterDelay(string key, PanelEntry p)
+    {
+        int idx = _modalOrder.LastIndexOf(key);
+        if (idx >= 0) _modalOrder.RemoveAt(idx);
+        UpdateDimByStack();
+
+        var cg = EnsureCanvasGroup(p.root);
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+
+        if (p.closeDelaySeconds > 0f)
+            yield return new WaitForSecondsRealtime(p.closeDelaySeconds);
+
+        if (!_closeDelayJobs.ContainsKey(key)) yield break;
+
+        StopFade(key);
+        if (p.useCanvasGroup)
+            _fadeJobs[key] = StartCoroutine(FadeRoutine(key, p, cg, 0f, 0.12f, false));
+        else
+        {
+            if (p.restoreScaleOnClose) RestoreInitialScales(p.root);
+            p.root.SetActive(false);
+        }
+
+        _closeDelayJobs.Remove(key);
+    }
+
+    private void CancelCloseDelay(string key)
+    {
+        if (_closeDelayJobs.TryGetValue(key, out var job) && job != null)
+            StopCoroutine(job);
+        _closeDelayJobs.Remove(key);
+    }
+
+    public void OpenResultNowBecauseNoRevive()
+    {
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
+
+        Debug.Log("[UI] OpenResultNowBecauseNoRevive ‚Üí redirect to GiveUpRequest");
+        _bus?.PublishImmediate(new GiveUpRequest("ui_bypass"));
+    }
+
+    public bool TryResolvePanelKeyByRoot(GameObject go, out string key)
+    {
+        var t = go ? go.transform : null;
+        while (t)
+        {
+            foreach (var kv in _panelMap)
+            {
+                if (kv.Value.root == t.gameObject) { key = kv.Key; return true; }
+            }
+            t = t.parent;
+        }
+        key = null;
+        return false;
+    }
+
+    // === Utilities ===
+
+    private IEnumerator CoReviveGrace(float sec)
+    {
+        ReviveGate.Arm(sec);
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.1f, sec));
+    }
+
+    private bool IsPanelActuallyOpen(string key)
+    {
+        if (!_panelMap.TryGetValue(key, out var p) || p.root == null) return false;
+
+        // GameObjectÍ∞Ä ÏºúÏ†∏ÏûàÍ≥†(Í≥ÑÏ∏µ Î∞òÏòÅ) + (CanvasGroupÎ•º Ïì∞Î©¥ ÏïåÌåå 1 Í∑ºÏ≤ò/Ïù∏ÌÑ∞ÎûôÌã∞Î∏å)
+        bool active = p.root.activeInHierarchy;
+        if (!active) return false;
+
+        if (!p.useCanvasGroup) return true;
+
+        var cg = p.root.GetComponent<CanvasGroup>();
+        if (!cg) return true; // CG ÏóÜÏúºÎ©¥ onÏúºÎ°ú Í∞ÑÏ£º
+                              // ÏïåÌååÏôÄ Raycast/InteractableÎ°ú "Ïã§ÏÇ¨Ïö© Í∞ÄÎä•" ÏÉÅÌÉú ÌåêÏ†ï
+        return cg.alpha > 0.99f && cg.blocksRaycasts && cg.interactable;
+    }
+
+    private void UpdateProbes()
+    {
+        SanitizeModalStack();
+
+        UIStateProbe.IsReviveOpen = IsPanelActuallyOpen("Revive");
+        UIStateProbe.IsResultOpen =
+            IsPanelActuallyOpen("GameOver") ||
+            IsPanelActuallyOpen("NewRecord") ||
+            IsPanelActuallyOpen("Adventure_Result");
+
+        UIStateProbe.IsAnyModalOpen = _modalOrder.Count > 0;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[UI.Probes] resultOpen={UIStateProbe.IsResultOpen} reviveOpen={UIStateProbe.IsReviveOpen} " +
+                  $"anyModal={UIStateProbe.IsAnyModalOpen} grace={UIStateProbe.ReviveGraceActive} guard={UIStateProbe.ResultGuardActive}");
+#endif
+    }
+
+    private IEnumerator GraceClosePanel(string key, GameObject root, float timeout, bool useCanvasToggle)
+    {
+        if (!root) yield break;
+        var cg = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+
+        float t = 0f;
+        while (t < timeout)
+        {
+            if (cg.interactable || cg.blocksRaycasts)
+            {
+                _closeDelayJobs.Remove(key);
+                yield break;
+            }
+            if (AreChildScalesAtInitial(root)) break;
+            t += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (cg.interactable || cg.blocksRaycasts)
+        { _closeDelayJobs.Remove(key); yield break; }
+
+        if (!AreChildScalesAtInitial(root)) RestoreInitialScales(root);
+
+        cg.alpha = 0f;
+        if (useCanvasToggle && root.TryGetComponent(out Canvas canvas))
+            canvas.enabled = false;
+
+        root.SetActive(false);
+        _closeDelayJobs.Remove(key);
+    }
+
+
+    static void EnsureAllCanvasEnabled(GameObject root)
+    {
+        if (!root) return;
+        if (root.TryGetComponent<Canvas>(out var cv))
+            cv.enabled = true;
+    }
+    private void OnGameOverConfirmed_Classic(GameOverConfirmed e)
+    {
+        if (Time.realtimeSinceStartup < _resultSuppressUntil)
+        {
+            float wait = _resultSuppressUntil - Time.realtimeSinceStartup;
+            StartCoroutine(Co_OpenClassicResultAfterDelay(e, wait));
+            return;
+        }
+
+        if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed || ReviveLatch.Active)
+        {
+            Debug.Log("[UI] Suppress GameOverConfirmed (router/gate state)");
+            GameOverUtil.CancelPending("ui_suppress_router_gate");
+            GameOverGate.Reset("ui_suppress_router_gate");
+            UpdateProbes();
+            return;
+        }
+
+        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+        bool isAdventure = (mm?.CurrentMode == GameMode.Adventure);
+
+        Debug.Log($"[UI] GameOverConfirmed score={e.score} isNewBest={e.isNewBest} mode={(isAdventure ? "Adventure" : "Classic")}");
+
+        // Í≥µÌÜµ: Î¶¨Î∞îÏù¥Î∏å Ìå®ÎÑêÏùÄ Îã´ÏïÑÎëêÎäî Ìé∏Ïù¥ ÏïàÏ†Ñ
+        CancelReviveDelay();
+        Game.Audio.StopContinueTimeCheckSE();
+        SetPanel("Revive", false, ignoreDelay: true);
+
+        // AdventureÎ©¥ ÌÅ¥ÎûòÏãù Í≤∞Í≥º Î°úÏßÅ Í∏àÏßÄ(Ï¶âÏãú Î∞òÌôò)
+        if (isAdventure)
+        {
+            SetPanel("GameOver", false, ignoreDelay: true);
+            SetPanel("NewRecord", false, ignoreDelay: true);
+            _lastResultKey = null;  // Ïù∏ÌÑ∞Ïä§Ìã∞ÏÖú ÌõÑ Ïû¨Ïò§Ìîà Î∞©ÏßÄ
+            AnalyticsManager.Instance?.AdventureBestLog(e.score);
+            return;
+        }
+
+        // Ïó¨Í∏∞Î∂ÄÌÑ∞Îäî 'ÌÅ¥ÎûòÏãù'Îßå Ï≤òÎ¶¨
+        int bestNow = _lastBestClassic;
+        if (e.isNewBest)
+        {
+            bestNow = e.score;
+            if (_lastLoggedClassicBest != e.score)
+            {
+                AnalyticsManager.Instance?.ClassicBestLog(e.score);
+                _lastLoggedClassicBest = e.score;
+            }
+            _lastBestClassic = Mathf.Max(_lastBestClassic, e.score);
+            UpdateBestHUD();
+        }
+
+        SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
+        SetAll(_goBestTexts, $"{FormatScore(bestNow)}");
+
+        SetPanel("GameOver", !e.isNewBest);
+        SetPanel("NewRecord", e.isNewBest);
+
+        if (Game.Ads?.IsInterstitialReady() == true)
+        {
+            StartCoroutine(Co_ShowInterstitialAfterResultOpen(e.isNewBest ? "NewRecord" : "GameOver"));
+        }
+    }
+
+    private void OpenClassicResultNow(GameOverConfirmed e)
+    {
+        Debug.Log($"[UI] GameOverConfirmed score={e.score} isNewBest={e.isNewBest} mode=Classic");
+
+        CancelReviveDelay();
+        Game.Audio.StopContinueTimeCheckSE();
+        SetPanel("Revive", false, ignoreDelay: true);
+
+        int bestNow = _lastBestClassic;
+        if (e.isNewBest)
+        {
+            bestNow = e.score;
+            if (_lastLoggedClassicBest != e.score)
+            {
+                AnalyticsManager.Instance?.ClassicBestLog(e.score);
+                _lastLoggedClassicBest = e.score;
+            }
+            _lastBestClassic = Mathf.Max(_lastBestClassic, e.score);
+            UpdateBestHUD();
+        }
+
+        SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
+        SetAll(_goBestTexts, $"{FormatScore(bestNow)}");
+
+        SetPanel("GameOver", !e.isNewBest);
+        SetPanel("NewRecord", e.isNewBest);
+    }
+
+    private IEnumerator Co_OpenClassicResultAfterDelay(GameOverConfirmed e, float wait)
+    {
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.05f, wait));
+
+        if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed || ReviveLatch.Active)
+            yield break;
+
+        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+        if (mm && mm.CurrentMode == GameMode.Adventure) yield break;
+
+        OpenClassicResultNow(e);
+    }
+
+    private IEnumerator Co_ShowInterstitialAfterResultOpen(string key)
+    {
+        // Ìå®ÎÑêÏù¥ "Ïã§ÏÇ¨Ïö©" ÏÉÅÌÉúÍ∞Ä Îê† ÎïåÍπåÏßÄ ÎåÄÍ∏∞
+        float t = 0f;
+        while (!IsPanelActuallyOpen(key) && t < 1.0f)
+        {
+            t += Time.unscaledDeltaTime;
+            yield return null;
+        }
+        // Ïó¥Î†∏ÏúºÎ©¥ Í¥ëÍ≥†
+        if (IsPanelActuallyOpen(key))
+            AdManager.Instance.ShowInterstitial();
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void LogModalStack(string tag)
+    {
+        Debug.Log($"[ModalStack:{tag}] count={_modalOrder.Count} keys=[{string.Join(",", _modalOrder)}]");
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    void DumpCanvasTree(string tag, GameObject root)
+    {
+        if (!root) { Debug.Log($"[Dump] {tag}: root=null"); return; }
+
+        var cvs = root.GetComponentsInChildren<Canvas>(true);
+        var scals = root.GetComponentsInChildren<CanvasScaler>(true);
+
+        int en = 0; for (int i = 0; i < cvs.Length; i++) if (cvs[i].enabled) en++;
+        Debug.Log($"[Dump] {tag}: canvases={cvs.Length} (enabled={en}), scalers={scals.Length}");
+
+        foreach (var cv in cvs)
+        {
+            var rt = cv.GetComponent<RectTransform>();
+            Debug.Log(
+              $"  - {cv.gameObject.name}  overrideSorting={cv.overrideSorting}  order={cv.sortingOrder}  " +
+              $"renderMode={cv.renderMode}  localScale={rt.localScale}  size={rt.rect.size}"
+            );
+        }
+    }
+    static void EnforceSingleScaler(GameObject root)
+    {
+        if (!root) return;
+
+        var scalers = root.GetComponentsInChildren<CanvasScaler>(true);
+        if (scalers == null || scalers.Length == 0) return;
+
+        var rootScaler = root.GetComponent<CanvasScaler>();
+        if (!rootScaler) rootScaler = scalers[0];
+
+        for (int i = 0; i < scalers.Length; i++)
+            scalers[i].enabled = scalers[i] == rootScaler;
+    }
+    void ResetReviveFlags(string why)
+    {
+        _reviveConsumedThisRun = false;
+        _resultSuppressUntil = -999f;
+        UIStateProbe.ReviveGraceActive = false;
+
+        // ÌòπÏãú ÎÇ®ÏïÑÏûàÏùÑ Ïàò ÏûàÎäî ÎùºÏö∞ÌÑ∞ ÏÉÅÌÉú Ï†ïÎ¶¨
+        AdStateProbe.IsRevivePending = false;
+        ReviveGate.Disarm();
+
+        Debug.Log($"[UI] ResetReviveFlags: {why}");
+    }
+
+    private void SanitizeModalStack()
+    {
+        for (int i = _modalOrder.Count - 1; i >= 0; i--)
+        {
+            var key = _modalOrder[i];
+            if (!_panelMap.TryGetValue(key, out var p) || p.root == null)
+            {
+                _modalOrder.RemoveAt(i);
+                continue;
+            }
+            if (!p.root.activeInHierarchy)
+            {
+                _modalOrder.RemoveAt(i);
+                continue;
+            }
+
+            if (p.useCanvasGroup)
+            {
+                var cg = p.root.GetComponent<CanvasGroup>();
+                if (cg == null || cg.alpha < 0.99f || !cg.blocksRaycasts || !cg.interactable)
+                {
+                    _modalOrder.RemoveAt(i);
+                }
+            }
+        }
+    }
+    IEnumerator CoReassertResultAfterAd()
+    {
+        if (Game.Ads is AdManager m && m.DisableInterstitials) yield break;
+
+        var mm = MapManager.Instance;
+        if (_lastResultKey == "Adventure_Result" && (mm?.CurrentMode != GameMode.Adventure))
+            yield break;
+
+
+        if (string.IsNullOrEmpty(_lastResultKey)) yield break;
+
+        var mode = mm?.CurrentMode ?? GameMode.Classic;
+
+        // 1) Î™®Îìú-Í≤∞Í≥ºÌÇ§ Îß§Ïπ≠ Í∞ÄÎìú
+        bool isAdventureResult = _lastResultKey == "Adventure_Result";
+        bool isClassicResult = _lastResultKey == "GameOver" || _lastResultKey == "NewRecord";
+
+        if ((isAdventureResult && mode != GameMode.Adventure) ||
+            (isClassicResult && mode == GameMode.Adventure))
+            yield break;
+
+        // 2) Î™®Îã¨/Í≤åÏù¥Ìä∏/ÎûòÏπò Ïû†Ïû†Ìï¥Ïßà ÎïåÍπåÏßÄ Ïû†Íπê ÎåÄÍ∏∞
+        float deadline = Time.realtimeSinceStartup + 0.5f;
+        yield return null;
+        while ((ReviveGate.IsArmed || UIStateProbe.IsAnyModalOpen || ReviveLatch.Active || UIStateProbe.ResultGuardActive)
+               && Time.realtimeSinceStartup < deadline)
+            yield return null;
+
+        // 3) Îß§Ìïë/Ïó¥Î¶º ÏÉÅÌÉú ÏµúÏ¢Ö ÌôïÏù∏ ÌõÑ Ïû¨Ïò§Ìîà
+        if (!IsPanelActuallyOpen(_lastResultKey) && TryGetPanelRoot(_lastResultKey, out _))
+        {
+            Debug.Log("[UI] Reopen result after interstitial");
+            SetPanel(_lastResultKey, true, ignoreDelay: true);
+        }
+    }
+
+    static void EnableAllCanvasRecursively(GameObject root)
+    {
+        if (!root) return;
+        var cvs = root.GetComponentsInChildren<Canvas>(includeInactive: true);
+        for (int i = 0; i < cvs.Length; i++)
+            cvs[i].enabled = true;
+    }
+
+    static void ForceCanvasGroupVisible(GameObject root)
+    {
+        if (!root) return;
+        var cg = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
+        cg.alpha = 1f;
+        cg.blocksRaycasts = true;
+        cg.interactable = true;
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    void LogPanelState(string key, GameObject root)
+    {
+        var cg = root.GetComponent<CanvasGroup>();
+        var cv = root.GetComponent<Canvas>();
+        var rt = root.GetComponent<RectTransform>();
+        Debug.Log($"[UI.State] {key} active={root.activeInHierarchy} cg?={(cg != null)} alpha={(cg ? cg.alpha : -1)} " +
+                  $"ray={(cg ? cg.blocksRaycasts : false)} itact={(cg ? cg.interactable : false)} " +
+                  $"ovrSort={(cv ? cv.overrideSorting : false)} order={(cv ? cv.sortingOrder : -1)} " +
+                  $"scale={rt.localScale} size={rt.rect.size}");
+    }
 }
-public readonly struct PanelToggle
-{
-    public readonly string key; public readonly bool on;
-    public PanelToggle(string key, bool on) { this.key = key; this.on = on; }
-}
-public readonly struct InputLock
-{
-    public readonly bool on; public readonly string reason;
-    public InputLock(bool on, string reason) { this.on = on; this.reason = reason; }
-}
+
+// Events
+public readonly struct PanelToggle { public readonly string key; public readonly bool on; public PanelToggle(string key, bool on) { this.key = key; this.on = on; } }
+public readonly struct InputLock { public readonly bool on; public readonly string reason; public InputLock(bool on, string reason) { this.on = on; this.reason = reason; } }

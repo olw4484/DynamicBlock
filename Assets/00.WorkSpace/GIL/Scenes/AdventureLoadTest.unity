@@ -206,6 +206,12 @@ MonoBehaviour:
   blockWithFruitImagesPath: BlockWithFruitImages
   fruitBackgroundPath: FruitBackgroundImage
   fruitIconsPath: FruitIcons
+  Maps: []
+  Shapes: []
+  BlockSprites: []
+  BlockWithFruitSprites: []
+  FruitBackgroundSprites: []
+  FruitIconsSprites: []
 --- !u!1 &399234928
 GameObject:
   m_ObjectHideFlags: 0

@@ -2,92 +2,89 @@ using System;
 using _00.WorkSpace.GIL.Scripts.Managers;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [Serializable]
-public enum ButtonState
-{
-    Locked,
-    Cleared,
-    Playable,
-}
+public enum ButtonState { Locked, Cleared, Playable }
 
 [RequireComponent(typeof(Button), typeof(Image))]
 public class EnterStageButton : MonoBehaviour
 {
-    
-    [Header("References")] 
-    [SerializeField] private Image stageButtonImage;        // 기본 이미지
+    [Header("References")]
+    [SerializeField] private Image stageButtonImage;
     [SerializeField] private Button button;
-    [SerializeField] private TextMeshProUGUI buttonText; // 버튼 텍스트
+    [SerializeField] private TextMeshProUGUI buttonText;
+
     [Header("Button State Images")]
-    [SerializeField] private Sprite normalSprite;           // 일반 상태 Sprite
-    [SerializeField] private Sprite activeSprite;           // 플레이 가능 상태 Sprite
-    [SerializeField] private Sprite clearSprite;            // 클리어 했을 때 Sprite
-    
-    [HideInInspector] public int stageNumber;               // 클릭 했을 때 들어갈 번호
-    private ButtonState stageButtonState;  // 현재 버튼의 상태 ( 언젠가 쓰일 수도 있기에 )
+    [SerializeField] private Sprite normalSprite;
+    [SerializeField] private Sprite activeSprite;
+    [SerializeField] private Sprite clearSprite;
+
+    [HideInInspector] public int stageNumber;
+    private ButtonState stageButtonState;
+
+    private static UIManager UI => (Game.UI as UIManager) ?? FindFirstObjectByType<UIManager>();
+
+    void Awake()
+    {
+        // 누락 레퍼런스 보강
+        if (!button) button = GetComponent<Button>();
+        if (!stageButtonImage) stageButtonImage = GetComponent<Image>();
+
+        // 클릭 바인딩은 한 번만
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(EnterStage);
+
+        // 패널 전환을 이 컴포넌트에서 하지 않도록 보장(레이스 방지)
+        var ps = GetComponent<PanelSwitchOnClick>();
+        if (ps) ps.enabled = false;
+    }
+
+    void OnDisable()
+    {
+        // 버튼 애니 후 스케일 꼬임 방지
+        var rt = transform as RectTransform;
+        if (rt) rt.localScale = Vector3.one;
+    }
+
     public ButtonState StageButtonState => stageButtonState;
-    // Setter
-    public void SetStageNumber(int number)
-    {
-        stageNumber = number;
-    }
 
-    public void SetClearSprite(Sprite sprite)
-    {
-        clearSprite = sprite;
-    }
+    public void SetStageNumber(int number) => stageNumber = number;
+    public int GetStageNumber() => stageNumber;
+    public void SetClearSprite(Sprite sprite) => clearSprite = sprite;
 
-    /// <summary>
-    /// 스테이지 진입 함수, 로그로 출력만 함
-    /// </summary>
+    /// <summary>스테이지 진입 요청만 수행(패널 전환은 Stage/Map 흐름이 처리)</summary>
     public void EnterStage()
     {
-        // 현재는 디버그로만 진행함
-        Debug.Log($"[EnterStage] Debug : Calling MapManager Enter Stage {stageNumber}");
-        // 현재 스테이지 진입, 클리어 했다고 판정, 다음 스테이지 활성화
-        var mM = MapManager.Instance;
-        if (mM == null) Debug.LogError("[EnterStage] Error : MapManager Instance is null");
-        // MapManager의 EnterStage 함수 호출 -> 이후 작업은 MapManager에서 진행
-        mM.EnterStage(stageNumber);
+        int idx = GetStageNumber();
+        Debug.Log($"[EnterStage] Request enter stage index={idx}");
+        StageManager.Instance?.EnterStageByIndex(idx - 1, "EnterStageButton");
     }
-    
-    /// <summary>
-    /// 현재 버튼의 상태를 변경, 버튼의 상태에 따라 해당하는 이미지 적용
-    /// Cleared : 클리어함 Playable : 플레이 가능 Locked : 잠김
-    /// </summary>
-    /// <param name="state">버튼 상태</param>
+
+    /// <summary>버튼 상태에 맞춰 상호작용/스프라이트/텍스트 갱신</summary>
     public void SetButtonState(ButtonState state)
     {
-        var currState = stageButtonState;
-        // 1) 현재 버튼의 상태 저장
         stageButtonState = state;
-        
-        // 2) 현재 버튼의 상태에 따라 상호작용 여부 결정
-        // Playable일 경우에만 가능, 아닐 경우 불가능
-        if (state == ButtonState.Playable)
-            button.interactable = true;
-        else
-            button.interactable = false;
 
-        // 3) 상태에 따른 이미지 설정
-        // Cleared일 경우 텍스트 비활성화
-        // Playable, Locked일 경우 텍스트 활성화
+        // 상호작용
+        button.interactable = (state == ButtonState.Playable);
+
+        // 상태별 비주얼
         switch (state)
         {
             case ButtonState.Cleared:
                 stageButtonImage.sprite = clearSprite;
-                buttonText.enabled = false;
+                if (buttonText) buttonText.enabled = false; // 클리어면 텍스트 숨김
                 break;
+
             case ButtonState.Playable:
                 stageButtonImage.sprite = activeSprite;
-                buttonText.enabled = false;
+                if (buttonText) buttonText.enabled = true;  // 코멘트와 맞게 플레이 가능은 텍스트 ON
                 break;
+
             case ButtonState.Locked:
                 stageButtonImage.sprite = normalSprite;
-                buttonText.enabled = true;
+                if (buttonText) buttonText.enabled = true;  // 잠김은 텍스트 ON(자물쇠 아이콘이면 바꿔도 됨)
                 break;
         }
     }

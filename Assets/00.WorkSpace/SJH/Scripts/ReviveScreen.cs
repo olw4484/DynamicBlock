@@ -14,9 +14,11 @@ public class ReviveScreen : MonoBehaviour
     float _remain;
     Coroutine _timerRoutine;
     bool _adRunning;
+    bool _reviveGranted;
 
-    IAdService Ads => Game.Ads as IAdService;
-    bool BusReady => Game.IsBound && Game.Bus != null;
+    IAdService Ads => Game.Ads;
+
+    Coroutine _watchReadyRoutine;
 
 #if UNITY_EDITOR
     [SerializeField] bool debugMockReward;
@@ -24,51 +26,44 @@ public class ReviveScreen : MonoBehaviour
 
     void Awake()
     {
-        if (!_reviveBtn) _reviveBtn = transform.GetComponentInChildren<Button>(true); 
+        if (!_reviveBtn) _reviveBtn = transform.GetComponentInChildren<Button>(true);
         if (!_giveUpBtn) _giveUpBtn = transform.Find("GiveUpButton")?.GetComponent<Button>();
-
         Debug.Log($"[Revive] Wire buttons: revive={_reviveBtn}, giveUp={_giveUpBtn}");
     }
 
     void OnEnable()
     {
-        // 중복 등록 방지 후 등록
-        if (_reviveBtn)
-        {
-            _reviveBtn.onClick.RemoveListener(OnClickReviveReward);
-            _reviveBtn.onClick.AddListener(OnClickReviveReward);
-        }
-        if (_giveUpBtn)
-        {
-            _giveUpBtn.onClick.RemoveListener(OnClickGiveUp);
-            _giveUpBtn.onClick.AddListener(OnClickGiveUp);
-        }
+        if (_reviveBtn) { _reviveBtn.onClick.RemoveListener(OnClickReviveReward); _reviveBtn.onClick.AddListener(OnClickReviveReward); }
+        if (_giveUpBtn) { _giveUpBtn.onClick.RemoveListener(OnClickGiveUp); _giveUpBtn.onClick.AddListener(OnClickGiveUp); }
 
         _adRunning = false;
+        _reviveGranted = false;
+
         _remain = _windowSeconds;
-        if (_reviveBtn) _reviveBtn.interactable = false; // 초기 비활성
+        if (_reviveBtn) _reviveBtn.interactable = false;
         UpdateUI();
 
-        // 1) 패널 열릴 때 로드
         Ads?.Refresh();
-
-        // 2) 준비감시 코루틴 (0.2s 간격으로 3초 감시)
-        StartCoroutine(Co_WatchReady(3f));
-
-        if (_reviveBtn) _reviveBtn.onClick.AddListener(OnClickReviveReward);
-        if (_giveUpBtn) _giveUpBtn.onClick.AddListener(OnClickGiveUp);
-
+        _watchReadyRoutine = StartCoroutine(Co_WatchReady(3f));
         _timerRoutine = StartCoroutine(CoTimer());
     }
 
     void OnDisable()
     {
+        if (_watchReadyRoutine != null) { StopCoroutine(_watchReadyRoutine); _watchReadyRoutine = null; }
+        if (_timerRoutine != null) { StopCoroutine(_timerRoutine); _timerRoutine = null; }
+
         if (_reviveBtn) _reviveBtn.onClick.RemoveListener(OnClickReviveReward);
         if (_giveUpBtn) _giveUpBtn.onClick.RemoveListener(OnClickGiveUp);
+    }
 
+    // 포기/타임아웃은 Router에 위임
+    void ForceGiveUp(string reason)
+    {
+        _adRunning = false;
         if (_timerRoutine != null) { StopCoroutine(_timerRoutine); _timerRoutine = null; }
-        if (_reviveBtn) _reviveBtn.onClick.RemoveAllListeners();
-        if (_giveUpBtn) _giveUpBtn.onClick.RemoveAllListeners();
+        ReviveRouter.I?.ForceGiveUp(reason);
+        // 패널 닫기/게이트 해제/버스 발행은 전부 Router가 처리
     }
 
     IEnumerator CoTimer()
@@ -78,18 +73,15 @@ public class ReviveScreen : MonoBehaviour
             _remain -= Time.unscaledDeltaTime;
             if (_remain < 0f) _remain = 0f;
             UpdateUI();
-            if (_adRunning) yield break; // 광고 시작되면 타이머 종료
+            if (_adRunning) yield break;
             yield return null;
         }
 
-        // 시간 만료 → 포기 이벤트만 발행
-        if (BusReady) Game.Bus.PublishImmediate(new GiveUpRequest());
+        if (_adRunning || _reviveGranted) yield break;
 
-        CloseSelf();
-
-        // 0초 되면 전면 광고 실행
-        if (_remain <= 0f) AdManager.Instance.ShowInterstitial();
-	}
+        // 대기/가드 고려는 Router가 하므로 바로 위임
+        ForceGiveUp("revive_timeout");
+    }
 
     IEnumerator Co_WatchReady(float duration)
     {
@@ -98,13 +90,10 @@ public class ReviveScreen : MonoBehaviour
         {
             bool ready = Ads?.IsRewardedReady() ?? false;
             if (_reviveBtn) _reviveBtn.interactable = ready;
-            // 필요하면 텍스트 갱신: _reviveBtn.GetComponentInChildren<TMP_Text>().text = ready ? "Revive" : "Loading...";
             if (ready) yield break;
-
             yield return new WaitForSecondsRealtime(0.2f);
             t += 0.2f;
         }
-        // 아직도 미준비면 추가 로드 시도
         Ads?.Refresh();
     }
 
@@ -113,14 +102,13 @@ public class ReviveScreen : MonoBehaviour
         if (_countText) _countText.text = ((int)Mathf.Ceil(_remain)).ToString();
         if (_countImage) _countImage.fillAmount = Mathf.Clamp01(_remain / _windowSeconds);
 
-        // ★ 준비됐을 때만 버튼 활성화 (즉시 포기로 새지 않도록)
         if (_reviveBtn) _reviveBtn.interactable = Ads?.IsRewardedReady() ?? false;
     }
 
     void OnClickGiveUp()
     {
-        if (BusReady) Game.Bus.PublishImmediate(new GiveUpRequest());
-        CloseSelf();
+        if (_adRunning || _reviveGranted) return;
+        ForceGiveUp("giveup_clicked");
     }
 
     void OnClickReviveReward()
@@ -128,40 +116,37 @@ public class ReviveScreen : MonoBehaviour
 #if UNITY_EDITOR
         if (debugMockReward)
         {
-            // 광고 없이 리바이브 흐름만 테스트
-            if (BusReady) Game.Bus.PublishImmediate(new ReviveRequest());
-            Debug.Log("[Revive] OnClickReviveReward");
-            CloseSelf();
+            // 디버그도 Router 경유
+            ReviveRouter.I?.OnAdStart();
+            _reviveGranted = true;
+            ReviveRouter.I?.OnAdRewardGranted();
+            ReviveRouter.I?.OnAdClosed(true);
             return;
         }
 #endif
         if (_adRunning) return;
-        _adRunning = true;
+        _adRunning = true; _reviveGranted = false;
         if (_timerRoutine != null) { StopCoroutine(_timerRoutine); _timerRoutine = null; }
 
-        if (Ads == null)
-        {
-            Debug.LogWarning("[Revive] Ads facade is null");
-            _adRunning = false;
-            return;
-        }
+        if (Ads == null) { _adRunning = false; return; }
+        if (!Ads.IsRewardedReady()) { StartCoroutine(Co_TryOnceAfterRefresh()); return; }
 
-        if (!Ads.IsRewardedReady())
-        {
-            Debug.LogWarning("[Revive] Not ready. Refresh and retry.");
-            StartCoroutine(Co_TryOnceAfterRefresh());
-            return;
-        }
-
-        Debug.Log("[Revive] ShowRewarded()");
+        // 광고 경로: Router와 동기화
+        ReviveRouter.I?.OnAdStart();
         Ads.ShowRewarded(
-            onReward: () => Debug.Log("[Revive] onReward"),
-            onClosed: () => { Debug.Log("[Revive] onClosed"); _adRunning = false; Ads.Refresh(); CloseSelf(); },
-            onFailed: () => { Debug.LogError("[Revive] onFailed"); _adRunning = false; if (BusReady) Game.Bus.PublishImmediate(new GiveUpRequest()); CloseSelf(); }
+            onReward: () => { _reviveGranted = true; ReviveRouter.I?.OnAdRewardGranted(); },
+            onClosed: () =>
+            {
+                _adRunning = false;
+                Ads.Refresh();
+                ReviveRouter.I?.OnAdClosed(_reviveGranted);
+            },
+            onFailed: () =>
+            {
+                _adRunning = false;
+                ReviveRouter.I?.OnAdClosed(false);
+            }
         );
-
-        // 보상 수령 이벤트는 ReviveRequest로 이벤트 분리(이전 답변대로)
-        // -> IAdService 구현에서 onReward 시 Game.Bus.Publish(new ReviveRequest()); 호출해도 됨
     }
 
     IEnumerator Co_TryOnceAfterRefresh()
@@ -171,7 +156,12 @@ public class ReviveScreen : MonoBehaviour
 
         if (Ads != null && Ads.IsRewardedReady())
         {
-            ShowRewarded();
+            ReviveRouter.I?.OnAdStart();                                                      // ★
+            Ads.ShowRewarded(
+                onReward: () => { _reviveGranted = true; ReviveRouter.I?.OnAdRewardGranted(); }, // ★
+                onClosed: () => { _adRunning = false; Ads.Refresh(); ReviveRouter.I?.OnAdClosed(_reviveGranted); }, // ★
+                onFailed: () => { _adRunning = false; ReviveRouter.I?.OnAdClosed(false); }    // ★
+            );
         }
         else
         {
@@ -181,29 +171,20 @@ public class ReviveScreen : MonoBehaviour
         }
     }
 
-    void ShowRewarded()
+    // CloseSelf는 Router가 닫기를 놓쳤을 때만 사용 (최후 수단)
+    void CloseSelf()
     {
-        Ads.ShowRewarded(
-            onReward: () =>
-            {
-                // 보상 수령 시 리바이브 요청
-                if (BusReady) Game.Bus.PublishImmediate(new ReviveRequest());
-            },
-            onClosed: () =>
-            {
-                _adRunning = false;
-                Ads.Refresh();  // 다음 로드를 위해
-                CloseSelf();
-            },
-            onFailed: () =>
-            {
-                Debug.LogError("[Revive] Rewarded failed → give up.");
-                _adRunning = false;
-                if (BusReady) Game.Bus.PublishImmediate(new GiveUpRequest());
-                CloseSelf();
-            }
-        );
+        var ui = FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
+        if (ui != null)
+        {
+            ui.ClosePanelImmediate("Revive");
+#if UNITY_EDITOR
+            ui.LogModalStack("after-close");
+#endif
+        }
+        else
+        {
+            gameObject.SetActive(false);
+        }
     }
-
-    void CloseSelf() => gameObject.SetActive(false);
 }

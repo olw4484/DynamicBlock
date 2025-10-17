@@ -82,11 +82,18 @@ public class InterstitialAdController
 
     public void ShowAd()
     {
-        // 자동노출 쿨다운은 AdManager에서 관리하지만 여기서도 방어
+        if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed)
+        {
+            Debug.Log("[Interstitial] Blocked during revive pending");
+            return;
+        }
+
+        if (AdStateProbe.IsFullscreenShowing) { Debug.Log("[Interstitial] Blocked: fullscreen in progress"); return; }
+
         if (AdManager.Instance != null && AdManager.Instance.NextInterstitialTime > DateTime.UtcNow)
         {
             Debug.Log("[Interstitial] Skipped due to cooldown.");
-            AdManager.Instance.NextInterstitialTime = DateTime.UtcNow; // 보정
+            AdManager.Instance.NextInterstitialTime = DateTime.UtcNow;
             return;
         }
 
@@ -100,6 +107,42 @@ public class InterstitialAdController
         _ad.Show();
     }
 
+    private void HookEvents(InterstitialAd ad)
+    {
+        if (ad == null) return;
+
+        ad.OnAdImpressionRecorded += () =>
+        {
+            Debug.Log("[Interstitial] Impression recorded");
+        };
+
+        ad.OnAdFullScreenContentOpened += () => {
+            AdStateProbe.IsFullscreenShowing = true;
+            Debug.Log("[Interstitial] Opened");
+            Opened?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
+        };
+        ad.OnAdFullScreenContentClosed += () => {
+            AdStateProbe.IsFullscreenShowing = false;
+            Debug.Log("[Interstitial] Closed");
+            IsReady = false;
+            Closed?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+            Init();
+        };
+        ad.OnAdFullScreenContentFailed += (AdError e) => {
+            AdStateProbe.IsFullscreenShowing = false;
+            Debug.LogError($"[Interstitial] Show error: {e}");
+            IsReady = false;
+            Failed?.Invoke();
+            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
+            Init();
+        };
+
+        ad.OnAdClicked += () => Debug.Log("[Interstitial] Clicked");
+        ad.OnAdPaid += (AdValue v) => Debug.Log($"[Interstitial] Paid: {v.CurrencyCode}/{v.Value}");
+    }
+
     public void DestroyAd()
     {
         if (_ad == null) return;
@@ -108,36 +151,10 @@ public class InterstitialAdController
         IsReady = false;
         IsLoading = false;
         _expiresAtUtc = DateTime.MinValue;
+
+        AdStateProbe.IsFullscreenShowing = false;
     }
 
-    private void HookEvents(InterstitialAd ad)
-    {
-        if (ad == null) return;
-
-        ad.OnAdPaid += (AdValue v) => Debug.Log($"[Interstitial] Paid: {v.CurrencyCode}/{v.Value}");
-        ad.OnAdImpressionRecorded += () => Debug.Log("[Interstitial] Impression recorded");
-        ad.OnAdClicked += () => Debug.Log("[Interstitial] Clicked");
-
-        ad.OnAdFullScreenContentOpened += () => {
-            Debug.Log("[Interstitial] Opened");
-            Opened?.Invoke();
-            if (Game.IsBound) Game.Bus.PublishImmediate(new AdPlaying());
-        };
-        ad.OnAdFullScreenContentClosed += () => {
-            Debug.Log("[Interstitial] Closed");
-            IsReady = false;
-            Closed?.Invoke();
-            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
-            Init();
-        };
-        ad.OnAdFullScreenContentFailed += (AdError e) => {
-            Debug.LogError($"[Interstitial] Show error: {e}");
-            IsReady = false;
-            Failed?.Invoke();
-            if (Game.IsBound) Game.Bus.PublishImmediate(new AdFinished());
-            Init();
-        };
-    }
 
     private IEnumerator RetryAfter(float sec)
     {

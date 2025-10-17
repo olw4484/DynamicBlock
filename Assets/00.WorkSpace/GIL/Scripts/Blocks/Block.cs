@@ -76,32 +76,52 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             _currentShapeData = shapeData;
             CreateBlock(shapeData);
         }
-    
+
         public void CreateBlock(ShapeData shapeData)
         {
             if (shapePrefab == null || shapeData == null) return;
-            RectTransform rectTransform = shapePrefab.GetComponent<RectTransform>();
 
-            if (rectTransform == null) return;
+            // 1) 자식 정리: 템플릿이 이 객체의 자식이면 지우지 말 것!
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var child = transform.GetChild(i).gameObject;
+                if (child == shapePrefab) continue; // 템플릿 보존
+                Destroy(child);
+            }
+
+            // 2) 치수는 '템플릿(프리팹 또는 템플릿 오브젝트)'에서 가져옴
+            var rectTransform = shapePrefab.GetComponent<RectTransform>();
+            if (rectTransform == null) { Debug.LogError("[Block] shapePrefab has no RectTransform"); return; }
 
             float width = rectTransform.sizeDelta.x;
             float height = rectTransform.sizeDelta.y;
-        
             Vector2 offset = new Vector2((5 - 1) * 0.5f * width, -(5 - 1) * 0.5f * height);
 
+            // 3) _currentSprite 방어: 없으면 템플릿의 Image라도 복사
+            if (_currentSprite == null)
+            {
+                var tmplImg = shapePrefab.GetComponent<UnityEngine.UI.Image>();
+                if (tmplImg && tmplImg.sprite) _currentSprite = tmplImg.sprite;
+            }
+
+            // 4) 셀 생성
             for (int y = 0; y < 5; y++)
             {
                 for (int x = 0; x < 5; x++)
                 {
-                    GameObject block = Instantiate(shapePrefab, transform);
-                    RectTransform rt = block.GetComponent<RectTransform>();
-                    rt.anchoredPosition = new Vector2(x * width, -y * height) - offset;
-                    
-                    block.SetActive(shapeData.rows[y].columns[x]);
+                    var cell = Instantiate(shapePrefab, transform);
+                    if (cell == null) { Debug.LogError("[Block] Instantiate returned null (template destroyed?)"); continue; }
+
+                    var rt = cell.GetComponent<RectTransform>();
+                    if (rt != null) rt.anchoredPosition = new Vector2(x * width, -y * height) - offset;
+
+                    var img = cell.GetComponent<UnityEngine.UI.Image>();
+                    if (img != null && _currentSprite != null) img.sprite = _currentSprite;
+
+                    cell.SetActive(shapeData.rows[y].columns[x]);
                 }
             }
         }
-        
         public void OnPointerDown(PointerEventData eventData)
         {
             if(TouchGate.GetTouchID() == int.MinValue) TouchGate.SetTouchID(eventData.pointerId);
@@ -130,8 +150,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
             GridManager.Instance.UpdateHoverPreview(shapeBlocks);
         }
         
-        
-        
         public void OnPointerUp(PointerEventData eventData)
         {
             if(TouchGate.GetTouchID() != eventData.pointerId) return;
@@ -156,12 +174,6 @@ namespace _00.WorkSpace.GIL.Scripts.Blocks
 
                 BlockStorage storage = FindObjectOfType<BlockStorage>();
                 storage.OnBlockPlaced(this);
-                
-                // TODO : 적절한 튜토리얼 시작 위치 옮기기
-                if (MapManager.Instance.CurrentMode == GameMode.Tutorial)
-                {
-                    MapManager.Instance.OnTutorialCompleted();
-                }
                 
                 Destroy(gameObject);
             }

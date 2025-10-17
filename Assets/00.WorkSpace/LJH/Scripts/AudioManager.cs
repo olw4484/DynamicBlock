@@ -71,6 +71,10 @@ public class AudioManager : MonoBehaviour
     private AudioSource bgmSource;
     private List<AudioSource> sePool = new List<AudioSource>();
 
+    private AudioClip _desiredBgmClip;
+    private AudioClip _lastBgmClip;    // 실제로 마지막에 틀던 트랙(일시정지 복귀용)
+    private float _lastBgmTime = 0f;   // 일시정지 위치
+
     // 초기화
     private void Awake()
     {
@@ -108,27 +112,46 @@ public class AudioManager : MonoBehaviour
     private void OnApplicationPause(bool pause)
     {
         if (pause) bgmSource.Pause();
-        else bgmSource.UnPause();
+        else if (IsBgmOn) bgmSource.UnPause();
     }
     // 앱 포커스/일시정지 시 BGM 일시정지
     private void OnApplicationFocus(bool focus)
     {
         if (!focus) bgmSource.Pause();
-        else bgmSource.UnPause();
+        else if (IsBgmOn) bgmSource.UnPause();
     }
 
     #region BGM
     // 동일 BGM이 재생 중이면 무시
-    public void PlayBGM(AudioClip clip)
+    public void PlayBGM(AudioClip clip, bool restart = false)
     {
         if (clip == null) { Debug.LogWarning("[BGM] null clip"); return; }
-        if (!IsBgmOn) return;
-        if (bgmSource.clip == clip && bgmSource.isPlaying) return;
-        bgmSource.clip = clip;
-        bgmSource.volume = BGMVolume;
+
+        _desiredBgmClip = clip;   // 항상 최신 요청 저장
+
+        if (!IsBgmOn)
+        {
+            // 꺼진 상태에선 재생은 안 하고, 다음 ON 때 쓸 클립만 세팅
+            bgmSource.clip = clip;
+            _lastBgmClip = clip;
+            if (restart) _lastBgmTime = 0f;
+            return;
+        }
+
+        // 켜져 있으면 즉시 재생/전환
+        if (restart || bgmSource.clip != clip)
+        {
+            bgmSource.clip = clip;
+            bgmSource.time = 0f;
+        }
+
         bgmSource.loop = true;
         bgmSource.mute = false;
+        bgmSource.volume = BGMVolume;
         bgmSource.Play();
+
+        _lastBgmClip = clip;
+        _lastBgmTime = 0f;
     }
     // BGM 정지
     public void StopBGM() => bgmSource.Stop();
@@ -191,15 +214,36 @@ public class AudioManager : MonoBehaviour
     {
         if (on)
         {
-            float last = PlayerPrefs.GetFloat(KeyBgmLastOn, 1f);
+            float last = PlayerPrefs.GetFloat(KeyBgmLastOn, Mathf.Max(BGMVolume, 1f));
             SetBGMVolume(last);
-            // 즉시 재생하고 싶으면:
-            // if (!bgmSource.isPlaying && BGM_Main) PlayBGM(BGM_Main);
+
+            // 씬이 요청해 둔 트랙을 최우선
+            var clipToUse = _desiredBgmClip ?? bgmSource.clip ?? _lastBgmClip ?? BGM_Main ?? BGM_Adventure;
+            if (clipToUse)
+            {
+                bgmSource.clip = clipToUse;
+                if (_lastBgmTime > 0f) bgmSource.time = _lastBgmTime;
+                bgmSource.mute = false;
+                bgmSource.UnPause();
+                if (!bgmSource.isPlaying) bgmSource.Play();
+            }
+            _lastBgmTime = 0f;
         }
         else
         {
+            // OFF: 위치 저장 후 일시정지(Stop 대신 Pause)
+            PlayerPrefs.SetFloat(KeyBgmLastOn, Mathf.Max(BGMVolume, PlayerPrefs.GetFloat(KeyBgmLastOn, 1f)));
+            PlayerPrefs.Save();
+
             SetBGMVolume(0f);
-            StopBGM();
+
+            if (bgmSource && bgmSource.clip)
+            {
+                _lastBgmClip = bgmSource.clip;
+                if (bgmSource.isPlaying) _lastBgmTime = bgmSource.time;
+                bgmSource.Pause();
+                bgmSource.mute = true;
+            }
         }
     }
     public void SetSeOn(bool on)
