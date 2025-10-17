@@ -4,6 +4,7 @@ using GoogleMobileAds.Api;
 using System;
 using System.Collections;
 using System.Reflection;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class AdManager : MonoBehaviour, IAdService
@@ -168,16 +169,10 @@ public class AdManager : MonoBehaviour, IAdService
 
         yield return WaitUntilForeground(0.5f);
         if (!Application.isFocused || !AndroidHasWindowFocus())
-        {
-            Debug.LogWarning("[Ads] Abort interstitial: no foreground/window focus");
             yield break;
-        }
 
         if (Interstitial == null || !Interstitial.IsReady)
-        {
-            Debug.LogWarning("[Ads] Abort interstitial: not ready");
             yield break;
-        }
 
         void Cleanup()
         {
@@ -188,7 +183,11 @@ public class AdManager : MonoBehaviour, IAdService
                 Interstitial.Failed -= OnFailedInternal;
             }
             _interstitialInProgress = false;
-            if (_interstitialWatchdog != null) { StopCoroutine(_interstitialWatchdog); _interstitialWatchdog = null; }
+            if (_interstitialWatchdog != null)
+            {
+                StopCoroutine(_interstitialWatchdog);
+                _interstitialWatchdog = null;
+            }
         }
 
         void OnOpened()
@@ -200,18 +199,34 @@ public class AdManager : MonoBehaviour, IAdService
         void OnClosedInternal()
         {
             Cleanup();
+
+            // 전면 광고 닫힘 후 정리
+            UIStateProbe.DisarmResultGuard();
+            UIStateProbe.DisarmReviveGrace();
+            GameOverUtil.ResetAll("interstitial_closed");
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+            ReviveGate.Disarm();
+
+            // 전면 광고 쿨다운은 InterstitialTime/NextInterstitialTime 사용
+            if (InterstitialTime > 0)
+                NextInterstitialTime = DateTime.UtcNow.AddSeconds(InterstitialTime);
+
             try { onClosed?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
-            if (InterstitialTime > 0) NextInterstitialTime = DateTime.UtcNow.AddSeconds(InterstitialTime);
+            Game.Bus?.PublishImmediate(new AdFinished());
             Refresh();
         }
 
         void OnFailedInternal()
         {
-            // 실패 후라도 보상이 이미 찍혔다면 커밋 분기는 유지
             Cleanup();
-            UIStateProbe.DisarmResultGuard();
-            UIStateProbe.DisarmReviveGrace();
-            GameOverUtil.ResetAll("reward_failed");
+
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+            ReviveGate.Disarm();
+
+            // 실패 시 onFailed 콜백은 전면 경로엔 없음
+            Game.Bus?.PublishImmediate(new AdFinished());
             Refresh();
         }
 
@@ -480,11 +495,11 @@ public class AdManager : MonoBehaviour, IAdService
 
         void OnFailedInternal()
         {
-            // 실패 후라도 보상이 이미 찍혔다면 커밋
-            if (rewardGranted && !committed)
+            if (!committed)
             {
-                CommitNow("failed_after_granted");
-                return;
+                UIStateProbe.ArmResultGuard(2.5f);
+                if (Game.IsBound)
+                    Game.Bus?.PublishImmediate(new ResultDelay(2.5f));
             }
 
             Cleanup();

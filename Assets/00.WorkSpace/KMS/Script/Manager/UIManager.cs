@@ -202,43 +202,43 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
 
         _bus.Subscribe<GameOverConfirmed>(OnGameOverConfirmed_Classic, replaySticky: false);
 
-        //_bus.Subscribe<ContinueGranted>(_ =>
-        //{
-        //    GameOverGate.Reset("ContinueGranted");
-        //    GameOverUtil.ResetAll("continue_granted");
-        //
-        //    CancelReviveDelay();
-        //    AdPauseGuard.OnAdClosedOrFailed();
-        //    AdStateProbe.IsFullscreenShowing = false;
-        //    AdStateProbe.IsRevivePending = false;
-        //
-        //    Time.timeScale = 1f;
-        //    _bus?.PublishImmediate(new InputLock(false, "ContinueGranted"));
-        //
-        //    SetPanel("Revive", false, true);
-        //    SetPanel("GameOver", false, true);
-        //    SetPanel("NewRecord", false, true);
-        //
-        //    ForceCloseAllModals();
-        //    NormalizeAllPanelsAlpha();
-        //    ForceMainUIClean();
-        //
-        //    // 결과 억제/그레이스
-        //    _resultSuppressUntil = Time.realtimeSinceStartup + _resultSuppressAfterReviveSec;
-        //    UIStateProbe.ArmResultGuard(_resultSuppressAfterReviveSec);
-        //    UIStateProbe.ArmReviveGrace(2.0f);
-        //    StartCoroutine(CoReviveGrace(2.0f));
-        //
-        //    StartCoroutine(CoPostContinueSanity());
-        //}, replaySticky: false);
+        _bus.Subscribe<ContinueGranted>(_ =>
+        {
+            GameOverGate.Reset("ContinueGranted");
+            GameOverUtil.ResetAll("continue_granted");
+        
+            CancelReviveDelay();
+            AdPauseGuard.OnAdClosedOrFailed();
+            AdStateProbe.IsFullscreenShowing = false;
+            AdStateProbe.IsRevivePending = false;
+        
+            Time.timeScale = 1f;
+            _bus?.PublishImmediate(new InputLock(false, "ContinueGranted"));
+        
+            SetPanel("Revive", false, true);
+            SetPanel("GameOver", false, true);
+            SetPanel("NewRecord", false, true);
+        
+            ForceCloseAllModals();
+            NormalizeAllPanelsAlpha();
+            ForceMainUIClean();
+        
+            // 결과 억제/그레이스
+            _resultSuppressUntil = Time.realtimeSinceStartup + _resultSuppressAfterReviveSec;
+            UIStateProbe.ArmResultGuard(_resultSuppressAfterReviveSec);
+            UIStateProbe.ArmReviveGrace(2.0f);
+            StartCoroutine(CoReviveGrace(2.0f));
+        
+            StartCoroutine(CoPostContinueSanity());
+        }, replaySticky: false);
 
-        //_bus.Subscribe<RevivePerformed>(_ =>
-        //{
-        //    _reviveConsumedThisRun = true;
-        //    GameOverGate.Reset("RevivePerformed");
-        //    Debug.Log("[UI] RevivePerformed → reviveConsumed = true");
-        //}, replaySticky: false);
-        //
+        _bus.Subscribe<RevivePerformed>(_ =>
+        {
+            _reviveConsumedThisRun = true;
+            GameOverGate.Reset("RevivePerformed");
+            Debug.Log("[UI] RevivePerformed → reviveConsumed = true");
+        }, replaySticky: false);
+        
         _bus.Subscribe<PanelToggle>(OnPanelToggle, replaySticky: true);
         _bus.Subscribe<GameResetRequest>(OnGameResetRequest, replaySticky: false);
 
@@ -252,6 +252,13 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         _bus.Subscribe<GameResetDone>(_ => ResetReviveFlags("GameResetDone"), replaySticky: false);
 
         _bus.Subscribe<AdFinished>(_ => { StartCoroutine(CoReassertResultAfterAd()); }, replaySticky: false);
+
+        _bus.Subscribe<ResultDelay>(e =>
+        {
+            _resultSuppressUntil = Time.realtimeSinceStartup + Mathf.Max(0.05f, e.seconds);
+            UIStateProbe.ArmResultGuard(e.seconds);
+            Debug.Log($"[UI] ResultDelay armed: {e.seconds}s");
+        }, replaySticky: false);
     }
 
     private void OnPanelToggle(PanelToggle e)
@@ -1133,12 +1140,11 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
     {
         if (Time.realtimeSinceStartup < _resultSuppressUntil)
         {
-            Debug.Log("[UI] Suppress GameOverConfirmed (recent revive guard)");
-            GameOverUtil.CancelPending("ui_suppress_recent_revive");
-            GameOverGate.Reset("ui_suppress_recent_revive");
-            UpdateProbes();
+            float wait = _resultSuppressUntil - Time.realtimeSinceStartup;
+            StartCoroutine(Co_OpenClassicResultAfterDelay(e, wait));
             return;
         }
+
         if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed || ReviveLatch.Active)
         {
             Debug.Log("[UI] Suppress GameOverConfirmed (router/gate state)");
@@ -1192,6 +1198,47 @@ public class UIManager : MonoBehaviour, IManager, IRuntimeReset
         {
             StartCoroutine(Co_ShowInterstitialAfterResultOpen(e.isNewBest ? "NewRecord" : "GameOver"));
         }
+    }
+
+    private void OpenClassicResultNow(GameOverConfirmed e)
+    {
+        Debug.Log($"[UI] GameOverConfirmed score={e.score} isNewBest={e.isNewBest} mode=Classic");
+
+        CancelReviveDelay();
+        Game.Audio.StopContinueTimeCheckSE();
+        SetPanel("Revive", false, ignoreDelay: true);
+
+        int bestNow = _lastBestClassic;
+        if (e.isNewBest)
+        {
+            bestNow = e.score;
+            if (_lastLoggedClassicBest != e.score)
+            {
+                AnalyticsManager.Instance?.ClassicBestLog(e.score);
+                _lastLoggedClassicBest = e.score;
+            }
+            _lastBestClassic = Mathf.Max(_lastBestClassic, e.score);
+            UpdateBestHUD();
+        }
+
+        SetAll(_goTotalTexts, $"{FormatScore(e.score)}");
+        SetAll(_goBestTexts, $"{FormatScore(bestNow)}");
+
+        SetPanel("GameOver", !e.isNewBest);
+        SetPanel("NewRecord", e.isNewBest);
+    }
+
+    private IEnumerator Co_OpenClassicResultAfterDelay(GameOverConfirmed e, float wait)
+    {
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.05f, wait));
+
+        if (AdStateProbe.IsRevivePending || ReviveGate.IsArmed || ReviveLatch.Active)
+            yield break;
+
+        var mm = _00.WorkSpace.GIL.Scripts.Managers.MapManager.Instance;
+        if (mm && mm.CurrentMode == GameMode.Adventure) yield break;
+
+        OpenClassicResultNow(e);
     }
 
     private IEnumerator Co_ShowInterstitialAfterResultOpen(string key)

@@ -6311,6 +6311,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
+      propertyPath: _panels.Array.data[4].closeDelaySeconds
+      value: 0.15
+      objectReference: {fileID: 0}
+    - target: {fileID: 4275078385125174343, guid: 772894b2cd8ad7144905904e511613ab, type: 3}
       propertyPath: _panels.Array.data[7].closeDelaySeconds
       value: 0
       objectReference: {fileID: 0}
